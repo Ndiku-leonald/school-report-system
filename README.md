@@ -8,9 +8,9 @@ The product must remain configurable for different schools. School identity, sub
 
 ## Current status
 
-**Stage 2: Next.js foundation and project tooling is complete.** The repository contains a root Next.js App Router application, strict TypeScript, Tailwind CSS, ESLint, Prettier, Supabase client foundations, environment validation, accessible placeholder interfaces, and unit/component/end-to-end test foundations.
+**Stage 3: Supabase database foundation is complete.** The repository contains a root Next.js App Router application plus ordered Supabase migrations, normalized academic and reporting structures, explicit constraints and indexes, deny-by-default RLS, deterministic synthetic seed data, pgTAP tests, and generated TypeScript database types.
 
-The application remains in the foundation phase. Database schema, authentication, authorization, live academic data, calculations, report generation, and parent verification have not been implemented.
+The application remains in the foundation phase. Authentication, scoped authorization policies, live academic data, calculations, report generation, storage, and parent verification have not been implemented.
 
 ## Planned technology stack
 
@@ -45,7 +45,7 @@ The agreed MVP boundary is documented in [docs/product-requirements.md](docs/pro
 - Node.js 20.9 or later; use a supported LTS release
 - npm 11 or a lockfile-compatible npm release
 - Git
-- A Supabase project or supported local Supabase environment
+- Docker or another Supabase-compatible local container runtime
 - Access to the required environment values when exercising Supabase integrations
 
 ## Installation
@@ -97,6 +97,20 @@ npm run test:e2e
 
 Use `npx playwright install chromium` once if the local Playwright browser is not installed.
 
+For database development:
+
+```bash
+npm run db:start
+npm run db:reset
+npm run db:lint
+npm run db:test
+npm run db:types
+npm run db:stop
+```
+
+See [docs/local-supabase-development.md](docs/local-supabase-development.md)
+before linking or applying migrations to any remote development project.
+
 ## Project structure
 
 ```text
@@ -115,6 +129,7 @@ src/
 
 tests/e2e/               Playwright smoke tests
 docs/                    Product and architecture documentation
+supabase/                Local config, migrations, synthetic seed, and pgTAP tests
 ```
 
 Routes currently available:
@@ -137,6 +152,9 @@ Security requirements and vulnerability-reporting guidance are defined in [SECUR
 - [System architecture](docs/system-architecture.md)
 - [Roles and permissions](docs/roles-and-permissions.md)
 - [Academic workflow](docs/academic-workflow.md)
+- [Database design](docs/database-design.md)
+- [Database security](docs/database-security.md)
+- [Local Supabase development](docs/local-supabase-development.md)
 - [Development roadmap](docs/development-roadmap.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)

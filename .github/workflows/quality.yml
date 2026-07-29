@@ -16,10 +16,10 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v5
         with:
           node-version: 24
           cache: npm
@@ -47,3 +47,42 @@ jobs:
 
       - name: Run end-to-end smoke test
         run: npm run test:e2e
+
+  database:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v5
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start local Supabase
+        run: npm run db:start
+
+      - name: Rebuild database from migrations and seed
+        run: npm run db:reset
+
+      - name: Lint database schema
+        run: npm run db:lint
+
+      - name: Run database tests
+        run: npm run db:test
+
+      - name: Verify generated database types
+        run: |
+          npm run db:types
+          npx prettier --write src/types/database.generated.ts
+          git diff --exit-code -- src/types/database.generated.ts
+
+      - name: Stop local Supabase
+        if: always()
+        run: npm run db:stop -- --no-backup

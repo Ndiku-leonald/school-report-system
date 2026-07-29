@@ -31,7 +31,7 @@ Initialize one Next.js App Router application in the repository using TypeScript
 - Unit/component tests, the production build, and the Playwright Chromium smoke test pass without real credentials.
 - `.github/workflows/quality.yml` runs the complete validation suite for pull requests and the default branch.
 
-## 3. Supabase schema and migrations
+## 3. Supabase schema and migrations — Complete
 
 Design the normalized data model, constraints, indexes, generated types, migration workflow, and seed strategy using synthetic data.
 
@@ -41,6 +41,23 @@ Design the normalized data model, constraints, indexes, generated types, migrati
 - Academic configuration and historically significant rules are data-driven and versionable.
 - Foreign keys, uniqueness, check constraints, indexes, and deletion behavior are tested.
 - No real student data or production credentials appear in migrations or fixtures.
+
+**Completion evidence (2026-07-29)**
+
+- Seven ordered Supabase migrations create 36 normalized public tables, stable
+  workflow enums, internal trigger functions, cross-scope validation, explicit
+  indexes, and restrictive foreign-key behavior.
+- Membership-backed workflow actors are independently constrained to the
+  record's school, including privileged writes; Stage 5 remains responsible for
+  deciding which roles may perform each action.
+- All public application tables force RLS with no permissive policies, and
+  browser-role table, sequence, and function privileges are revoked.
+- A deterministic configuration-only seed and 93 pgTAP assertions pass through
+  a clean local database reset; Supabase schema lint reports no errors.
+- TypeScript database definitions are generated from the local schema and used
+  by both Supabase client factories.
+- CI reproduces the local database, tests it, regenerates types, and checks that
+  the committed generated contract is current without remote credentials.
 
 ## 4. Staff authentication
 

@@ -24,7 +24,7 @@ Vercel
     └── Production deployment
 ```
 
-This document describes the intended boundaries only. It does not select a database schema or implement any service.
+The application and Stage 3 PostgreSQL boundaries are implemented. Authentication, domain services, calculations, report rendering, storage, and final authorization policies remain deferred.
 
 ## Application responsibilities
 
@@ -96,7 +96,6 @@ Local, preview, and production environments must use separate configuration and 
 
 ## Decisions deferred to later stages
 
-- Database entities, constraints, indexes, and migration layout
 - Authentication and parent-session design details
 - Calculation-engine representation
 - Background job or queue requirements
@@ -117,3 +116,29 @@ Each decision should be documented when evidence and school requirements are ava
 - **Continuous integration:** The quality workflow runs formatting, linting, strict type checking, unit/component tests, production build, and the Chromium smoke test.
 
 These decisions refine the planned architecture without changing its domain boundaries.
+
+## Stage 3 implementation decisions
+
+- **Schema source of truth:** ordered Supabase SQL migrations define all public
+  application tables, types, constraints, indexes, triggers, and privileges. No
+  ORM or parallel schema representation is used.
+- **Tenant ownership:** school-scoped entities reference `schools`; validated
+  trigger functions reject cross-school and cross-academic-scope relationships
+  that ordinary foreign keys cannot express.
+- **Historical integrity:** roles, memberships, assignments, enrollments, rules,
+  mark sheets, reports, and templates preserve status, effective dates, or
+  versions. Historically sensitive foreign keys restrict deletion.
+- **Workflow aggregate:** marks submission and approval state belongs to the mark
+  sheet rather than individual marks.
+- **Reports:** immutable snapshots separate historical report inputs from mutable
+  live academic records.
+- **Browser access:** all public application tables force RLS, with table,
+  sequence, and function privileges revoked from `anon` and `authenticated`.
+  Scoped policies are intentionally deferred to Stage 5.
+- **Local reproducibility:** a lockfile-managed Supabase CLI, deterministic
+  synthetic seed, pgTAP tests, generated TypeScript types, and a local-only CI
+  database job validate the schema.
+
+The detailed model and security boundary are in
+[database-design.md](database-design.md) and
+[database-security.md](database-security.md).

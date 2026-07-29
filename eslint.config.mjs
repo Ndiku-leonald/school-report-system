@@ -9,6 +9,8 @@ export default defineConfig([
     ".next/**",
     "coverage/**",
     "playwright-report/**",
+    "supabase/.branches/**",
+    "supabase/.temp/**",
     "test-results/**",
     "next-env.d.ts",
   ]),
