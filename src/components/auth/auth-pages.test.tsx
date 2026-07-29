@@ -64,6 +64,11 @@ vi.mock("@/lib/auth/staff-context", () => ({
   getActiveMemberships: () => context.memberships,
   getStaffContext: async () => context,
 }));
+vi.mock("@/lib/auth/recovery", () => ({
+  getVerifiedRecoverySession: async () => ({
+    user: context.user,
+  }),
+}));
 
 import AccountUnavailablePage from "@/app/(auth)/account-unavailable/page";
 import ForgotPasswordPage from "@/app/(auth)/forgot-password/page";

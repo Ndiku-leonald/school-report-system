@@ -1,5 +1,6 @@
 import "server-only";
 
+import { isIP } from "node:net";
 import { headers } from "next/headers";
 
 import { createAdministrativeSupabaseClient } from "@/lib/supabase/admin";
@@ -14,10 +15,17 @@ type AuditEvent = {
   reason?: string;
 };
 
+export function getForwardedIpAddress(value: string | null) {
+  const firstAddress = value?.split(",")[0]?.trim();
+  return firstAddress && isIP(firstAddress) !== 0 ? firstAddress : null;
+}
+
 export async function recordStaffAuditEvent(event: AuditEvent) {
   try {
     const requestHeaders = await headers();
-    const forwardedFor = requestHeaders.get("x-forwarded-for")?.split(",")[0];
+    const forwardedFor = getForwardedIpAddress(
+      requestHeaders.get("x-forwarded-for"),
+    );
     const requestId = requestHeaders.get("x-request-id");
     const supabase = createAdministrativeSupabaseClient();
     const { error } = await supabase.from("audit_logs").insert({
@@ -36,7 +44,7 @@ export async function recordStaffAuditEvent(event: AuditEvent) {
         )
           ? requestId
           : null,
-      ip_address: forwardedFor || null,
+      ip_address: forwardedFor,
       user_agent: requestHeaders.get("user-agent"),
     });
 

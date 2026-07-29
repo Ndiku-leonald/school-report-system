@@ -4,6 +4,14 @@ import { type NextRequest, NextResponse } from "next/server";
 import { getPublicEnvironment } from "@/lib/env/public";
 import type { Database } from "@/types/database.generated";
 
+export function copySupabaseResponseCookies(
+  source: NextResponse,
+  target: NextResponse,
+) {
+  source.cookies.getAll().forEach((cookie) => target.cookies.set(cookie));
+  return target;
+}
+
 export async function refreshSupabaseSession(request: NextRequest) {
   const environment = getPublicEnvironment();
   let response = NextResponse.next({ request });

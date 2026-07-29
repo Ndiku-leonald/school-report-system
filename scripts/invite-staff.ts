@@ -1,6 +1,7 @@
 import { z } from "zod";
 
 import { recordSystemAuditEvent } from "./lib/system-audit";
+import { getInvitationRedirectUrl } from "../src/lib/auth/invitation-redirect";
 import { createAdministrativeSupabaseClient } from "../src/lib/supabase/admin";
 import { getAdministrativeEnvironment } from "../src/lib/env/administrative";
 import type { Database } from "../src/types/database.generated";
@@ -24,7 +25,7 @@ const inputSchema = z.object({
   employeeNumber: z.string().trim().min(1).max(50),
   schoolId: z.string().uuid(),
   roles: z.array(z.enum(allowedRoles)).min(1),
-  redirectUrl: z.string().url().optional(),
+  redirectUrl: z.string().min(1).optional(),
   allowRemote: z.boolean(),
 });
 
@@ -105,9 +106,10 @@ async function main() {
     );
   }
 
-  const redirectTo =
-    input.redirectUrl ??
-    `${environment.NEXT_PUBLIC_APP_URL}/auth/callback?next=/complete-invitation`;
+  const redirectTo = getInvitationRedirectUrl(
+    environment.NEXT_PUBLIC_APP_URL,
+    input.redirectUrl,
+  );
   const { data: invite, error: inviteError } =
     await admin.auth.admin.inviteUserByEmail(input.email, {
       data: {

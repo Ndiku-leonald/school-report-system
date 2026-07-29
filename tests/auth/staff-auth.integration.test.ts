@@ -1,3 +1,5 @@
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { createClient, type User } from "@supabase/supabase-js";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
@@ -25,6 +27,72 @@ const suspendedEmail = `synthetic.suspended.${nonce}@example.invalid`;
 const invitedEmail = `synthetic.invited.${nonce}@example.invalid`;
 const disabledEmail = `synthetic.disabled.${nonce}@example.invalid`;
 const noMembershipEmail = `synthetic.no-membership.${nonce}@example.invalid`;
+const policyEmail = `synthetic.policy.${nonce}@example.invalid`;
+const invitationEmail = `synthetic.admin-invite.${nonce}@example.invalid`;
+
+describe("local staff-only Auth policy", () => {
+  it("disables public signup while retaining invited-staff email login", () => {
+    const config = readFileSync(
+      join(process.cwd(), "supabase", "config.toml"),
+      "utf8",
+    );
+
+    expect(config).toMatch(/\[auth]\s[\s\S]*?enable_signup = false/);
+    expect(config).toMatch(/\[auth\.email]\s[\s\S]*?enable_signup = true/);
+    expect(config).toMatch(/enable_anonymous_sign_ins = false/);
+  });
+
+  it("rejects public email signup", async () => {
+    const client = createClient<Database>(url, anonKey);
+    const { data, error } = await client.auth.signUp({
+      email: `synthetic.public-signup.${nonce}@example.invalid`,
+      password,
+    });
+
+    expect(error).not.toBeNull();
+    expect(data.user).toBeNull();
+  });
+
+  it("allows trusted administrative invitation while signup is disabled", async () => {
+    const { data, error } =
+      await admin.auth.admin.inviteUserByEmail(invitationEmail);
+
+    expect(error).toBeNull();
+    expect(data.user?.email).toBe(invitationEmail);
+    if (data.user) users.push(data.user);
+  });
+
+  it("enforces the twelve-character minimum in Supabase Auth", async () => {
+    const created = await admin.auth.admin.createUser({
+      email: policyEmail,
+      password,
+      email_confirm: true,
+    });
+    expect(created.error).toBeNull();
+    if (!created.data.user)
+      throw new Error("Policy test user was not created.");
+    users.push(created.data.user);
+
+    const client = createClient<Database>(url, anonKey);
+    const signIn = await client.auth.signInWithPassword({
+      email: policyEmail,
+      password,
+    });
+    expect(signIn.error).toBeNull();
+
+    const shortResult = await client.auth.updateUser({
+      password: "Short1!",
+    });
+    expect(shortResult.error).not.toBeNull();
+    expect(shortResult.error?.code).toBe("weak_password");
+
+    const validResult = await client.auth.updateUser({
+      password: "Abcdefghi1!x",
+    });
+    expect(validResult.error).toBeNull();
+    expect(validResult.data.user?.email).toBe(policyEmail);
+  });
+});
 
 async function provisionUser(
   email: string,

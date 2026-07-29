@@ -18,6 +18,11 @@ import {
 } from "@/lib/auth/schemas";
 import { sanitizeNextPath } from "@/lib/auth/safe-redirect";
 import {
+  clearRecoveryProofCookie,
+  createPasswordRecoveryState,
+  getVerifiedRecoverySession,
+} from "@/lib/auth/recovery";
+import {
   getActiveMemberships,
   getInvitedMemberships,
   getStaffContext,
@@ -34,6 +39,19 @@ function errorState(
   fieldErrors?: AuthActionState["fieldErrors"],
 ): AuthActionState {
   return { status: "error", message, fieldErrors };
+}
+
+function equalIdSets(actual: string[], expected: string[]) {
+  if (actual.length !== expected.length) return false;
+  const sortedActual = [...actual].sort();
+  const sortedExpected = [...expected].sort();
+  return sortedActual.every((id, index) => id === sortedExpected[index]);
+}
+
+async function clearAuthenticationCookies() {
+  const cookieStore = await cookies();
+  cookieStore.delete(ACTIVE_SCHOOL_COOKIE);
+  clearRecoveryProofCookie(cookieStore);
 }
 
 export async function signInAction(
@@ -135,8 +153,9 @@ export async function requestPasswordResetAction(
 
   const environment = getPublicEnvironment();
   const supabase = await createServerSupabaseClient();
+  const recoveryState = createPasswordRecoveryState(result.data.email);
   await supabase.auth.resetPasswordForEmail(result.data.email, {
-    redirectTo: `${environment.NEXT_PUBLIC_APP_URL}/auth/callback?next=/reset-password`,
+    redirectTo: `${environment.NEXT_PUBLIC_APP_URL}/auth/callback?recovery_state=${encodeURIComponent(recoveryState)}`,
   });
 
   return {
@@ -162,13 +181,15 @@ export async function resetPasswordAction(
     );
   }
 
-  const context = await getStaffContext();
-
-  if (!context) {
+  const recoverySession = await getVerifiedRecoverySession();
+  if (!recoverySession) {
+    const cookieStore = await cookies();
+    clearRecoveryProofCookie(cookieStore);
     return errorState("This recovery session is invalid or has expired.");
   }
 
-  const supabase = await createServerSupabaseClient();
+  const context = await getStaffContext();
+  const { supabase } = recoverySession;
   const { error } = await supabase.auth.updateUser({
     password: result.data.password,
   });
@@ -178,20 +199,19 @@ export async function resetPasswordAction(
   }
 
   const auditMembership =
-    context.activeMembership ?? context.memberships[0] ?? null;
+    context?.activeMembership ?? context?.memberships[0] ?? null;
 
   if (auditMembership) {
     await recordStaffAuditEvent({
       action: "PASSWORD_RESET_COMPLETED",
       entityType: "staff_account",
-      entityId: context.user.id,
+      entityId: recoverySession.user.id,
       membership: auditMembership,
     });
   }
 
   await supabase.auth.signOut();
-  const cookieStore = await cookies();
-  cookieStore.delete(ACTIVE_SCHOOL_COOKIE);
+  await clearAuthenticationCookies();
   revalidatePath("/", "layout");
   redirect("/staff-login?message=password-updated");
 }
@@ -237,39 +257,24 @@ export async function completeInvitationAction(
 
   const admin = createAdministrativeSupabaseClient();
   const membershipIds = invitedMemberships.map(({ id }) => id);
-  const { error: activationError } = await admin
-    .from("school_staff_memberships")
-    .update({
-      status: "ACTIVE",
-      joined_at: new Date().toISOString().slice(0, 10),
-    })
-    .in("id", membershipIds)
-    .eq("profile_id", context.user.id)
-    .eq("status", "INVITED");
+  const { data: activatedMemberships, error: activationError } =
+    await admin.rpc("activate_staff_invitation", {
+      target_profile_id: context.user.id,
+      expected_membership_ids: membershipIds,
+    });
+  const activatedMembershipIds =
+    activatedMemberships?.map(({ membership_id }) => membership_id) ?? [];
 
-  if (activationError) {
+  if (activationError || !equalIdSets(activatedMembershipIds, membershipIds)) {
     await supabase.auth.signOut();
+    await clearAuthenticationCookies();
     return errorState(
       "The account was secured, but staff access could not be activated. Contact an administrator.",
     );
   }
 
-  for (const membership of invitedMemberships) {
-    await recordStaffAuditEvent({
-      action: "STAFF_INVITATION_COMPLETED",
-      entityType: "school_staff_membership",
-      entityId: membership.id,
-      membership: { ...membership, status: "ACTIVE" },
-    });
-    await recordStaffAuditEvent({
-      action: "STAFF_MEMBERSHIP_ACTIVATED",
-      entityType: "school_staff_membership",
-      entityId: membership.id,
-      membership: { ...membership, status: "ACTIVE" },
-    });
-  }
-
   const cookieStore = await cookies();
+  clearRecoveryProofCookie(cookieStore);
   if (invitedMemberships.length === 1) {
     cookieStore.set(
       ACTIVE_SCHOOL_COOKIE,
@@ -341,8 +346,7 @@ export async function signOutAction() {
 
   const supabase = await createServerSupabaseClient();
   await supabase.auth.signOut();
-  const cookieStore = await cookies();
-  cookieStore.delete(ACTIVE_SCHOOL_COOKIE);
+  await clearAuthenticationCookies();
   revalidatePath("/", "layout");
   redirect("/staff-login");
 }

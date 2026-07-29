@@ -25,6 +25,14 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
 - An active-school cookie is only a selector. It must be HttpOnly, SameSite=Lax,
   Secure in production, and revalidated against the authenticated user's active
   memberships on every authoritative request.
+- A normal authenticated session is not authority to reset a password. Recovery
+  additionally requires a signed, 15-minute proof bound to the current Auth
+  user and recovery purpose. Its HttpOnly cookie is SameSite=Lax, Secure in
+  production, scoped to `/reset-password`, and cleared after successful or
+  invalid use.
+- Public signup and anonymous sign-in must remain disabled. The email/password
+  provider remains enabled for invited staff login, and Supabase must enforce a
+  minimum password length of 12 locally and in the hosted project.
 - Student reports must use private storage. Access must be granted only after server-side authorization or secure, short-lived delivery controls.
 - Every sensitive read and mutation must be authorized server-side. Hiding a menu or disabling a button is not authorization.
 - Membership-backed workflow actors must belong to the target record's school even when a privileged server credential performs the write. Database scope validation is required in addition to Stage 5 role authorization.
@@ -38,7 +46,7 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
 
 ## Secrets and environment handling
 
-Only variables explicitly prefixed with `NEXT_PUBLIC_` may be considered for browser exposure, and that prefix does not make a sensitive value safe. `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `DIRECT_URL`, and equivalent privileged credentials are server-only.
+Only variables explicitly prefixed with `NEXT_PUBLIC_` may be considered for browser exposure, and that prefix does not make a sensitive value safe. `AUTH_FLOW_SIGNING_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `DIRECT_URL`, and equivalent privileged credentials are server-only. The Auth-flow secret must contain at least 32 random bytes, must not be a Supabase key, and must never be logged.
 
 Use local ignored environment files and the hosting provider's encrypted environment configuration. Rotate a credential immediately if it is committed, published, logged, or otherwise exposed; deleting it from the latest revision is not sufficient because Git history and external copies may retain it.
 
@@ -61,6 +69,12 @@ access tokens, refresh tokens, invitation token hashes, and service keys.
 Disabling or suspending a membership blocks workspace access on the next
 authoritative request; administrators should also revoke Auth sessions when
 urgent account-wide revocation is required.
+
+Proxy redirects propagate only Supabase cookies and their attributes from the
+refresh response, not arbitrary headers. Invitation redirects are fixed,
+same-origin callbacks and require HTTPS except on approved localhost origins.
+Confirmation accepts only `invite` and `recovery`; public `signup` and
+`magiclink` confirmation are rejected.
 
 ## Known limitations
 

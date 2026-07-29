@@ -73,12 +73,22 @@ Implement Supabase Auth integration for staff sessions, sign-in, sign-out, recov
 **Implementation evidence (2026-07-29)**
 
 - Cookie-based Supabase SSR sessions refresh through the Next.js 16 proxy while
-  protected layouts and actions independently validate the user and membership.
+  protected layouts and actions independently validate the user and membership;
+  redirects preserve rotated and cleared Supabase cookies.
 - Sign-in, POST sign-out, invitation completion, recovery, account-unavailable,
   and multi-school selection flows are implemented with generic failures and
   sanitized internal redirects.
 - Migration 08 grants narrow own-identity reads only; academic access and
   browser writes remain denied and are covered by pgTAP.
+- Migration 09 provides service-role-only, invoker-rights atomic invitation
+  activation with row locking, exact-set verification, and transactional
+  success audits.
+- Public signup and anonymous sign-in are disabled, Supabase enforces a
+  12-character minimum password, and recovery requires a signed 15-minute
+  purpose- and user-bound proof beyond the normal session.
+- Only invitation and recovery confirmation types are supported. Invitation
+  redirects are fixed and same-origin, and token-hash and PKCE recovery are
+  tested locally without remote Supabase changes.
 - Unit, local Auth integration, Playwright, build, lint, type, formatting, and
   database checks are part of the repository validation and CI workflows.
 

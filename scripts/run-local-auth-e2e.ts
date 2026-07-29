@@ -46,6 +46,8 @@ const result = spawnSync(process.execPath, [playwrightCli, "test"], {
     NEXT_PUBLIC_SUPABASE_URL: local.API_URL,
     NEXT_PUBLIC_SUPABASE_ANON_KEY: local.ANON_KEY,
     SUPABASE_SERVICE_ROLE_KEY: local.SERVICE_ROLE_KEY,
+    AUTH_FLOW_SIGNING_SECRET:
+      "synthetic-auth-flow-secret-for-local-tests-0123456789abcdef",
   },
   stdio: "inherit",
 });

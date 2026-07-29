@@ -2,7 +2,10 @@ import type { NextRequest } from "next/server";
 import { NextResponse } from "next/server";
 
 import { getProxyRedirect } from "@/lib/auth/route-rules";
-import { refreshSupabaseSession } from "@/lib/supabase/proxy";
+import {
+  copySupabaseResponseCookies,
+  refreshSupabaseSession,
+} from "@/lib/supabase/proxy";
 
 export async function proxy(request: NextRequest) {
   const { isAuthenticated, response } = await refreshSupabaseSession(request);
@@ -10,9 +13,12 @@ export async function proxy(request: NextRequest) {
 
   const redirectPath = getProxyRedirect({ isAuthenticated, pathname, search });
 
-  return redirectPath
-    ? NextResponse.redirect(new URL(redirectPath, request.url))
-    : response;
+  if (!redirectPath) return response;
+
+  return copySupabaseResponseCookies(
+    response,
+    NextResponse.redirect(new URL(redirectPath, request.url)),
+  );
 }
 
 export const config = {

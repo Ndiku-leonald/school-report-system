@@ -31,6 +31,9 @@ export default defineConfig({
       NEXT_PUBLIC_SUPABASE_ANON_KEY:
         process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ??
         "synthetic-browser-key-for-smoke-tests",
+      AUTH_FLOW_SIGNING_SECRET:
+        process.env.AUTH_FLOW_SIGNING_SECRET ??
+        "synthetic-auth-flow-secret-for-browser-smoke-tests-0123456789",
     },
     url: baseURL,
     reuseExistingServer: !process.env.CI,

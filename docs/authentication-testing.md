@@ -4,19 +4,23 @@
 
 Stage 4 uses four complementary layers:
 
-- Vitest unit and component tests validate schemas, safe redirects, membership
-  routing, token-refresh cookie propagation, service-client configuration, and
-  accessible forms.
+- Vitest unit and component tests validate schemas, signed recovery state and
+  proofs, confirmation types, strict invitation redirects, audit IP parsing,
+  membership routing, redirect cookie propagation, service-client
+  configuration, and accessible forms.
 - pgTAP validates own-row identity policies, cross-user isolation, anonymous
   denial, browser write denial, continued academic denial, and exact trusted
-  service privileges.
-- `npm run test:auth` provisions synthetic local Auth users and exercises
-  password sign-in, session creation, membership states, RLS reads, and denied
-  academic/write operations.
+  service privileges, atomic invitation activation, and transactional auditing.
+- `npm run test:auth` proves public signup rejection, administrative
+  invitation, Supabase's 12-character password policy, password sign-in,
+  session creation, membership states, RLS reads, and denied academic/write
+  operations.
 - `npm run test:e2e:auth` uses Playwright with generated local invitation and
-  recovery links to test protected redirects, generic login failure, active
-  login, logout, unavailable accounts, invitation completion, school selection,
-  and password recovery.
+  recovery links and local captured mail to test protected redirects, generic
+  login failure, active login, logout, unavailable accounts, invitation
+  completion, school selection, token-hash recovery, PKCE recovery,
+  ordinary-session denial, forged-proof cleanup, proof consumption, and fresh
+  login.
 
 ## Local commands
 
@@ -30,12 +34,18 @@ npm run test:e2e:auth
 ```
 
 The Auth runners read local API configuration from `supabase status -o env`
-without printing it. They pass values only to their child test process. Test
-identities use `.invalid` domains and synthetic names and employee numbers.
+without printing it. They pass values and a synthetic 32-byte-plus Auth-flow
+secret only to their child test process. Test identities use `.invalid` domains
+and synthetic names and employee numbers.
 
-The Playwright suite generates token hashes through the local administrative
-API and submits them directly to the application confirmation route. It does
-not claim that a production SMTP provider delivered email.
+The Playwright suite exercises both generated token hashes and a real local
+PKCE link captured from Mailpit. It does not claim that a production SMTP
+provider delivered email.
+
+Restart the local stack after changing `supabase/config.toml`. The local policy
+keeps the email/password provider enabled for invited staff but disables global
+signup and anonymous sign-in. Public `signUp()` must still fail. Hosted Auth
+settings are separate and were not changed by these tests.
 
 ## Local email capture
 

@@ -9,7 +9,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { getStaffContext } from "@/lib/auth/staff-context";
+import { getVerifiedRecoverySession } from "@/lib/auth/recovery";
 
 export const metadata: Metadata = {
   title: "Choose a new password",
@@ -17,10 +17,10 @@ export const metadata: Metadata = {
 };
 
 export default async function ResetPasswordPage() {
-  const context = await getStaffContext();
+  const recoverySession = await getVerifiedRecoverySession();
 
-  if (!context) {
-    redirect("/auth-error");
+  if (!recoverySession) {
+    redirect("/auth/recovery-invalid");
   }
 
   return (

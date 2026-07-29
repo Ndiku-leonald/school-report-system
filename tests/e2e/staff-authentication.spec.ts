@@ -17,6 +17,8 @@ const disabledEmail = `synthetic.e2e.disabled.${nonce}@example.invalid`;
 const noMembershipEmail = `synthetic.e2e.no-membership.${nonce}@example.invalid`;
 const invitedEmail = `synthetic.e2e.invited.${nonce}@example.invalid`;
 const multipleEmail = `synthetic.e2e.multiple.${nonce}@example.invalid`;
+const tokenRecoveryEmail = `synthetic.e2e.token-recovery.${nonce}@example.invalid`;
+const pkceRecoveryEmail = `synthetic.e2e.pkce-recovery.${nonce}@example.invalid`;
 const secondSchoolId = "10000000-0000-4000-8000-000000000099";
 const secondSchoolName = "Synthetic Multi-School Test Campus";
 
@@ -51,7 +53,7 @@ async function createStaff(
   const { error: membershipError } = await admin!
     .from("school_staff_memberships")
     .insert({
-      employee_number: `E2E-${status}-${nonce}`,
+      employee_number: `E2E-${status}-${randomUUID()}`,
       profile_id: data.user.id,
       school_id: schoolId,
       status,
@@ -149,6 +151,8 @@ test.describe.serial("staff authentication", () => {
     await createStaff(activeEmail, "ACTIVE");
     await createStaff(suspendedEmail, "SUSPENDED");
     await createStaff(disabledEmail, "DISABLED");
+    await createStaff(tokenRecoveryEmail, "ACTIVE");
+    await createStaff(pkceRecoveryEmail, "ACTIVE");
     await createStaffWithoutMembership();
     inviteToken = await createInvitation();
     await createMultiSchoolStaff();
@@ -213,12 +217,18 @@ test.describe.serial("staff authentication", () => {
   }
 
   test("completes an invitation and activates staff access", async ({
+    context,
     page,
   }) => {
     await page.goto(
       `/auth/confirm?token_hash=${encodeURIComponent(inviteToken)}&type=invite&next=/complete-invitation`,
     );
     await expect(page).toHaveURL(/\/complete-invitation$/);
+    expect(
+      (await context.cookies()).find(
+        ({ name }) => name === "staff-recovery-proof",
+      ),
+    ).toBeUndefined();
     await page
       .getByLabel("New password", { exact: true })
       .fill(initialPassword);
@@ -259,7 +269,7 @@ test.describe.serial("staff authentication", () => {
   test("completes recovery and requires a fresh sign-in", async ({ page }) => {
     const { data, error } = await admin!.auth.admin.generateLink({
       type: "recovery",
-      email: activeEmail,
+      email: tokenRecoveryEmail,
       options: { redirectTo: "http://127.0.0.1:3100/reset-password" },
     });
     if (error) throw error;
@@ -279,6 +289,120 @@ test.describe.serial("staff authentication", () => {
     await expect(
       page.getByText(/sign in with your new password/i),
     ).toBeVisible();
+
+    await page.goto("/reset-password");
+    await expect(page).toHaveURL(/\/auth-error$/);
+
+    await page.goto("/staff-login");
+    await page.getByLabel("Email address").fill(tokenRecoveryEmail);
+    await page.getByLabel("Password").fill(replacementPassword);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+  });
+
+  test("denies ordinary and forged-session access to password reset", async ({
+    context,
+    page,
+  }) => {
+    await page.goto("/staff-login");
+    await page.getByLabel("Email address").fill(activeEmail);
+    await page.getByLabel("Password").fill(initialPassword);
+    await page.getByRole("button", { name: "Sign in" }).click();
+    await expect(page).toHaveURL(/\/dashboard$/);
+
+    await page.goto("/reset-password");
+    await expect(page).toHaveURL(/\/auth-error$/);
+
+    await context.addCookies([
+      {
+        name: "staff-recovery-proof",
+        value: "forged.synthetic.recovery-proof",
+        domain: "127.0.0.1",
+        path: "/reset-password",
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+    await page.goto("/reset-password");
+    await expect(page).toHaveURL(/\/auth-error$/);
+    expect(
+      (await context.cookies()).find(
+        ({ name }) => name === "staff-recovery-proof",
+      ),
+    ).toBeUndefined();
+  });
+
+  test("completes a signed-state PKCE recovery and consumes the flow", async ({
+    context,
+    page,
+    request,
+  }) => {
+    await page.goto("/forgot-password");
+    await page.getByLabel("Email address").fill(pkceRecoveryEmail);
+    await page.getByRole("button", { name: "Send reset instructions" }).click();
+    await expect(
+      page.getByText(/if an eligible staff account exists/i),
+    ).toBeVisible();
+
+    await expect
+      .poll(async () => {
+        const response = await request.get(
+          "http://127.0.0.1:54324/api/v1/messages",
+        );
+        const body = (await response.json()) as {
+          messages: {
+            ID: string;
+            To: { Address: string }[];
+          }[];
+        };
+        return body.messages.find(({ To }) =>
+          To.some(({ Address }) => Address === pkceRecoveryEmail),
+        )?.ID;
+      })
+      .toBeTruthy();
+
+    const messagesResponse = await request.get(
+      "http://127.0.0.1:54324/api/v1/messages",
+    );
+    const messages = (await messagesResponse.json()) as {
+      messages: {
+        ID: string;
+        To: { Address: string }[];
+      }[];
+    };
+    const recoveryMessage = messages.messages.find(({ To }) =>
+      To.some(({ Address }) => Address === pkceRecoveryEmail),
+    );
+    expect(recoveryMessage?.ID).toBeTruthy();
+    const messageResponse = await request.get(
+      `http://127.0.0.1:54324/api/v1/message/${recoveryMessage!.ID}`,
+    );
+    const message = (await messageResponse.json()) as { Text: string };
+    const recoveryLink = message.Text.match(/\(\s*(https?:\/\/\S+)\s*\)/)?.[1];
+    expect(recoveryLink).toBeTruthy();
+
+    await page.goto(recoveryLink!);
+    await expect(page).toHaveURL(/\/reset-password$/);
+    expect(
+      (await context.cookies()).find(
+        ({ name }) => name === "staff-recovery-proof",
+      )?.httpOnly,
+    ).toBe(true);
+
+    await page
+      .getByLabel("New password", { exact: true })
+      .fill(replacementPassword);
+    await page.getByLabel("Confirm new password").fill(replacementPassword);
+    await page.getByRole("button", { name: "Update password" }).click();
+    await expect(page).toHaveURL(/\/staff-login\?message=password-updated/);
+    expect(
+      (await context.cookies()).find(
+        ({ name }) => name === "staff-recovery-proof",
+      ),
+    ).toBeUndefined();
+
+    await page.goto("/reset-password");
+    await expect(page).toHaveURL(/\/auth-error$/);
   });
 
   test("keeps recovery generic and the mobile form keyboard accessible", async ({

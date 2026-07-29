@@ -43,7 +43,11 @@ vi.mock("@supabase/ssr", () => ({
   }),
 }));
 
-import { refreshSupabaseSession } from "@/lib/supabase/proxy";
+import {
+  copySupabaseResponseCookies,
+  refreshSupabaseSession,
+} from "@/lib/supabase/proxy";
+import { NextResponse } from "next/server";
 
 describe("Supabase proxy session refresh", () => {
   beforeEach(() => {
@@ -77,5 +81,37 @@ describe("Supabase proxy session refresh", () => {
     );
 
     expect(result.isAuthenticated).toBe(false);
+  });
+
+  it("copies rotated and cleared cookies with their attributes", () => {
+    const source = NextResponse.next();
+    source.cookies.set("sb-rotated", "synthetic-value", {
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+    });
+    source.cookies.set("sb-cleared", "", {
+      maxAge: 0,
+      path: "/",
+      secure: true,
+    });
+    source.headers.set("x-sensitive-synthetic-header", "do-not-copy");
+    const target = copySupabaseResponseCookies(
+      source,
+      NextResponse.redirect("https://application.example.invalid/dashboard"),
+    );
+
+    expect(target.cookies.get("sb-rotated")).toMatchObject({
+      value: "synthetic-value",
+      httpOnly: true,
+      sameSite: "lax",
+      path: "/",
+    });
+    expect(target.cookies.get("sb-cleared")).toMatchObject({
+      value: "",
+      path: "/",
+      secure: true,
+    });
+    expect(target.headers.get("x-sensitive-synthetic-header")).toBeNull();
   });
 });

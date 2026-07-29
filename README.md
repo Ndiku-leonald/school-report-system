@@ -12,7 +12,8 @@ The product must remain configurable for different schools. School identity, sub
 contains the Stage 3 database foundation plus cookie-based Supabase Auth,
 server-authoritative staff membership checks, invitation and recovery flows,
 active-school selection, authentication audit events, and local-only Auth test
-automation.
+automation. Public registration is disabled, recovery requires a short-lived
+signed user-bound proof, and invitation activation is atomic.
 
 Academic authorization remains deny-by-default. Stage 4 grants authenticated
 staff read access only to their own profile, memberships, role labels, and
@@ -86,7 +87,19 @@ On PowerShell:
 Copy-Item .env.example .env.local
 ```
 
-Supply values through an approved secrets channel. `NEXT_PUBLIC_APP_URL`, `NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are browser-safe configuration. `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, and `DIRECT_URL` are server-only and must never enter client components or browser bundles.
+Supply values through an approved secrets channel. `NEXT_PUBLIC_APP_URL`,
+`NEXT_PUBLIC_SUPABASE_URL`, and `NEXT_PUBLIC_SUPABASE_ANON_KEY` are browser-safe
+configuration. `AUTH_FLOW_SIGNING_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`,
+`DATABASE_URL`, and `DIRECT_URL` are server-only and must never enter client
+components or browser bundles. Generate the Auth-flow secret from at least 32
+random bytes and never reuse a Supabase key.
+
+Local Auth disables project-wide public signup and anonymous sign-in and
+enforces a 12-character minimum password. The email/password provider remains
+enabled so invited staff can sign in; the global signup switch prevents public
+account creation. Configure the corresponding hosted-project signup and
+password settings separately before production. This change did not modify a
+remote Supabase project.
 
 Environment parsing is lazy so the Stage 2 placeholder pages, tests, and production build do not require real Supabase credentials. A descriptive configuration error is raised when code first requests missing configuration. Schema tests use synthetic values only.
 

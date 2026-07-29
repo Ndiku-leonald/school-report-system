@@ -33,8 +33,14 @@ Multiple roles are comma-separated. Allowed values are `SUPER_ADMIN`,
 `SCHOOL_ADMIN`, `HEAD_TEACHER`, `ACADEMIC_REGISTRAR`, `CLASS_TEACHER`, and
 `SUBJECT_TEACHER`.
 
-`--middle-name` and `--redirect-url` are optional. A custom redirect must be an
-approved absolute URL already allow-listed in Supabase Auth.
+`--middle-name` and `--redirect-url` are optional. The tool constructs the final
+destination from `NEXT_PUBLIC_APP_URL` and the fixed
+`/auth/callback?next=/complete-invitation` path. A supplied redirect must
+exactly match that same-origin callback, use HTTPS except on approved localhost
+origins, and contain no credentials, fragment, or extra parameters. External
+origins, protocol-relative URLs, misleading subdomains, and unrelated
+same-origin paths are rejected. The exact callback must be allow-listed in
+Supabase Auth.
 
 The command validates input, confirms the active school, creates the Auth
 invitation, linked profile and `INVITED` membership, adds role labels, and
@@ -50,6 +56,12 @@ recipient, and role scope. The flag is confirmation, not authorization.
 
 This repository's Stage 4 delivery and CI do not run that flag and do not apply
 migrations or invitations to a remote project.
+
+Invitation acceptance uses migration 09's service-role-only database function.
+It locks and validates the complete expected `INVITED` membership set.
+Activation and both success audit events commit together or roll back together.
+A changed, suspended, disabled, inactive-school, missing, duplicate, or
+cross-profile row fails the entire operation.
 
 ## Operational recovery
 

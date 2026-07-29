@@ -22,6 +22,15 @@ screenshots, or error responses. A privileged server operation must still
 authorize its caller and expose only the required result; possession of the
 service credential is not business authorization.
 
+Migration 09 adds `activate_staff_invitation(uuid, uuid[])`, an invoker-rights
+function with a fixed `pg_catalog, public` search path. Execute is revoked from
+`public`, `anon`, and `authenticated` and granted only to `service_role`. It
+locks the exact supplied rows; rejects missing, duplicate, cross-profile,
+non-`INVITED`, or inactive-school memberships; activates the complete set;
+returns that exact set; and appends both success audit events in the same
+transaction. It cannot alter roles, schools, employee numbers, or another
+profile.
+
 ## Actor scope and authorization
 
 Database triggers reject membership-backed workflow actors from a different
@@ -49,6 +58,10 @@ controlled server or database path for role changes, marks transitions,
 locking, corrections, report publication/withdrawal, promotion confirmation,
 and credential lifecycle events. Audit JSON must exclude passwords, PINs,
 tokens, secret keys, and complete authentication credentials.
+
+Authentication audit IP metadata stores only the trimmed first
+`x-forwarded-for` value after Node IP validation. Malformed input becomes
+`null`, so an attacker-controlled header cannot make the audit insert fail.
 
 `student_access_credentials` stores an access-code lookup hash and PIN hash
 only. `parent_access_sessions` stores only a session-token hash. Plaintext or

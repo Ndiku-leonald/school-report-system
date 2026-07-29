@@ -59,7 +59,14 @@ npm run test:e2e:auth
 
 The Auth test runners obtain local API values from `supabase status -o env`,
 pass them only to child processes, and do not print the local service-role key.
-They refuse to substitute a remote project.
+They also inject a synthetic `AUTH_FLOW_SIGNING_SECRET` without printing it and
+refuse to substitute a remote project.
+
+Local Auth disables project-wide public signup and anonymous sign-in and
+requires passwords of at least 12 characters. Keep the email/password provider
+enabled so invited staff can sign in; the global signup switch rejects public
+`signUp()`. Restart (`db:stop`, then `db:start`) after changing
+`supabase/config.toml`, because running containers do not reload it.
 
 Provision a synthetic local staff invitation using the documented guarded
 command in [staff-provisioning.md](staff-provisioning.md).
@@ -91,3 +98,9 @@ Never run `supabase db reset` against a remote database. Never connect CI to a
 production project. Access tokens, database passwords, connection strings, and
 service-role keys belong only in ignored local files or an approved encrypted
 secret store and must never be committed or pasted into pull requests.
+
+Local configuration does not alter a hosted Supabase project. Before
+production, independently disable hosted public signup and anonymous sign-in,
+enable email/password only for invited staff login, set the minimum password
+length to 12, and configure exact trusted callback origins. No remote Supabase
+project was modified during this Stage 4 hardening work.
