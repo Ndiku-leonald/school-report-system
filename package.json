@@ -13,7 +13,15 @@
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "format": "prettier --write .",
-    "format:check": "prettier --check ."
+    "format:check": "prettier --check .",
+    "db:start": "supabase start",
+    "db:stop": "supabase stop",
+    "db:status": "supabase status",
+    "db:reset": "supabase db reset --local",
+    "db:migration:new": "supabase migration new",
+    "db:test": "supabase test db supabase/tests/database --local",
+    "db:types": "supabase gen types --local --lang typescript --schema public > src/types/database.generated.ts",
+    "db:lint": "supabase db lint --local --schema public --level warning --fail-on error"
   },
   "engines": {
     "node": ">=20.9.0"
@@ -49,6 +57,7 @@
     "postcss": "^8.5.24",
     "prettier": "^3.9.6",
     "prettier-plugin-tailwindcss": "^0.8.1",
+    "supabase": "^2.110.0",
     "tailwindcss": "^4.3.3",
     "typescript": "^6.0.3",
     "vite": "^8.1.5",

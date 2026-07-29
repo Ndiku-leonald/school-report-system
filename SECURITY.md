@@ -4,7 +4,7 @@
 
 This repository is intended to contain a web application for managing sensitive primary-school academic records. The planned system boundary includes the Next.js staff dashboard, teacher workspace, parent report portal, server-side application interfaces, report-generation services, Supabase PostgreSQL, Supabase Auth, Row Level Security policies, private Supabase Storage, migrations, and Vercel deployments.
 
-The repository is currently in the foundation stage. The controls below are required security invariants for future implementation; their documentation does not imply that they have already been built or verified.
+The repository is currently in the database-foundation stage. Public application tables have deny-by-default Row Level Security and revoked browser-role privileges. Authentication, scoped authorization policies, parent verification, and storage controls remain future work, so no real data is permitted.
 
 ## Threat model and trust boundaries
 
@@ -41,7 +41,9 @@ Severity should reflect realistic reachability and impact. Unauthorized access t
 
 ## Known limitations
 
-Application controls do not yet exist because the project is in its foundation stage. Before any real data is introduced, the implementation must complete threat modeling, authorization design, RLS verification, secure report-delivery testing, secrets scanning, dependency review, and abuse-case testing. No real student information may be used to compensate for missing test fixtures.
+Application authorization controls do not yet exist. Stage 3 deliberately defines no permissive database policies: `anon` and `authenticated` cannot directly access academic data. Before any real data is introduced, the implementation must complete threat modeling, scoped Stage 5 RLS policies, secure report-delivery testing, secrets scanning, dependency review, and parent-access abuse-case testing. No real student information may be used to compensate for missing test fixtures.
+
+Database-specific controls and limitations are documented in [docs/database-security.md](docs/database-security.md).
 
 ## Reporting a vulnerability
 

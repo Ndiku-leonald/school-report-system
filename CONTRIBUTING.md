@@ -14,11 +14,26 @@ Do not commit directly to the production branch without review. Do not mix unrel
 
 Before requesting a merge, run every formatting, linting, type-checking, testing, and build command supported by the repository. Record any skipped or failing check in the pull request rather than claiming it passed.
 
-The exact commands will be added after project tooling is initialized in Stage 2.
+For application and database changes, run:
+
+```bash
+npm run format:check
+npm run lint
+npm run typecheck
+npm test
+npm run build
+npm run test:e2e
+npm run db:reset
+npm run db:lint
+npm run db:test
+npm run db:types
+```
 
 ## Database changes
 
-All database changes must be represented by version-controlled migrations. Do not make undocumented production-only schema changes. Migrations should be reviewable, reversible where practical, and tested against non-production data before deployment.
+All database changes must be represented by version-controlled Supabase migrations. Do not maintain a duplicate ORM schema or make undocumented production-only schema changes. Migrations should be reviewable, reversible where practical, and tested through a local reset using synthetic data before deployment.
+
+Regenerate and commit `src/types/database.generated.ts` after schema changes. Never reset a remote project. Link or push only after confirming the intended non-production project and reviewing its migration status. See [docs/local-supabase-development.md](docs/local-supabase-development.md).
 
 ## Architecture and security
 
