@@ -2,17 +2,19 @@
 
 ## Current access boundary
 
-Every Stage 3 application table in `public` has Row Level Security enabled and
-forced. No RLS policy is created yet, so access fails closed. All table,
-sequence, and function privileges are revoked from `anon` and `authenticated`,
-including matching default privileges for future objects.
+Every application table in `public` has Row Level Security enabled and forced.
+Stage 4 adds authenticated `SELECT` policies only for `profiles`,
+`school_staff_memberships`, `staff_role_assignments`, and `schools`. Each policy
+is restricted to the current `auth.uid()` identity and its memberships.
+Anonymous access, browser writes, sequences, functions, and every academic
+table remain denied.
 
-Consequently, anonymous sessions cannot read or mutate schools, students,
-marks, reports, or any other academic table. A generic authenticated user also
-has no direct academic access. Database tests exercise both roles. Stage 5 will
-add narrow policies based on active memberships, roles, staff assignments,
-academic periods, workflow state, and the requested record. It must retain
-negative cross-school, cross-class, and cross-subject tests.
+Consequently, anonymous sessions cannot read or mutate identity or academic
+data. An authenticated user can establish only their own staff context and has
+no direct academic access. Database tests exercise own-row access, cross-user
+isolation, denied writes, anonymous denial, and continued academic denial.
+Stage 5 will add narrow academic policies based on active memberships, roles,
+staff assignments, academic periods, workflow state, and the requested record.
 
 The Supabase service role bypasses RLS and is therefore server-only. It must
 never be placed in `NEXT_PUBLIC_*` configuration, a browser client, logs,

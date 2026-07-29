@@ -5,7 +5,18 @@ export default function robots(): MetadataRoute.Robots {
     rules: {
       userAgent: "*",
       allow: "/",
-      disallow: ["/dashboard", "/teacher", "/parent", "/staff-login"],
+      disallow: [
+        "/dashboard",
+        "/teacher",
+        "/parent",
+        "/staff-login",
+        "/forgot-password",
+        "/reset-password",
+        "/complete-invitation",
+        "/select-school",
+        "/account-unavailable",
+        "/auth/",
+      ],
     },
   };
 }

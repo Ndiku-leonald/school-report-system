@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 
 import {
   EnvironmentConfigurationError,
+  parseAdministrativeEnvironment,
   parsePublicEnvironment,
   parseServerEnvironment,
 } from "@/lib/env/schema";
@@ -42,6 +43,17 @@ describe("environment validation", () => {
 
     expect(parseServerEnvironment(serverEnvironment)).toEqual(
       serverEnvironment,
+    );
+  });
+
+  it("validates the narrow administrative environment without database URLs", () => {
+    const administrativeEnvironment = {
+      ...validPublicEnvironment,
+      SUPABASE_SERVICE_ROLE_KEY: "synthetic-service-role-key-for-tests",
+    };
+
+    expect(parseAdministrativeEnvironment(administrativeEnvironment)).toEqual(
+      administrativeEnvironment,
     );
   });
 

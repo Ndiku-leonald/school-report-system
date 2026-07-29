@@ -21,8 +21,10 @@ npm run format:check
 npm run lint
 npm run typecheck
 npm test
+npm run test:auth
 npm run build
 npm run test:e2e
+npm run test:e2e:auth
 npm run db:reset
 npm run db:lint
 npm run db:test
@@ -34,6 +36,11 @@ npm run db:types
 All database changes must be represented by version-controlled Supabase migrations. Do not maintain a duplicate ORM schema or make undocumented production-only schema changes. Migrations should be reviewable, reversible where practical, and tested through a local reset using synthetic data before deployment.
 
 Regenerate and commit `src/types/database.generated.ts` after schema changes. Never reset a remote project. Link or push only after confirming the intended non-production project and reviewing its migration status. See [docs/local-supabase-development.md](docs/local-supabase-development.md).
+
+Authentication integration and authenticated browser tests require the local
+Supabase stack. Use synthetic `.invalid` identities only. Administrative Auth
+scripts must retain their remote-project guard, must not print tokens or keys,
+and must never be imported by client code.
 
 ## Architecture and security
 

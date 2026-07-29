@@ -26,6 +26,7 @@ Run database linting and pgTAP tests:
 ```bash
 npm run db:lint
 npm run db:test
+npm run test:auth
 ```
 
 Generate and format the committed TypeScript representation of `public`:
@@ -48,6 +49,20 @@ Inspect or stop the stack with:
 npm run db:status
 npm run db:stop
 ```
+
+Run browser authentication scenarios while the local stack is running:
+
+```bash
+npx playwright install chromium
+npm run test:e2e:auth
+```
+
+The Auth test runners obtain local API values from `supabase status -o env`,
+pass them only to child processes, and do not print the local service-role key.
+They refuse to substitute a remote project.
+
+Provision a synthetic local staff invitation using the documented guarded
+command in [staff-provisioning.md](staff-provisioning.md).
 
 `db:reset` is destructive to the **local** development database and is expected
 to erase local-only data. The seed intentionally contains configuration-only

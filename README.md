@@ -8,9 +8,17 @@ The product must remain configurable for different schools. School identity, sub
 
 ## Current status
 
-**Stage 3: Supabase database foundation is complete.** The repository contains a root Next.js App Router application plus ordered Supabase migrations, normalized academic and reporting structures, explicit constraints and indexes, deny-by-default RLS, deterministic synthetic seed data, pgTAP tests, and generated TypeScript database types.
+**Stage 4: staff authentication is implemented for review.** The repository
+contains the Stage 3 database foundation plus cookie-based Supabase Auth,
+server-authoritative staff membership checks, invitation and recovery flows,
+active-school selection, authentication audit events, and local-only Auth test
+automation.
 
-The application remains in the foundation phase. Authentication, scoped authorization policies, live academic data, calculations, report generation, storage, and parent verification have not been implemented.
+Academic authorization remains deny-by-default. Stage 4 grants authenticated
+staff read access only to their own profile, memberships, role labels, and
+schools. Stage 5 role and assignment authorization, live academic data,
+calculations, report generation, storage, and parent verification have not been
+implemented.
 
 ## Planned technology stack
 
@@ -91,8 +99,10 @@ npm run format:check
 npm run lint
 npm run typecheck
 npm test
+npm run test:auth
 npm run build
 npm run test:e2e
+npm run test:e2e:auth
 ```
 
 Use `npx playwright install chromium` once if the local Playwright browser is not installed.
@@ -135,9 +145,12 @@ supabase/                Local config, migrations, synthetic seed, and pgTAP tes
 Routes currently available:
 
 - `/` — public landing page
-- `/staff-login` — visual staff sign-in placeholder
-- `/dashboard` — administration shell and readiness placeholders
-- `/teacher` — teacher workspace placeholder
+- `/staff-login` — staff email/password sign-in
+- `/forgot-password` and `/reset-password` — generic recovery flow
+- `/complete-invitation` — invitation acceptance and membership activation
+- `/select-school` — active-school choice for multi-school staff
+- `/dashboard` and `/teacher` — authenticated staff shells
+- `/account-unavailable` — safe unavailable-membership state
 - `/parent` — visual parent verification placeholder
 
 ## Data protection
@@ -155,6 +168,9 @@ Security requirements and vulnerability-reporting guidance are defined in [SECUR
 - [Database design](docs/database-design.md)
 - [Database security](docs/database-security.md)
 - [Local Supabase development](docs/local-supabase-development.md)
+- [Staff authentication](docs/staff-authentication.md)
+- [Authentication testing](docs/authentication-testing.md)
+- [Staff provisioning](docs/staff-provisioning.md)
 - [Development roadmap](docs/development-roadmap.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)

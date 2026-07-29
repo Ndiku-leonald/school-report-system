@@ -91,7 +91,7 @@ export function Sidebar({ activeHref, navigation }: SidebarProps) {
             className="text-primary mt-0.5 size-4 shrink-0"
           />
           <p className="text-muted-foreground text-xs leading-5">
-            Access controls and live data arrive in later stages.
+            Session and school membership are verified on the server.
           </p>
         </div>
       </div>

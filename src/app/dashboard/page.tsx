@@ -37,10 +37,10 @@ export default function DashboardPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Stage 2 workspace"
+        eyebrow="Authenticated workspace"
         title="Administration overview"
         description="The dashboard shell is ready for secure academic modules. Live academic data and operational totals will appear only after the relevant stages are implemented."
-        actions={<Badge variant="success">Interface ready</Badge>}
+        actions={<Badge variant="success">Staff session verified</Badge>}
       />
 
       <Alert title="No live academic data is connected">

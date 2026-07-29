@@ -25,8 +25,15 @@ export const serverEnvironmentSchema = publicEnvironmentSchema.extend({
   DIRECT_URL: requiredUrl("DIRECT_URL"),
 });
 
+export const administrativeEnvironmentSchema = publicEnvironmentSchema.extend({
+  SUPABASE_SERVICE_ROLE_KEY: requiredSecret("SUPABASE_SERVICE_ROLE_KEY"),
+});
+
 export type PublicEnvironment = z.infer<typeof publicEnvironmentSchema>;
 export type ServerEnvironment = z.infer<typeof serverEnvironmentSchema>;
+export type AdministrativeEnvironment = z.infer<
+  typeof administrativeEnvironmentSchema
+>;
 
 export class EnvironmentConfigurationError extends Error {
   constructor(variableNames: string[]) {
@@ -65,6 +72,20 @@ export function parseServerEnvironment(
   environment: Record<string, string | undefined>,
 ) {
   const result = serverEnvironmentSchema.safeParse(environment);
+
+  if (!result.success) {
+    throw new EnvironmentConfigurationError(
+      getInvalidVariableNames(result.error),
+    );
+  }
+
+  return result.data;
+}
+
+export function parseAdministrativeEnvironment(
+  environment: Record<string, string | undefined>,
+) {
+  const result = administrativeEnvironmentSchema.safeParse(environment);
 
   if (!result.success) {
     throw new EnvironmentConfigurationError(

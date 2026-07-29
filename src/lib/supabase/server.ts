@@ -7,8 +7,8 @@ import { getPublicEnvironment } from "@/lib/env/public";
 import type { Database } from "@/types/database.generated";
 
 export async function createServerSupabaseClient() {
-  const environment = getPublicEnvironment();
   const cookieStore = await cookies();
+  const environment = getPublicEnvironment();
 
   return createServerClient<Database>(
     environment.NEXT_PUBLIC_SUPABASE_URL,

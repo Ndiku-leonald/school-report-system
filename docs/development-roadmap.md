@@ -59,7 +59,7 @@ Design the normalized data model, constraints, indexes, generated types, migrati
 - CI reproduces the local database, tests it, regenerates types, and checks that
   the committed generated contract is current without remote credentials.
 
-## 4. Staff authentication
+## 4. Staff authentication — Implemented for review
 
 Implement Supabase Auth integration for staff sessions, sign-in, sign-out, recovery, and account-state handling.
 
@@ -69,6 +69,18 @@ Implement Supabase Auth integration for staff sessions, sign-in, sign-out, recov
 - Session refresh, logout, disabled-account, and recovery behavior are tested.
 - Secrets and privileged Supabase credentials remain server-only.
 - Authentication events provide appropriate audit and operational signals without logging credentials.
+
+**Implementation evidence (2026-07-29)**
+
+- Cookie-based Supabase SSR sessions refresh through the Next.js 16 proxy while
+  protected layouts and actions independently validate the user and membership.
+- Sign-in, POST sign-out, invitation completion, recovery, account-unavailable,
+  and multi-school selection flows are implemented with generic failures and
+  sanitized internal redirects.
+- Migration 08 grants narrow own-identity reads only; academic access and
+  browser writes remain denied and are covered by pgTAP.
+- Unit, local Auth integration, Playwright, build, lint, type, formatting, and
+  database checks are part of the repository validation and CI workflows.
 
 ## 5. Roles and permissions
 

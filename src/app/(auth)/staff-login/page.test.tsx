@@ -1,11 +1,15 @@
 import { render, screen } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 
-import StaffLoginPage from "@/app/(auth)/staff-login/page";
+vi.mock("@/lib/auth/actions", () => ({
+  signInAction: async () => ({ status: "idle" }),
+}));
+
+import { StaffLoginContent } from "@/app/(auth)/staff-login/page";
 
 describe("StaffLoginPage", () => {
-  it("renders the visual sign-in form without authentication behavior", () => {
-    render(<StaffLoginPage />);
+  it("renders the functional staff sign-in form", () => {
+    render(<StaffLoginContent />);
 
     expect(screen.getByLabelText("Email address")).toHaveAttribute(
       "type",
@@ -17,10 +21,10 @@ describe("StaffLoginPage", () => {
     );
     expect(screen.getByRole("button", { name: "Sign in" })).toHaveAttribute(
       "type",
-      "button",
+      "submit",
     );
     expect(
-      screen.getByText(/authentication is not connected/i),
+      screen.getByRole("link", { name: /forgot your password/i }),
     ).toBeInTheDocument();
   });
 });

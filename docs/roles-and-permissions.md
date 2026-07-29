@@ -8,6 +8,19 @@ All sensitive permission checks must be enforced server-side and reinforced by R
 
 Users may hold more than one role if the future access model permits it. Effective access should be the smallest explicitly granted set, with conflicts and privileged combinations reviewed and audited.
 
+## Stage 4 authentication boundary
+
+Authentication proves the Supabase user identity but does not grant an academic
+capability. An authenticated user can read only their own profile, memberships,
+role labels, and member schools. An `ACTIVE` membership in an active school is
+required to enter the dashboard or teacher shell. `INVITED` memberships enter
+the completion flow; `SUSPENDED`, `DISABLED`, and missing memberships enter the
+account-unavailable state.
+
+Role labels are loaded only to establish context. Stage 4 does not interpret a
+role as permission to read or change academic records. Those policies remain
+Stage 5 work.
+
 ## Proposed roles
 
 ### `SUPER_ADMIN`
