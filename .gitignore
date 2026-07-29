@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+
+# Next.js and build output
+.next/
+out/
+
+# Test and coverage output
+coverage/
+playwright-report/
+test-results/
+blob-report/
+playwright/.auth/
+
+# Local environment files (keep .env.example tracked)
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# Logs
+*.log
+
+# Tooling and operating-system files
+.DS_Store
+.vercel/
+*.tsbuildinfo
+.eslintcache

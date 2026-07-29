@@ -1,0 +1,90 @@
+@import "tailwindcss";
+
+:root {
+  color-scheme: light;
+
+  --background: #f5f7f6;
+  --foreground: #17211f;
+  --surface: #ffffff;
+  --surface-muted: #edf2f0;
+  --muted-foreground: #5f6f6a;
+  --border: #dce5e2;
+  --border-strong: #bdccc7;
+
+  --primary: #176b5a;
+  --primary-strong: #115446;
+  --primary-foreground: #ffffff;
+  --primary-soft: #e1f2ed;
+  --focus: #1b7b67;
+
+  --info: #356e8d;
+  --info-strong: #254f67;
+  --info-soft: #e8f2f7;
+  --success: #26745c;
+  --success-strong: #185843;
+  --success-soft: #e5f4ed;
+  --warning: #9a6a18;
+  --warning-strong: #76500f;
+  --warning-soft: #fbf1d8;
+  --danger: #b24141;
+  --danger-strong: #8d3030;
+  --shadow-color: rgba(29, 59, 52, 0.2);
+
+  --font-sans: "Geist", "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-mono:
+    "Geist Mono", "SFMono-Regular", Consolas, "Liberation Mono", monospace;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-surface: var(--surface);
+  --color-surface-muted: var(--surface-muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-border: var(--border);
+  --color-border-strong: var(--border-strong);
+  --color-primary: var(--primary);
+  --color-primary-strong: var(--primary-strong);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-primary-soft: var(--primary-soft);
+  --color-focus: var(--focus);
+  --color-info: var(--info);
+  --color-info-strong: var(--info-strong);
+  --color-info-soft: var(--info-soft);
+  --color-success: var(--success);
+  --color-success-strong: var(--success-strong);
+  --color-success-soft: var(--success-soft);
+  --color-warning: var(--warning);
+  --color-warning-strong: var(--warning-strong);
+  --color-warning-soft: var(--warning-soft);
+  --color-danger: var(--danger);
+  --color-danger-strong: var(--danger-strong);
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}
+
+* {
+  border-color: var(--border);
+}
+
+html {
+  background: var(--background);
+}
+
+body {
+  min-height: 100dvh;
+  background: var(--background);
+  color: var(--foreground);
+  font-family: var(--font-sans);
+  text-rendering: optimizeLegibility;
+}
+
+::selection {
+  background: var(--primary-soft);
+  color: var(--primary-strong);
+}
+
+button,
+input {
+  font: inherit;
+}
