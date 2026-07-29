@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { requirePermission } from "@/lib/authorization/guards";
+import { filterNavigation } from "@/lib/authorization/navigation";
 import { teacherNavigation } from "@/lib/navigation";
-import { requireActiveStaff } from "@/lib/auth/access";
 
 export const metadata: Metadata = {
   title: "Teacher workspace",
@@ -15,16 +16,16 @@ export default async function TeacherLayout({
 }: {
   children: ReactNode;
 }) {
-  const context = await requireActiveStaff();
-  const staffName = context.profile
-    ? `${context.profile.first_name} ${context.profile.last_name}`
+  const context = await requirePermission("TEACHER_WORKSPACE_VIEW");
+  const staffName = context.staff.profile
+    ? `${context.staff.profile.first_name} ${context.staff.profile.last_name}`
     : "Staff member";
 
   return (
     <AppShell
       activeHref="/teacher"
-      navigation={teacherNavigation}
-      schoolName={context.activeMembership.school.name}
+      navigation={filterNavigation(teacherNavigation, context)}
+      schoolName={context.staff.activeMembership.school.name}
       section="Teacher workspace"
       staffName={staffName}
     >

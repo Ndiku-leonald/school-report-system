@@ -13,8 +13,9 @@ Staff authentication uses Supabase Auth email/password identities and
    record and reads the caller's identity context through RLS.
 3. The server resolves current membership state and revalidates the
    active-membership cookie.
-4. Only an active membership in an active school enters `/dashboard` or
-   `/teacher`. Role/assignment authorization is intentionally deferred.
+4. Stage 5 loads permissions for the selected active membership.
+   `/dashboard` requires `DASHBOARD_VIEW`; `/teacher` requires
+   `TEACHER_WORKSPACE_VIEW`; missing permission uses `/forbidden`.
 
 The proxy is not an authorization boundary. A forged or stale cookie cannot
 select a membership that is absent from the current authenticated user's
@@ -111,7 +112,9 @@ hosted project before production. No remote project was changed here.
 
 Changing a membership to `SUSPENDED` or `DISABLED`, or disabling its school,
 blocks workspace access when the next authoritative request reloads context.
-The active-school cookie does not override that state. For urgent account-wide
+Revoking a role also removes its permissions on that request because the
+database-backed set is not stored in the JWT or a long-lived cache. The
+active-school cookie does not override that state. For urgent account-wide
 revocation, an administrator must additionally revoke the user's Supabase Auth
 sessions using an approved operational procedure.
 
@@ -122,7 +125,9 @@ Start and reset the local stack, then run:
 ```bash
 npm run db:test
 npm run test:auth
+npm run test:authorization
 npm run test:e2e:auth
+npm run test:e2e:authorization
 ```
 
 Tests use synthetic `.invalid` identities. No command in this workflow applies

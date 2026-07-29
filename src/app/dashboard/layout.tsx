@@ -2,8 +2,9 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
+import { requirePermission } from "@/lib/authorization/guards";
+import { filterNavigation } from "@/lib/authorization/navigation";
 import { dashboardNavigation } from "@/lib/navigation";
-import { requireActiveStaff } from "@/lib/auth/access";
 
 export const metadata: Metadata = {
   title: "Dashboard",
@@ -15,16 +16,16 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const context = await requireActiveStaff();
-  const staffName = context.profile
-    ? `${context.profile.first_name} ${context.profile.last_name}`
+  const context = await requirePermission("DASHBOARD_VIEW");
+  const staffName = context.staff.profile
+    ? `${context.staff.profile.first_name} ${context.staff.profile.last_name}`
     : "Staff member";
 
   return (
     <AppShell
       activeHref="/dashboard"
-      navigation={dashboardNavigation}
-      schoolName={context.activeMembership.school.name}
+      navigation={filterNavigation(dashboardNavigation, context)}
+      schoolName={context.staff.activeMembership.school.name}
       section="Administration"
       staffName={staffName}
     >

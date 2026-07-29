@@ -1154,13 +1154,15 @@ select extensions.throws_ok(
 reset role;
 
 set local role authenticated;
-select extensions.throws_ok(
-  $$ select * from public.students $$,
-  '42501'
+select extensions.is(
+  (select count(*) from public.students),
+  0::bigint,
+  'an authenticated role without a user identity sees no students'
 );
-select extensions.throws_ok(
-  $$ select * from public.reports $$,
-  '42501'
+select extensions.is(
+  (select count(*) from public.reports),
+  0::bigint,
+  'an authenticated role without a user identity sees no reports'
 );
 reset role;
 

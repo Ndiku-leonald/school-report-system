@@ -205,7 +205,8 @@ describe.sequential("local staff authentication integration", () => {
     expect(schools.data).toHaveLength(1);
 
     const academic = await client.from("students").select("id");
-    expect(academic.error?.code).toBe("42501");
+    expect(academic.error).toBeNull();
+    expect(academic.data).toEqual([]);
 
     const write = await client
       .from("profiles")

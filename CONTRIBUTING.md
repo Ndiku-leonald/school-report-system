@@ -22,9 +22,11 @@ npm run lint
 npm run typecheck
 npm test
 npm run test:auth
+npm run test:authorization
 npm run build
 npm run test:e2e
 npm run test:e2e:auth
+npm run test:e2e:authorization
 npm run db:reset
 npm run db:lint
 npm run db:test
@@ -46,6 +48,11 @@ and must never be imported by client code.
 
 - Document significant architectural decisions and material tradeoffs.
 - Enforce authorization on the server and in database policies, not only in the interface.
+- Change the Stage 5 permission enum or `role_permissions` matrix only through
+  reviewed migrations. Never copy permissions into editable user metadata.
+- Run `npm run test:authorization` and
+  `npm run test:e2e:authorization` for authorization changes; keep fixtures
+  local, synthetic, and scoped to `.invalid` identities.
 - Never commit secrets, real student records, parent credentials, or private reports.
 - Treat `.env.example` as a variable-name template only.
 - Keep business rules configurable; do not hard-code school identity, subjects, classes, streams, grading, aggregates, assessment weights, promotion thresholds, or report-card layout.

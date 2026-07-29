@@ -24,9 +24,10 @@ Vercel
     └── Production deployment
 ```
 
-The application, Stage 3 PostgreSQL foundation, and Stage 4 staff
-authentication boundary are implemented. Domain services, calculations, report
-rendering, storage, and role/assignment authorization remain deferred.
+The application, Stage 3 PostgreSQL foundation, Stage 4 staff authentication,
+and Stage 5 school/assignment authorization boundary are implemented. Domain
+CRUD services, calculations, report rendering, storage, and parent access
+remain deferred.
 
 ## Application responsibilities
 
@@ -98,7 +99,7 @@ Local, preview, and production environments must use separate configuration and 
 
 ## Decisions deferred to later stages
 
-- Authentication and parent-session design details
+- Parent-session design details
 - Calculation-engine representation
 - Background job or queue requirements
 - PDF rendering technology and approved report layout
@@ -165,3 +166,30 @@ The detailed model and security boundary are in
 
 See [staff-authentication.md](staff-authentication.md) for the request and trust
 boundaries.
+
+## Stage 5 implementation decisions
+
+- A 35-value PostgreSQL permission enum and migration-controlled
+  `role_permissions` table define the initial matrix. Browser roles cannot read
+  or mutate the matrix directly.
+- The public caller-scoped permission RPC accepts one membership ID, verifies
+  it against `auth.uid()`, and evaluates current active membership, active
+  school, and unrevoked roles.
+- Internal fixed-search-path, no-dynamic-SQL predicates use definer rights only
+  to avoid forced-RLS recursion. Anonymous execution is revoked and
+  authenticated execution is function-specific.
+- Academic RLS grants approved reads only. Schoolwide roles are tenant-scoped;
+  teacher rosters, marks, attendance/comments, and reports follow current
+  subject or class assignments. Guardian and parent-access data stays denied.
+- Request-bound server authorization uses the normal anonymous-key client and
+  generated enum types. It does not use service-role reads, editable metadata,
+  module-global caching, or a browser permission cookie.
+- `/dashboard` and `/teacher` have distinct permission guards. Navigation is
+  filtered on the server but remains a usability control rather than an
+  authorization boundary.
+- Local pgTAP, signed-in integration, and Playwright suites cover revocation,
+  multi-school roles, forged membership selection, denied writes, and
+  assignment scope. CI uses no hosted Supabase project.
+
+See [authorization-model.md](authorization-model.md) and
+[authorization-testing.md](authorization-testing.md).

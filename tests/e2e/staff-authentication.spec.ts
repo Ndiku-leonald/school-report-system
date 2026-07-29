@@ -53,15 +53,25 @@ async function createStaff(
   });
   if (profileError) throw profileError;
 
-  const { error: membershipError } = await admin!
+  const { data: membership, error: membershipError } = await admin!
     .from("school_staff_memberships")
     .insert({
       employee_number: `E2E-${status}-${randomUUID()}`,
       profile_id: data.user.id,
       school_id: schoolId,
       status,
-    });
+    })
+    .select("id")
+    .single();
   if (membershipError) throw membershipError;
+
+  const { error: roleError } = await admin!
+    .from("staff_role_assignments")
+    .insert({
+      membership_id: membership.id,
+      role: "SCHOOL_ADMIN",
+    });
+  if (roleError) throw roleError;
 }
 
 async function createStaffWithoutMembership() {
@@ -94,15 +104,25 @@ async function createInvitation() {
   });
   if (profileError) throw profileError;
 
-  const { error: membershipError } = await admin!
+  const { data: membership, error: membershipError } = await admin!
     .from("school_staff_memberships")
     .insert({
       employee_number: `E2E-INVITED-${nonce}`,
       profile_id: data.user.id,
       school_id: schoolId,
       status: "INVITED",
-    });
+    })
+    .select("id")
+    .single();
   if (membershipError) throw membershipError;
+
+  const { error: roleError } = await admin!
+    .from("staff_role_assignments")
+    .insert({
+      membership_id: membership.id,
+      role: "SCHOOL_ADMIN",
+    });
+  if (roleError) throw roleError;
 
   return data.properties.hashed_token;
 }
@@ -122,7 +142,7 @@ async function createMultiSchoolStaff() {
   });
   if (profileError) throw profileError;
 
-  const { error: membershipError } = await admin!
+  const { data: memberships, error: membershipError } = await admin!
     .from("school_staff_memberships")
     .insert([
       {
@@ -137,8 +157,19 @@ async function createMultiSchoolStaff() {
         school_id: secondSchoolId,
         status: "ACTIVE",
       },
-    ]);
+    ])
+    .select("id");
   if (membershipError) throw membershipError;
+
+  const { error: roleError } = await admin!
+    .from("staff_role_assignments")
+    .insert(
+      memberships.map(({ id }) => ({
+        membership_id: id,
+        role: "SCHOOL_ADMIN" as const,
+      })),
+    );
+  if (roleError) throw roleError;
 }
 
 test.describe.serial("staff authentication", () => {

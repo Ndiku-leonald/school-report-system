@@ -59,7 +59,7 @@ Design the normalized data model, constraints, indexes, generated types, migrati
 - CI reproduces the local database, tests it, regenerates types, and checks that
   the committed generated contract is current without remote credentials.
 
-## 4. Staff authentication — Implemented for review
+## 4. Staff authentication — Complete
 
 Implement Supabase Auth integration for staff sessions, sign-in, sign-out, recovery, and account-state handling.
 
@@ -97,7 +97,7 @@ Implement Supabase Auth integration for staff sessions, sign-in, sign-out, recov
 - Unit, local Auth integration, Playwright, build, lint, type, formatting, and
   database checks are part of the repository validation and CI workflows.
 
-## 5. Roles and permissions
+## 5. Roles and permissions — Implemented for review
 
 Implement proposed staff roles, contextual assignments, server-side permission checks, and Row Level Security.
 
@@ -107,6 +107,26 @@ Implement proposed staff roles, contextual assignments, server-side permission c
 - Subject teachers cannot access unassigned classes or subjects.
 - Class teachers can view full results only for assigned classes.
 - Positive and negative authorization tests cover client manipulation and cross-scope access.
+
+**Implementation evidence (2026-07-29)**
+
+- Migration 10 creates 35 stable permissions, a forced-RLS
+  migration-controlled role matrix, seven caller-scoped internal predicates,
+  and the own-membership `get_my_effective_permissions` RPC.
+- Academic configuration and explicitly approved academic records have
+  school-scoped `SELECT` policies; student, mark, attendance/comment, and report
+  reads distinguish schoolwide, class-teacher, and subject-teacher scope.
+- Guardian/parent records, direct role-matrix access, and every browser
+  academic mutation remain denied.
+- Request-bound generated-type authorization utilities protect `/dashboard`
+  and `/teacher`, provide generic forbidden routing, and filter navigation on
+  the server without treating it as enforcement.
+- Multi-school roles are evaluated for only the selected membership in the
+  application context. Revoked roles, unavailable memberships, inactive
+  schools, and unavailable assignments fail on the next request.
+- The local database, anonymous-key integration, and browser authorization
+  suites run in CI alongside the retained Stage 4 tests. No hosted Supabase
+  project is linked or modified.
 
 ## 6. Academic configuration
 

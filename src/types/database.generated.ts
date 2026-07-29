@@ -1576,6 +1576,27 @@ export type Database = {
           },
         ];
       };
+      role_permissions: {
+        Row: {
+          created_at: string;
+          id: string;
+          permission: Database["public"]["Enums"]["app_permission"];
+          role: Database["public"]["Enums"]["staff_role"];
+        };
+        Insert: {
+          created_at?: string;
+          id?: string;
+          permission: Database["public"]["Enums"]["app_permission"];
+          role: Database["public"]["Enums"]["staff_role"];
+        };
+        Update: {
+          created_at?: string;
+          id?: string;
+          permission?: Database["public"]["Enums"]["app_permission"];
+          role?: Database["public"]["Enums"]["staff_role"];
+        };
+        Relationships: [];
+      };
       school_settings: {
         Row: {
           created_at: string;
@@ -2221,9 +2242,49 @@ export type Database = {
           membership_id: string;
         }[];
       };
+      get_my_effective_permissions: {
+        Args: { target_membership_id: string };
+        Returns: Database["public"]["Enums"]["app_permission"][];
+      };
     };
     Enums: {
       academic_year_status: "DRAFT" | "ACTIVE" | "CLOSED" | "ARCHIVED";
+      app_permission:
+        | "DASHBOARD_VIEW"
+        | "TEACHER_WORKSPACE_VIEW"
+        | "SCHOOL_SETTINGS_VIEW"
+        | "SCHOOL_SETTINGS_MANAGE"
+        | "STAFF_VIEW"
+        | "STAFF_MANAGE"
+        | "ACADEMIC_CONFIGURATION_VIEW"
+        | "ACADEMIC_CONFIGURATION_MANAGE"
+        | "STUDENTS_VIEW_ALL"
+        | "STUDENTS_VIEW_ASSIGNED"
+        | "STUDENTS_MANAGE"
+        | "ASSIGNMENTS_VIEW_ALL"
+        | "ASSIGNMENTS_VIEW_OWN"
+        | "ASSIGNMENTS_MANAGE"
+        | "MARKS_VIEW_ALL"
+        | "MARKS_VIEW_ASSIGNED"
+        | "MARKS_ENTER"
+        | "MARKS_SUBMIT"
+        | "MARKS_REVIEW"
+        | "MARKS_APPROVE"
+        | "MARKS_LOCK"
+        | "ATTENDANCE_VIEW_ALL"
+        | "ATTENDANCE_MANAGE_ASSIGNED"
+        | "COMMENTS_VIEW_ALL"
+        | "COMMENTS_MANAGE_ASSIGNED"
+        | "REPORTS_VIEW_ALL"
+        | "REPORTS_VIEW_ASSIGNED"
+        | "REPORTS_GENERATE"
+        | "REPORTS_REVIEW"
+        | "REPORTS_PUBLISH"
+        | "REPORTS_WITHDRAW"
+        | "ANALYTICS_VIEW"
+        | "PROMOTION_VIEW"
+        | "PROMOTION_CONFIRM"
+        | "AUDIT_VIEW";
       assessment_attendance_status:
         "PRESENT" | "ABSENT" | "EXEMPTED" | "NOT_ASSESSED";
       assessment_scheme_status: "DRAFT" | "ACTIVE" | "RETIRED";
@@ -2415,6 +2476,43 @@ export const Constants = {
   public: {
     Enums: {
       academic_year_status: ["DRAFT", "ACTIVE", "CLOSED", "ARCHIVED"],
+      app_permission: [
+        "DASHBOARD_VIEW",
+        "TEACHER_WORKSPACE_VIEW",
+        "SCHOOL_SETTINGS_VIEW",
+        "SCHOOL_SETTINGS_MANAGE",
+        "STAFF_VIEW",
+        "STAFF_MANAGE",
+        "ACADEMIC_CONFIGURATION_VIEW",
+        "ACADEMIC_CONFIGURATION_MANAGE",
+        "STUDENTS_VIEW_ALL",
+        "STUDENTS_VIEW_ASSIGNED",
+        "STUDENTS_MANAGE",
+        "ASSIGNMENTS_VIEW_ALL",
+        "ASSIGNMENTS_VIEW_OWN",
+        "ASSIGNMENTS_MANAGE",
+        "MARKS_VIEW_ALL",
+        "MARKS_VIEW_ASSIGNED",
+        "MARKS_ENTER",
+        "MARKS_SUBMIT",
+        "MARKS_REVIEW",
+        "MARKS_APPROVE",
+        "MARKS_LOCK",
+        "ATTENDANCE_VIEW_ALL",
+        "ATTENDANCE_MANAGE_ASSIGNED",
+        "COMMENTS_VIEW_ALL",
+        "COMMENTS_MANAGE_ASSIGNED",
+        "REPORTS_VIEW_ALL",
+        "REPORTS_VIEW_ASSIGNED",
+        "REPORTS_GENERATE",
+        "REPORTS_REVIEW",
+        "REPORTS_PUBLISH",
+        "REPORTS_WITHDRAW",
+        "ANALYTICS_VIEW",
+        "PROMOTION_VIEW",
+        "PROMOTION_CONFIRM",
+        "AUDIT_VIEW",
+      ],
       assessment_attendance_status: [
         "PRESENT",
         "ABSENT",

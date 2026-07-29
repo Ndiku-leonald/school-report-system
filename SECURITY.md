@@ -4,9 +4,10 @@
 
 This repository is intended to contain a web application for managing sensitive primary-school academic records. The planned system boundary includes the Next.js staff dashboard, teacher workspace, parent report portal, server-side application interfaces, report-generation services, Supabase PostgreSQL, Supabase Auth, Row Level Security policies, private Supabase Storage, migrations, and Vercel deployments.
 
-Staff authentication is implemented with cookie-based Supabase sessions and a
-narrow identity-read RLS boundary. Academic authorization, parent verification,
-and storage controls remain future work, so no real academic data is permitted.
+Staff authentication is implemented with cookie-based Supabase sessions.
+Stage 5 adds active-membership, school-scoped role permissions and
+assignment-scoped academic-read RLS. Parent verification and storage controls
+remain future work, so no real academic data is permitted.
 
 ## Threat model and trust boundaries
 
@@ -88,11 +89,13 @@ production controls.
 
 ## Known limitations
 
-Role and assignment authorization controls do not yet exist. Stage 4 allows
-authenticated staff to read only their own identity context; academic tables
-remain inaccessible. Same-school actor triggers do not decide which roles are
-authorized to act. Before any real data is introduced, the implementation must
-complete Stage 5 RLS policies and the later production security work.
+Role and assignment authorization is evaluated from current database state,
+not user metadata, JWT role claims, navigation visibility, or browser cookies.
+Stage 5 grants no browser academic mutations and exposes no guardian, parent
+credential, or parent session records. Same-school actor triggers remain
+integrity controls rather than business authorization. Before any real data is
+introduced, the later workflow controls and production security work must be
+completed.
 
 Database-specific controls and limitations are documented in [docs/database-security.md](docs/database-security.md).
 

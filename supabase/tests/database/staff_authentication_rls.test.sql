@@ -155,9 +155,10 @@ select extensions.throws_ok(
   $$ update public.schools set name = 'Denied' $$,
   '42501'
 );
-select extensions.throws_ok(
-  $$ select * from public.students $$,
-  '42501'
+select extensions.is(
+  (select count(*) from public.students),
+  0::bigint,
+  'an authorized identity sees an empty roster when no students exist'
 );
 
 reset role;
