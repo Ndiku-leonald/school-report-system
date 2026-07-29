@@ -13,17 +13,21 @@ Staff authentication uses Supabase Auth email/password identities and
    record and reads the caller's identity context through RLS.
 3. The server resolves current membership state and revalidates the
    active-membership cookie.
-4. Stage 5 loads permissions for the selected active membership.
+4. The server confirms that cookie selection against the membership stored for
+   the verified JWT `session_id` in PostgreSQL.
+5. Stage 5 loads permissions for that exact session-selected membership.
    `/dashboard` requires `DASHBOARD_VIEW`; `/teacher` requires
    `TEACHER_WORKSPACE_VIEW`; missing permission uses `/forbidden`.
 
 The proxy is not an authorization boundary. A forged or stale cookie cannot
 select a membership that is absent from the current authenticated user's
-RLS-filtered active membership set.
+RLS-filtered active membership set or change the PostgreSQL session selection.
+Cookie/database disagreement fails closed.
 
 ## Account states
 
-- One active membership is selected automatically.
+- One active membership is selected automatically in both PostgreSQL and the
+  cookie.
 - Multiple active memberships require `/select-school`.
 - An invited membership requires `/complete-invitation`.
 - Suspended, disabled, inactive-school, and missing memberships use the generic
@@ -31,14 +35,18 @@ RLS-filtered active membership set.
 - Missing or invalid Auth sessions return to `/staff-login`.
 
 The selected membership cookie is HttpOnly, SameSite=Lax, scoped to `/`, expires
-after eight hours, and is Secure in production.
+after eight hours, and is Secure in production. It is an untrusted UI selector,
+not the RLS authority. Each Supabase Auth session holds at most one database
+selection; separate sessions for the same profile may select independently.
 
 ## Login, logout, and recovery
 
 Login errors are intentionally generic. Successful sign-in is not sufficient:
-the server must also find the profile and valid membership state. Sign-out is a
-POST server action that records a safe audit event before clearing the Supabase
-session and active-school cookie.
+the server must also find the profile and valid membership state. Before
+setting the active-school cookie, single-school sign-in and explicit
+multi-school selection call `set_my_active_membership` and verify the returned
+ID. Sign-out clears the current session's database selection and cookie before
+invalidating the Supabase session, then records a safe audit event.
 
 Password-reset requests always return the same success message. PKCE redirects
 contain a signed, expiring recovery state with only a keyed normalized email
@@ -72,6 +80,9 @@ redirecting to completion. The staff member chooses a password, and the trusted
 server operation calls migration 09's service-role-only database function. It
 locks and validates the exact expected membership set, activates all eligible
 `INVITED` rows or none, and writes both success audits in the same transaction.
+For one active membership, completion stores the current session selection
+before setting the cookie. For multiple memberships, it clears both selection
+and cookie before routing to `/select-school`.
 
 ## Auditing and safe metadata
 

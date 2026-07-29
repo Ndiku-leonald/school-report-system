@@ -172,24 +172,31 @@ boundaries.
 - A 35-value PostgreSQL permission enum and migration-controlled
   `role_permissions` table define the initial matrix. Browser roles cannot read
   or mutate the matrix directly.
-- The public caller-scoped permission RPC accepts one membership ID, verifies
-  it against `auth.uid()`, and evaluates current active membership, active
-  school, and unrevoked roles.
+- Migration 11 binds one selected membership to the verified JWT `session_id`
+  in a non-exposed internal table. Narrow caller-scoped selection RPCs never
+  accept a session ID, and separate Auth sessions for one profile may select
+  different schools.
+- The public caller-scoped permission RPC accepts one membership ID only when
+  it equals the current session selection, then evaluates current active
+  membership, active school, and unrevoked roles.
 - Internal fixed-search-path, no-dynamic-SQL predicates use definer rights only
   to avoid forced-RLS recursion. Anonymous execution is revoked and
   authenticated execution is function-specific.
 - Academic RLS grants approved reads only. Schoolwide roles are tenant-scoped;
   teacher rosters, marks, attendance/comments, and reports follow current
-  subject or class assignments. Guardian and parent-access data stays denied.
+  subject or class assignments. Assignment-limited enrolments are restricted
+  to current roster statuses. Guardian and parent-access data stays denied.
 - Request-bound server authorization uses the normal anonymous-key client and
   generated enum types. It does not use service-role reads, editable metadata,
-  module-global caching, or a browser permission cookie.
+  module-global caching, or a browser permission cookie. The HttpOnly cookie is
+  revalidated and must match the PostgreSQL session selection.
 - `/dashboard` and `/teacher` have distinct permission guards. Navigation is
   filtered on the server but remains a usability control rather than an
   authorization boundary.
 - Local pgTAP, signed-in integration, and Playwright suites cover revocation,
-  multi-school roles, forged membership selection, denied writes, and
-  assignment scope. CI uses no hosted Supabase project.
+  selected-session multi-school isolation, independent sessions, forged
+  membership selection, denied writes, and assignment scope. CI uses no hosted
+  Supabase project.
 
 See [authorization-model.md](authorization-model.md) and
 [authorization-testing.md](authorization-testing.md).

@@ -17,11 +17,14 @@ required to enter the dashboard or teacher shell. `INVITED` memberships enter
 the completion flow; `SUSPENDED`, `DISABLED`, and missing memberships enter the
 account-unavailable state.
 
-The selected active membership is passed to the caller-scoped
-`get_my_effective_permissions` RPC. Current, unrevoked role assignments are
-joined to the migration-controlled permission matrix on every authoritative
-request. Permissions from different school memberships are not combined in the
-application context. Academic reads are independently constrained by RLS.
+The untrusted active-membership cookie is reconciled with one selection bound
+to the verified Supabase JWT `session_id`. The selected active membership is
+then passed to the caller-scoped `get_my_effective_permissions` RPC. Current,
+unrevoked role assignments are joined to the migration-controlled permission
+matrix on every authoritative request. The RPC and academic RLS accept only
+the session-selected membership, so permissions from different school
+memberships are never combined. Users may securely switch among their own
+active memberships; a separate Auth session keeps its independent selection.
 
 ## Staff roles
 

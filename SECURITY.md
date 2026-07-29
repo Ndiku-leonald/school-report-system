@@ -25,7 +25,16 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
   current active membership again.
 - An active-school cookie is only a selector. It must be HttpOnly, SameSite=Lax,
   Secure in production, and revalidated against the authenticated user's active
-  memberships on every authoritative request.
+  memberships on every authoritative request. It cannot constrain PostgreSQL
+  by itself: the server must also bind the membership to the verified JWT
+  `session_id`, and the cookie and database selection must agree.
+- Exactly one active membership may authorize a given authenticated Supabase
+  session. Separate sessions for the same profile may hold independent
+  selections. Roles and assignments from different memberships must never be
+  combined in one session.
+- Browser roles cannot directly access
+  `internal.staff_session_active_memberships`. Selection changes use narrow
+  caller-scoped RPCs that revalidate membership and school status.
 - A normal authenticated session is not authority to reset a password. Recovery
   additionally requires a signed, 15-minute proof bound to the current Auth
   user and recovery purpose. Its HttpOnly cookie is SameSite=Lax, Secure in
@@ -91,6 +100,9 @@ production controls.
 
 Role and assignment authorization is evaluated from current database state,
 not user metadata, JWT role claims, navigation visibility, or browser cookies.
+The verified JWT `session_id` identifies only the selection row; active
+membership, school, roles, revocation, and assignments remain live database
+checks. A stale row therefore cannot grant a new or unavailable session access.
 Stage 5 grants no browser academic mutations and exposes no guardian, parent
 credential, or parent session records. Same-school actor triggers remain
 integrity controls rather than business authorization. Before any real data is

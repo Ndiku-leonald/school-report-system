@@ -1,4 +1,4 @@
-import { expect, test, type Page } from "@playwright/test";
+import { expect, test, type BrowserContext, type Page } from "@playwright/test";
 import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 
@@ -9,7 +9,9 @@ const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const schoolA = "10000000-0000-4000-8000-000000000001";
 const schoolB = "10000000-0000-4000-8000-000000000099";
+const schoolAName = "Demo Primary School";
 const schoolBName = "Synthetic Multi-School Test Campus";
+const schoolAAcademicYear = "20000000-0000-4000-8000-000000000001";
 const password = "synthetic-authorization-password";
 const nonce = Date.now();
 
@@ -92,6 +94,72 @@ async function login(page: Page, key: string, destination = "/staff-login") {
   await page.getByRole("button", { name: "Sign in" }).click();
 }
 
+async function selectSchool(page: Page, schoolName: string) {
+  await page.getByText(schoolName, { exact: true }).click();
+  await page.getByRole("button", { name: "Continue" }).click();
+}
+
+async function getBrowserAccessToken(context: BrowserContext) {
+  const authCookies = (await context.cookies())
+    .filter(({ name }) => name.includes("-auth-token"))
+    .sort(({ name: left }, { name: right }) => left.localeCompare(right));
+  const encoded = authCookies.map(({ value }) => value).join("");
+  if (!encoded) throw new Error("The authenticated browser cookie is missing.");
+
+  const value = decodeURIComponent(encoded);
+  const json = value.startsWith("base64-")
+    ? Buffer.from(value.slice("base64-".length), "base64url").toString("utf8")
+    : value;
+  const session = JSON.parse(json) as
+    | { access_token?: string }
+    | [string, string | null, string | null, string | null];
+  const accessToken = Array.isArray(session)
+    ? session[0]
+    : session.access_token;
+  if (!accessToken) {
+    throw new Error("The authenticated browser access token is unavailable.");
+  }
+
+  return accessToken;
+}
+
+async function directSupabaseRequest(
+  page: Page,
+  accessToken: string,
+  path: string,
+) {
+  return page.evaluate(
+    async ({ anonKey, path, token, url }) => {
+      const response = await fetch(`${url}${path}`, {
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${token}`,
+        },
+      });
+      return {
+        data: (await response.json()) as unknown,
+        status: response.status,
+      };
+    },
+    {
+      anonKey: process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+      path,
+      token: accessToken,
+      url,
+    },
+  );
+}
+
+async function directActiveMembership(page: Page, accessToken: string) {
+  const response = await directSupabaseRequest(
+    page,
+    accessToken,
+    "/rest/v1/rpc/get_my_active_membership",
+  );
+  expect(response.status).toBe(200);
+  return response.data as string | null;
+}
+
 test.describe.serial("staff authorization", () => {
   test.skip(!enabled, "requires the local Supabase authorization E2E runner");
 
@@ -106,6 +174,7 @@ test.describe.serial("staff authorization", () => {
 
     const multi = identities.get("multi")!;
     const membershipId = randomUUID();
+    const roleAssignmentId = randomUUID();
     membershipIds.push(membershipId);
     const membership = await admin!.from("school_staff_memberships").insert({
       id: membershipId,
@@ -116,10 +185,16 @@ test.describe.serial("staff authorization", () => {
     });
     if (membership.error) throw membership.error;
     const role = await admin!.from("staff_role_assignments").insert({
+      id: roleAssignmentId,
       membership_id: membershipId,
       role: "SUBJECT_TEACHER",
     });
     if (role.error) throw role.error;
+    identities.set("multi-school-b", {
+      ...multi,
+      membershipId,
+      roleAssignmentId,
+    });
   });
 
   test.afterAll(async () => {
@@ -181,16 +256,163 @@ test.describe.serial("staff authorization", () => {
   });
 
   test("multi-school permissions follow only the selected membership", async ({
+    context,
     page,
   }) => {
     await login(page, "multi");
     await expect(page).toHaveURL(/\/select-school/);
-    await page.getByText(schoolBName, { exact: true }).click();
-    await page.getByRole("button", { name: "Continue" }).click();
+    await selectSchool(page, schoolBName);
     await expect(page).toHaveURL(/\/forbidden$/);
     await page.goto("/teacher");
     await expect(page).toHaveURL(/\/teacher$/);
     await expect(page.getByText(schoolBName, { exact: true })).toBeVisible();
+
+    const accessToken = await getBrowserAccessToken(context);
+    expect(await directActiveMembership(page, accessToken)).toBe(
+      identities.get("multi-school-b")!.membershipId,
+    );
+    const directYears = await directSupabaseRequest(
+      page,
+      accessToken,
+      "/rest/v1/academic_years?select=id,school_id",
+    );
+    expect(directYears.status).toBe(200);
+    expect(directYears.data).toEqual([]);
+    const schoolAPermissions = await directSupabaseRequest(
+      page,
+      accessToken,
+      `/rest/v1/rpc/get_my_effective_permissions?target_membership_id=${identities.get("multi")!.membershipId}`,
+    );
+    expect(schoolAPermissions.status).toBe(200);
+    expect(schoolAPermissions.data).toEqual([]);
+  });
+
+  test("switching schools updates the cookie and database session selection", async ({
+    context,
+    page,
+  }) => {
+    await login(page, "multi");
+    await selectSchool(page, schoolBName);
+    await page.goto("/select-school");
+    await selectSchool(page, schoolAName);
+    await expect(page).toHaveURL(/\/dashboard$/);
+    await expect(page.getByText(schoolAName, { exact: true })).toBeVisible();
+
+    const accessToken = await getBrowserAccessToken(context);
+    expect(await directActiveMembership(page, accessToken)).toBe(
+      identities.get("multi")!.membershipId,
+    );
+    const years = await directSupabaseRequest(
+      page,
+      accessToken,
+      "/rest/v1/academic_years?select=id,school_id",
+    );
+    expect(years.status).toBe(200);
+    expect(years.data).toEqual([
+      { id: schoolAAcademicYear, school_id: schoolA },
+    ]);
+    const schoolBPermissions = await directSupabaseRequest(
+      page,
+      accessToken,
+      `/rest/v1/rpc/get_my_effective_permissions?target_membership_id=${identities.get("multi-school-b")!.membershipId}`,
+    );
+    expect(schoolBPermissions.data).toEqual([]);
+    await expect(
+      page
+        .getByRole("navigation", { name: "Workspace navigation" })
+        .getByText("Staff", { exact: true }),
+    ).toBeVisible();
+  });
+
+  test("a forged membership cookie cannot change the database selection", async ({
+    context,
+    page,
+  }) => {
+    await login(page, "multi");
+    await selectSchool(page, schoolBName);
+    const accessToken = await getBrowserAccessToken(context);
+
+    await context.addCookies([
+      {
+        name: "staff-active-membership",
+        value: identities.get("multi")!.membershipId,
+        domain: "127.0.0.1",
+        path: "/",
+        httpOnly: true,
+        sameSite: "Lax",
+      },
+    ]);
+    await page.goto("/dashboard");
+    await expect(page).toHaveURL(/\/auth-error$/);
+    expect(await directActiveMembership(page, accessToken)).toBe(
+      identities.get("multi-school-b")!.membershipId,
+    );
+    const schoolAYears = await directSupabaseRequest(
+      page,
+      accessToken,
+      `/rest/v1/academic_years?select=id&school_id=eq.${schoolA}`,
+    );
+    expect(schoolAYears.data).toEqual([]);
+  });
+
+  test("separate browser sessions retain independent school selections", async ({
+    browser,
+  }) => {
+    const schoolAContext = await browser.newContext();
+    const schoolBContext = await browser.newContext();
+    const schoolAPage = await schoolAContext.newPage();
+    const schoolBPage = await schoolBContext.newPage();
+
+    try {
+      await login(schoolAPage, "multi");
+      await login(schoolBPage, "multi");
+      await selectSchool(schoolAPage, schoolAName);
+      await expect(schoolAPage).toHaveURL(/\/dashboard$/);
+      await selectSchool(schoolBPage, schoolBName);
+      await expect(schoolBPage).toHaveURL(/\/forbidden$/);
+
+      const schoolAToken = await getBrowserAccessToken(schoolAContext);
+      const schoolBToken = await getBrowserAccessToken(schoolBContext);
+      expect(await directActiveMembership(schoolAPage, schoolAToken)).toBe(
+        identities.get("multi")!.membershipId,
+      );
+      expect(await directActiveMembership(schoolBPage, schoolBToken)).toBe(
+        identities.get("multi-school-b")!.membershipId,
+      );
+
+      await schoolAPage.goto("/select-school");
+      await selectSchool(schoolAPage, schoolBName);
+      await expect(schoolAPage).toHaveURL(/\/forbidden$/);
+      await schoolAPage.goto("/select-school");
+      await selectSchool(schoolAPage, schoolAName);
+      await expect(schoolAPage).toHaveURL(/\/dashboard$/);
+
+      expect(await directActiveMembership(schoolAPage, schoolAToken)).toBe(
+        identities.get("multi")!.membershipId,
+      );
+      expect(await directActiveMembership(schoolBPage, schoolBToken)).toBe(
+        identities.get("multi-school-b")!.membershipId,
+      );
+    } finally {
+      await schoolAContext.close();
+      await schoolBContext.close();
+    }
+  });
+
+  test("sign-out clears the current database session selection", async ({
+    context,
+    page,
+  }) => {
+    await login(page, "subject", "/teacher");
+    await expect(page).toHaveURL(/\/teacher$/);
+    const accessToken = await getBrowserAccessToken(context);
+    expect(await directActiveMembership(page, accessToken)).toBe(
+      identities.get("subject")!.membershipId,
+    );
+
+    await page.getByRole("button", { name: "Sign out" }).click();
+    await expect(page).toHaveURL(/\/staff-login$/);
+    expect(await directActiveMembership(page, accessToken)).toBeNull();
   });
 
   test("forged active membership does not elevate permissions", async ({

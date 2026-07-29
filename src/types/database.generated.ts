@@ -2242,9 +2242,15 @@ export type Database = {
           membership_id: string;
         }[];
       };
+      clear_my_active_membership: { Args: never; Returns: boolean };
+      get_my_active_membership: { Args: never; Returns: string };
       get_my_effective_permissions: {
         Args: { target_membership_id: string };
         Returns: Database["public"]["Enums"]["app_permission"][];
+      };
+      set_my_active_membership: {
+        Args: { target_membership_id: string };
+        Returns: string;
       };
     };
     Enums: {

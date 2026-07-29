@@ -4,20 +4,23 @@
 
 Stage 5 separates authentication from authorization. Supabase Auth establishes
 the user identity, the Stage 4 staff context revalidates school memberships,
-and the Stage 5 authorization context requests permissions for exactly the
-selected active membership. Permissions are never accepted from browser input,
-editable Auth metadata, or a long-lived permission cookie.
+and the Stage 5 authorization context reconciles the untrusted membership
+cookie with a PostgreSQL selection bound to the verified JWT `session_id`.
+Permissions are never accepted from browser input, editable Auth metadata, or
+a long-lived permission cookie.
 
 The authoritative request path is:
 
 1. `auth.getUser()` validates the Supabase session.
-2. The selected membership cookie is matched against the caller's own
-   memberships.
-3. The membership must be `ACTIVE` and its school must be active.
-4. `get_my_effective_permissions(membership_id)` reads current, unrevoked role
-   assignments and the migration-controlled role matrix.
+2. The selected membership cookie is matched against the caller's own active
+   memberships and active school.
+3. `get_my_active_membership()` reads the internal selection for the current
+   JWT `session_id`; the cookie and database selection must match.
+4. `get_my_effective_permissions(membership_id)` accepts only that exact
+   session-selected membership and reads current, unrevoked role assignments.
 5. A Server Component, Server Action, or Route Handler applies a typed guard.
-6. PostgreSQL RLS independently restricts every browser-session read.
+6. PostgreSQL RLS independently derives every browser-session read from the
+   same session-selected membership.
 
 The normal cookie-aware anonymous-key Supabase client is used for application
 authorization and academic reads. The service-role client is not an
@@ -44,14 +47,18 @@ The names of future mutation permissions do not grant browser writes in Stage 5.
 
 A role assignment inherits its school only through
 `school_staff_memberships`. A role in School A is never reused to authorize a
-School B row. The current-user RPC returns permissions for one requested
-membership, so permissions from multiple memberships are not unioned in the
-application context.
+School B row. Migration 11 stores one selection per verified Auth `session_id`
+in `internal.staff_session_active_memberships`. A user may deliberately switch
+among their own active memberships, which replaces only the current session's
+selection. Two separate sessions for the same profile may retain different
+schools. Permissions and academic rows are never unioned across memberships.
 
 Subject-teacher access requires a currently available teaching assignment with
 the same membership, term, class, subject, academic year, and school.
 Class-teacher access requires the equivalent current class assignment.
-Assignment-limited roster access follows current enrolments into those classes.
+Assignment-limited roster access follows only `ACTIVE` and `REPEATING`
+enrolments into those classes. Schoolwide `STUDENTS_VIEW_ALL` roles retain
+authorized historical enrolment access.
 Class teachers can read all subject mark sheets and complete reports in an
 assigned class; subject teachers can read only their assigned subject marks and
 do not receive complete-report access.
@@ -63,16 +70,21 @@ revocation remains a separate authentication operation.
 
 ## RLS and definer-rights review
 
-The internal predicates use `auth.uid()`, fixed `search_path` values, no dynamic
-SQL, and boolean-only results. Definer rights are used because the identity,
-role-matrix, and assignment tables force RLS and would otherwise create policy
-recursion. `anon` and `public` execution is revoked. `authenticated` receives
-schema usage and execute only on the predicates referenced by current RLS
-policies; the internal schema is not exposed through the public API.
+The internal predicates use `auth.uid()` and
+`auth.jwt() ->> 'session_id'`, fixed `search_path` values, no dynamic SQL, and
+boolean-only results. Missing, anonymous, or malformed session claims resolve
+to no selection. Definer rights are used only where forced-RLS recursion or
+access to the non-exposed selection table requires them. `anon` and `public`
+execution is revoked. `authenticated` receives only the required function
+execution; it cannot directly select, insert, update, or delete the internal
+table.
 
-`get_my_effective_permissions` is the only public authorization RPC. It returns
-distinct enum values only when the target membership belongs to `auth.uid()`,
-is active, and belongs to an active school.
+The public caller-scoped selection RPCs are
+`set_my_active_membership(uuid)`, `get_my_active_membership()`, and
+`clear_my_active_membership()`. They never accept a session ID and operate only
+on the caller's verified session. `get_my_effective_permissions` returns
+distinct enum values only when its target is that session's selected active
+membership in an active school.
 
 ## Application guards and navigation
 

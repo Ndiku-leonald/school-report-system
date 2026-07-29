@@ -18,6 +18,10 @@ import {
 } from "@/lib/auth/schemas";
 import { sanitizeNextPath } from "@/lib/auth/safe-redirect";
 import {
+  clearSessionActiveMembership,
+  setSessionActiveMembership,
+} from "@/lib/auth/session-membership";
+import {
   clearRecoveryProofCookie,
   createPasswordRecoveryState,
   getVerifiedRecoverySession,
@@ -84,7 +88,9 @@ export async function signInAction(
   const context = await getStaffContext();
 
   if (!context || !context.profile) {
+    await clearSessionActiveMembership(supabase);
     await supabase.auth.signOut();
+    await clearAuthenticationCookies();
     return errorState(genericSignInError);
   }
 
@@ -104,18 +110,18 @@ export async function signInAction(
     });
   }
 
-  if (context.activeMembership) {
-    const cookieStore = await cookies();
-    cookieStore.set(
-      ACTIVE_SCHOOL_COOKIE,
-      context.activeMembership.id,
-      ACTIVE_SCHOOL_COOKIE_OPTIONS,
-    );
-    revalidatePath("/", "layout");
-    redirect(sanitizeNextPath(result.data.next));
-  }
-
   if (activeMemberships.length === 1) {
+    const selected = await setSessionActiveMembership(
+      supabase,
+      activeMemberships[0].id,
+    );
+    if (!selected) {
+      await clearSessionActiveMembership(supabase);
+      await supabase.auth.signOut();
+      await clearAuthenticationCookies();
+      return errorState(genericSignInError);
+    }
+
     const cookieStore = await cookies();
     cookieStore.set(
       ACTIVE_SCHOOL_COOKIE,
@@ -127,14 +133,23 @@ export async function signInAction(
   }
 
   if (activeMemberships.length > 1) {
+    await clearSessionActiveMembership(supabase);
+    const cookieStore = await cookies();
+    cookieStore.delete(ACTIVE_SCHOOL_COOKIE);
     const next = encodeURIComponent(sanitizeNextPath(result.data.next));
     redirect(`/select-school?next=${next}`);
   }
 
   if (invitedMemberships.length > 0) {
+    await clearSessionActiveMembership(supabase);
+    const cookieStore = await cookies();
+    cookieStore.delete(ACTIVE_SCHOOL_COOKIE);
     redirect("/complete-invitation");
   }
 
+  await clearSessionActiveMembership(supabase);
+  const cookieStore = await cookies();
+  cookieStore.delete(ACTIVE_SCHOOL_COOKIE);
   redirect("/account-unavailable");
 }
 
@@ -210,6 +225,7 @@ export async function resetPasswordAction(
     });
   }
 
+  await clearSessionActiveMembership(supabase);
   await supabase.auth.signOut();
   await clearAuthenticationCookies();
   revalidatePath("/", "layout");
@@ -266,6 +282,7 @@ export async function completeInvitationAction(
     activatedMemberships?.map(({ membership_id }) => membership_id) ?? [];
 
   if (activationError || !equalIdSets(activatedMembershipIds, membershipIds)) {
+    await clearSessionActiveMembership(supabase);
     await supabase.auth.signOut();
     await clearAuthenticationCookies();
     return errorState(
@@ -276,12 +293,26 @@ export async function completeInvitationAction(
   const cookieStore = await cookies();
   clearRecoveryProofCookie(cookieStore);
   if (invitedMemberships.length === 1) {
+    const selected = await setSessionActiveMembership(
+      supabase,
+      invitedMemberships[0].id,
+    );
+    if (!selected) {
+      await clearSessionActiveMembership(supabase);
+      await supabase.auth.signOut();
+      await clearAuthenticationCookies();
+      return errorState(
+        "The account was activated, but its school workspace could not be selected. Sign in again.",
+      );
+    }
+
     cookieStore.set(
       ACTIVE_SCHOOL_COOKIE,
       invitedMemberships[0].id,
       ACTIVE_SCHOOL_COOKIE_OPTIONS,
     );
   } else {
+    await clearSessionActiveMembership(supabase);
     cookieStore.delete(ACTIVE_SCHOOL_COOKIE);
   }
   revalidatePath("/", "layout");
@@ -315,7 +346,14 @@ export async function selectActiveSchoolAction(
     return errorState("That school is no longer available for this account.");
   }
 
+  const supabase = await createServerSupabaseClient();
+  const selected = await setSessionActiveMembership(supabase, membership.id);
   const cookieStore = await cookies();
+  if (!selected) {
+    cookieStore.delete(ACTIVE_SCHOOL_COOKIE);
+    return errorState("That school is no longer available for this account.");
+  }
+
   cookieStore.set(
     ACTIVE_SCHOOL_COOKIE,
     membership.id,
@@ -345,8 +383,9 @@ export async function signOutAction() {
   }
 
   const supabase = await createServerSupabaseClient();
-  await supabase.auth.signOut();
+  await clearSessionActiveMembership(supabase);
   await clearAuthenticationCookies();
+  await supabase.auth.signOut();
   revalidatePath("/", "layout");
   redirect("/staff-login");
 }

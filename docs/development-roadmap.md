@@ -113,6 +113,11 @@ Implement proposed staff roles, contextual assignments, server-side permission c
 - Migration 10 creates 35 stable permissions, a forced-RLS
   migration-controlled role matrix, seven caller-scoped internal predicates,
   and the own-membership `get_my_effective_permissions` RPC.
+- Corrective migration 11 binds one active membership to the verified JWT
+  `session_id`, exposes only narrow caller-scoped selection RPCs, and replaces
+  every authorization predicate so direct RLS queries cannot combine access
+  from several memberships. Separate sessions for one profile remain
+  independent.
 - Academic configuration and explicitly approved academic records have
   school-scoped `SELECT` policies; student, mark, attendance/comment, and report
   reads distinguish schoolwide, class-teacher, and subject-teacher scope.
@@ -121,9 +126,11 @@ Implement proposed staff roles, contextual assignments, server-side permission c
 - Request-bound generated-type authorization utilities protect `/dashboard`
   and `/teacher`, provide generic forbidden routing, and filter navigation on
   the server without treating it as enforcement.
-- Multi-school roles are evaluated for only the selected membership in the
-  application context. Revoked roles, unavailable memberships, inactive
-  schools, and unavailable assignments fail on the next request.
+- Multi-school roles are evaluated for only the session-selected membership in
+  both application context and PostgreSQL RLS. Revoked roles, unavailable
+  memberships, inactive schools, and unavailable assignments fail on the next
+  request. Assignment-limited enrolment reads exclude withdrawn, transferred,
+  and completed history while schoolwide authorized roles retain it.
 - The local database, anonymous-key integration, and browser authorization
   suites run in CI alongside the retained Stage 4 tests. No hosted Supabase
   project is linked or modified.

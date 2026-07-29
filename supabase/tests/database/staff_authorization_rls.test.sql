@@ -31,7 +31,9 @@ values
   ('a3000000-0000-4000-8000-000000000005', '10000000-0000-4000-8000-000000000099', 'a2000000-0000-4000-8000-000000000005', 'AUTHZ-ADMIN-B', 'ACTIVE'),
   ('a3000000-0000-4000-8000-000000000006', '10000000-0000-4000-8000-000000000001', 'a2000000-0000-4000-8000-000000000006', 'AUTHZ-REVOKED-A', 'ACTIVE'),
   ('a3000000-0000-4000-8000-000000000007', '10000000-0000-4000-8000-000000000001', 'a2000000-0000-4000-8000-000000000007', 'AUTHZ-SUSPENDED-A', 'SUSPENDED'),
-  ('a3000000-0000-4000-8000-000000000008', '10000000-0000-4000-8000-000000000099', 'a2000000-0000-4000-8000-000000000001', 'AUTHZ-SUBJECT-B', 'ACTIVE');
+  ('a3000000-0000-4000-8000-000000000008', '10000000-0000-4000-8000-000000000099', 'a2000000-0000-4000-8000-000000000001', 'AUTHZ-SUBJECT-B', 'ACTIVE'),
+  ('a3000000-0000-4000-8000-000000000009', '10000000-0000-4000-8000-000000000001', 'a2000000-0000-4000-8000-000000000001', 'AUTHZ-INVITED-A', 'INVITED'),
+  ('a3000000-0000-4000-8000-000000000010', '10000000-0000-4000-8000-000000000001', 'a2000000-0000-4000-8000-000000000001', 'AUTHZ-DISABLED-A', 'DISABLED');
 
 insert into public.staff_role_assignments (
   id, membership_id, role, revoked_at
@@ -117,13 +119,23 @@ values
   ('a6100000-0000-4000-8000-000000000002', 'a6000000-0000-4000-8000-000000000002', '20000000-0000-4000-8000-000000000001', 'a5300000-0000-4000-8000-000000000002', '2026-02-02'),
   ('a6100000-0000-4000-8000-000000000099', 'a6000000-0000-4000-8000-000000000099', 'a5000000-0000-4000-8000-000000000099', 'a5300000-0000-4000-8000-000000000099', '2026-02-02');
 
+insert into public.enrollments (
+  id, student_id, academic_year_id, class_section_id, enrolled_on, exited_on,
+  status
+)
+values
+  ('a6100000-0000-4000-8000-000000000003', 'a6000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'a5300000-0000-4000-8000-000000000001', '2025-02-02', '2025-06-01', 'WITHDRAWN'),
+  ('a6100000-0000-4000-8000-000000000004', 'a6000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'a5300000-0000-4000-8000-000000000001', '2025-02-02', '2025-06-01', 'TRANSFERRED'),
+  ('a6100000-0000-4000-8000-000000000005', 'a6000000-0000-4000-8000-000000000001', '20000000-0000-4000-8000-000000000001', 'a5300000-0000-4000-8000-000000000001', '2025-02-02', '2025-12-01', 'COMPLETED');
+
 insert into public.teaching_assignments (
   id, term_id, class_section_id, subject_id, staff_membership_id, starts_on
 )
 values
   ('a6200000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000002', 'a5300000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001', 'a3000000-0000-4000-8000-000000000002', '2026-05-25'),
   ('a6200000-0000-4000-8000-000000000002', '21000000-0000-4000-8000-000000000002', 'a5300000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000002', 'a3000000-0000-4000-8000-000000000001', '2026-05-25'),
-  ('a6200000-0000-4000-8000-000000000003', '21000000-0000-4000-8000-000000000002', 'a5300000-0000-4000-8000-000000000002', '40000000-0000-4000-8000-000000000001', 'a3000000-0000-4000-8000-000000000001', '2026-05-25');
+  ('a6200000-0000-4000-8000-000000000003', '21000000-0000-4000-8000-000000000002', 'a5300000-0000-4000-8000-000000000002', '40000000-0000-4000-8000-000000000001', 'a3000000-0000-4000-8000-000000000001', '2026-05-25'),
+  ('a6200000-0000-4000-8000-000000000099', 'a5100000-0000-4000-8000-000000000099', 'a5300000-0000-4000-8000-000000000099', 'a5400000-0000-4000-8000-000000000099', 'a3000000-0000-4000-8000-000000000008', '2026-05-25');
 
 insert into public.teaching_assignments (
   id, term_id, class_section_id, subject_id, staff_membership_id, starts_on
@@ -320,17 +332,86 @@ select extensions.ok(
 );
 
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'a2000000-0000-4000-8000-000000000001', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000001","role":"authenticated"}',
+  true
+);
+select extensions.is(
+  public.get_my_active_membership(),
+  null::uuid,
+  'a missing session claim produces no active selection'
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"not-a-uuid"}',
+  true
+);
+select extensions.is(
+  public.get_my_active_membership(),
+  null::uuid,
+  'a malformed session claim produces no active selection'
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"b1000000-0000-4000-8000-000000000001"}',
+  true
+);
 
 select extensions.is(
   (select count(*) from public.get_my_effective_permissions('a3000000-0000-4000-8000-000000000001')),
+  0::bigint,
+  'a session without a selected membership receives no permissions'
+);
+select extensions.is(
+  (select count(*) from public.students where id::text like 'a6000000-%'),
+  0::bigint,
+  'a session without a selected membership receives no academic rows'
+);
+select extensions.is(
+  public.get_my_active_membership(),
+  null::uuid,
+  'a session without a selection reports no active membership'
+);
+select extensions.throws_ok(
+  $$ select public.set_my_active_membership(
+       'a3000000-0000-4000-8000-000000000002'
+     ) $$,
+  'P0001'
+);
+select extensions.throws_ok(
+  $$ select public.set_my_active_membership(
+       'a3000000-0000-4000-8000-000000000009'
+     ) $$,
+  'P0001'
+);
+select extensions.throws_ok(
+  $$ select public.set_my_active_membership(
+       'a3000000-0000-4000-8000-000000000010'
+     ) $$,
+  'P0001'
+);
+select extensions.is(
+  public.set_my_active_membership(
+    'a3000000-0000-4000-8000-000000000001'
+  ),
+  'a3000000-0000-4000-8000-000000000001'::uuid,
+  'a session selects one of its own active memberships'
+);
+select extensions.is(
+  public.get_my_active_membership(),
+  'a3000000-0000-4000-8000-000000000001'::uuid,
+  'the current session reads only its selected membership'
+);
+select extensions.is(
+  (select count(*) from public.get_my_effective_permissions('a3000000-0000-4000-8000-000000000001')),
   35::bigint,
-  'a caller retrieves permissions for their own active administrative membership'
+  'the selected school-A administrator membership grants its permissions'
 );
 select extensions.is(
   (select count(*) from public.get_my_effective_permissions('a3000000-0000-4000-8000-000000000008')),
-  7::bigint,
-  'a multi-school caller receives only the selected membership permissions'
+  0::bigint,
+  'another own but non-selected membership returns no permissions'
 );
 select extensions.is(
   (select count(*) from public.get_my_effective_permissions('a3000000-0000-4000-8000-000000000005')),
@@ -338,14 +419,100 @@ select extensions.is(
   'a caller cannot retrieve another user permissions'
 );
 select extensions.is(
+  (select count(*) from public.academic_years where id = 'a5000000-0000-4000-8000-000000000099'),
+  0::bigint,
+  'school-B academic rows remain hidden while school A is selected'
+);
+select extensions.is(
+  public.set_my_active_membership(
+    'a3000000-0000-4000-8000-000000000008'
+  ),
+  'a3000000-0000-4000-8000-000000000008'::uuid,
+  'switching replaces the selected membership for the same session'
+);
+select extensions.is(
+  (select count(*) from public.get_my_effective_permissions('a3000000-0000-4000-8000-000000000008')),
+  7::bigint,
+  'the selected school-B subject membership grants only teacher permissions'
+);
+select extensions.is(
+  (select count(*) from public.get_my_effective_permissions('a3000000-0000-4000-8000-000000000001')),
+  0::bigint,
+  'school-A administrator permissions stop after switching to school B'
+);
+select extensions.is(
+  (select count(*) from public.students where id::text like 'a6000000-%'),
+  1::bigint,
+  'one direct query returns only the selected school-B assigned roster'
+);
+select extensions.is(
+  (select id from public.students where id::text like 'a6000000-%'),
+  'a6000000-0000-4000-8000-000000000099'::uuid,
+  'the school-B session cannot combine school-A rows'
+);
+
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"b1000000-0000-4000-8000-000000000002"}',
+  true
+);
+select extensions.is(
+  public.set_my_active_membership(
+    'a3000000-0000-4000-8000-000000000008'
+  ),
+  'a3000000-0000-4000-8000-000000000008'::uuid,
+  'a second session can select school B independently'
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"b1000000-0000-4000-8000-000000000001"}',
+  true
+);
+select extensions.is(
+  public.set_my_active_membership(
+    'a3000000-0000-4000-8000-000000000001'
+  ),
+  'a3000000-0000-4000-8000-000000000001'::uuid,
+  'session one can switch to school A'
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"b1000000-0000-4000-8000-000000000002"}',
+  true
+);
+select extensions.is(
+  public.get_my_active_membership(),
+  'a3000000-0000-4000-8000-000000000008'::uuid,
+  'changing session one does not alter session two'
+);
+select extensions.ok(
+  public.clear_my_active_membership(),
+  'clear removes the current session selection'
+);
+select extensions.is(
+  public.get_my_active_membership(),
+  null::uuid,
+  'the cleared session reports no selection'
+);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000001","role":"authenticated","session_id":"b1000000-0000-4000-8000-000000000001"}',
+  true
+);
+select extensions.is(
+  public.get_my_active_membership(),
+  'a3000000-0000-4000-8000-000000000001'::uuid,
+  'clearing session two does not alter session one'
+);
+select extensions.is(
   (select count(*) from public.students where id::text like 'a6000000-%'),
   2::bigint,
   'an administrator reads all students in the authorized school only'
 );
 select extensions.is(
-  (select count(*) from public.academic_years where id = 'a5000000-0000-4000-8000-000000000099'),
-  1::bigint,
-  'the caller school-B subject role grants only its configured academic read'
+  (select count(*) from public.enrollments where id::text like 'a6100000-%'),
+  5::bigint,
+  'a schoolwide administrator retains historical enrollment visibility'
 );
 select extensions.is(
   (select count(*) from public.mark_sheets where id::text like 'a6600000-%'),
@@ -380,6 +547,10 @@ select extensions.throws_ok(
   '42501'
 );
 select extensions.throws_ok(
+  $$ select * from internal.staff_session_active_memberships $$,
+  '42501'
+);
+select extensions.throws_ok(
   $$ select * from public.guardians $$,
   '42501'
 );
@@ -392,7 +563,14 @@ select extensions.throws_ok(
   '42501'
 );
 
-select set_config('request.jwt.claim.sub', 'a2000000-0000-4000-8000-000000000002', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000002","role":"authenticated","session_id":"b1000000-0000-4000-8000-000000000010"}',
+  true
+);
+select public.set_my_active_membership(
+  'a3000000-0000-4000-8000-000000000002'
+);
 select extensions.is(
   (select count(*) from public.students where id::text like 'a6000000-%'),
   1::bigint,
@@ -407,6 +585,16 @@ select extensions.is(
   (select count(*) from public.enrollments where id::text like 'a6100000-%'),
   1::bigint,
   'a subject teacher reads only assigned-class enrollments'
+);
+select extensions.is(
+  (
+    select count(*)
+    from public.enrollments
+    where id::text like 'a6100000-%'
+      and status in ('WITHDRAWN', 'TRANSFERRED', 'COMPLETED')
+  ),
+  0::bigint,
+  'an assigned teacher cannot enumerate historical roster statuses'
 );
 select extensions.is(
   (select count(*) from public.teaching_assignments where id::text like 'a6200000-%'),
@@ -453,7 +641,14 @@ select extensions.ok(
   'a null assignment end date cannot extend access past the term end'
 );
 
-select set_config('request.jwt.claim.sub', 'a2000000-0000-4000-8000-000000000003', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000003","role":"authenticated","session_id":"b1000000-0000-4000-8000-000000000011"}',
+  true
+);
+select public.set_my_active_membership(
+  'a3000000-0000-4000-8000-000000000003'
+);
 select extensions.is(
   (select count(*) from public.students where id::text like 'a6000000-%'),
   1::bigint,
@@ -485,7 +680,14 @@ select extensions.is(
   'report subject-result visibility follows report visibility'
 );
 
-select set_config('request.jwt.claim.sub', 'a2000000-0000-4000-8000-000000000004', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000004","role":"authenticated","session_id":"b1000000-0000-4000-8000-000000000012"}',
+  true
+);
+select public.set_my_active_membership(
+  'a3000000-0000-4000-8000-000000000004'
+);
 select extensions.is(
   (select count(*) from public.students where id::text like 'a6000000-%'),
   0::bigint,
@@ -497,7 +699,14 @@ select extensions.is(
   'an unassigned teacher cannot read mark sheets'
 );
 
-select set_config('request.jwt.claim.sub', 'a2000000-0000-4000-8000-000000000006', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000006","role":"authenticated","session_id":"b1000000-0000-4000-8000-000000000013"}',
+  true
+);
+select public.set_my_active_membership(
+  'a3000000-0000-4000-8000-000000000006'
+);
 select extensions.is(
   (select count(*) from public.get_my_effective_permissions('a3000000-0000-4000-8000-000000000006')),
   0::bigint,
@@ -509,23 +718,56 @@ select extensions.is(
   'a revoked role grants no roster access'
 );
 
-select set_config('request.jwt.claim.sub', 'a2000000-0000-4000-8000-000000000007', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000007","role":"authenticated","session_id":"b1000000-0000-4000-8000-000000000014"}',
+  true
+);
+select extensions.throws_ok(
+  $$ select public.set_my_active_membership(
+       'a3000000-0000-4000-8000-000000000007'
+     ) $$,
+  'P0001'
+);
 select extensions.is(
   (select count(*) from public.get_my_effective_permissions('a3000000-0000-4000-8000-000000000007')),
   0::bigint,
   'a suspended membership grants no permission'
 );
 
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000005","role":"authenticated","session_id":"b1000000-0000-4000-8000-000000000015"}',
+  true
+);
+select public.set_my_active_membership(
+  'a3000000-0000-4000-8000-000000000005'
+);
 reset role;
 update public.schools
 set is_active = false
 where id = '10000000-0000-4000-8000-000000000099';
 set local role authenticated;
-select set_config('request.jwt.claim.sub', 'a2000000-0000-4000-8000-000000000005', true);
+select set_config(
+  'request.jwt.claims',
+  '{"sub":"a2000000-0000-4000-8000-000000000005","role":"authenticated","session_id":"b1000000-0000-4000-8000-000000000015"}',
+  true
+);
+select extensions.is(
+  public.get_my_active_membership(),
+  null::uuid,
+  'a stale selection does not survive an inactive school'
+);
 select extensions.is(
   (select count(*) from public.get_my_effective_permissions('a3000000-0000-4000-8000-000000000005')),
   0::bigint,
   'an inactive school grants no permission'
+);
+select extensions.throws_ok(
+  $$ select public.set_my_active_membership(
+       'a3000000-0000-4000-8000-000000000005'
+     ) $$,
+  'P0001'
 );
 
 reset role;
@@ -537,11 +779,103 @@ select extensions.throws_ok(
   '42501'
 );
 select extensions.throws_ok(
+  $$ select public.set_my_active_membership(
+       'a3000000-0000-4000-8000-000000000001'
+     ) $$,
+  '42501'
+);
+select extensions.throws_ok(
+  $$ select public.get_my_active_membership() $$,
+  '42501'
+);
+select extensions.throws_ok(
+  $$ select public.clear_my_active_membership() $$,
+  '42501'
+);
+select extensions.throws_ok(
   $$ select * from public.students $$,
   '42501'
 );
 
 reset role;
+select extensions.is(
+  (
+    select membership_id
+    from internal.staff_session_active_memberships
+    where session_id = 'b1000000-0000-4000-8000-000000000001'
+      and profile_id = 'a2000000-0000-4000-8000-000000000001'
+  ),
+  'a3000000-0000-4000-8000-000000000001'::uuid,
+  'selection storage is keyed by the verified JWT session ID'
+);
+select extensions.is(
+  (
+    select count(*)
+    from internal.staff_session_active_memberships
+    where session_id = 'b1000000-0000-4000-8000-000000000002'
+  ),
+  0::bigint,
+  'clear deletes only the selected session row'
+);
+select extensions.ok(
+  not has_table_privilege(
+    'authenticated',
+    'internal.staff_session_active_memberships',
+    'SELECT'
+  )
+    and not has_table_privilege(
+      'authenticated',
+      'internal.staff_session_active_memberships',
+      'INSERT'
+    )
+    and not has_table_privilege(
+      'authenticated',
+      'internal.staff_session_active_memberships',
+      'UPDATE'
+    )
+    and not has_table_privilege(
+      'authenticated',
+      'internal.staff_session_active_memberships',
+      'DELETE'
+    ),
+  'authenticated callers have no direct selection-table privileges'
+);
+select extensions.ok(
+  has_function_privilege(
+    'authenticated',
+    'public.set_my_active_membership(uuid)',
+    'EXECUTE'
+  )
+    and has_function_privilege(
+      'authenticated',
+      'public.get_my_active_membership()',
+      'EXECUTE'
+    )
+    and has_function_privilege(
+      'authenticated',
+      'public.clear_my_active_membership()',
+      'EXECUTE'
+    ),
+  'authenticated callers have only the narrow public selection RPCs'
+);
+select extensions.ok(
+  not has_function_privilege(
+    'anon',
+    'public.set_my_active_membership(uuid)',
+    'EXECUTE'
+  )
+    and not has_function_privilege(
+      'anon',
+      'public.get_my_active_membership()',
+      'EXECUTE'
+    )
+    and not has_function_privilege(
+      'anon',
+      'public.clear_my_active_membership()',
+      'EXECUTE'
+    ),
+  'anonymous callers have no selection RPC execution grants'
+);
 select extensions.ok(
   (
     select relrowsecurity and relforcerowsecurity

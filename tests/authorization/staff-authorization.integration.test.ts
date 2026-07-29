@@ -66,6 +66,9 @@ const studentA2 = randomUUID();
 const studentB1 = randomUUID();
 const enrollmentA1 = randomUUID();
 const enrollmentA2 = randomUUID();
+const enrollmentAWithdrawn = randomUUID();
+const enrollmentATransferred = randomUUID();
+const enrollmentACompleted = randomUUID();
 const enrollmentB1 = randomUUID();
 const teachingA1 = randomUUID();
 const teachingA2 = randomUUID();
@@ -74,11 +77,14 @@ const teachingB1 = randomUUID();
 const classTeacherA1 = randomUUID();
 const schemeA1 = randomUUID();
 const schemeA2 = randomUUID();
+const schemeB1 = randomUUID();
 const componentA1 = randomUUID();
 const componentA2 = randomUUID();
+const componentB1 = randomUUID();
 const sheetA1 = randomUUID();
 const sheetA2 = randomUUID();
 const sheetA3 = randomUUID();
+const sheetB1 = randomUUID();
 
 function expectSuccess(error: { message: string } | null) {
   if (error) throw error;
@@ -162,6 +168,17 @@ async function permissions(
   });
   expectSuccess(error);
   return new Set(data ?? []);
+}
+
+async function selectMembership(
+  client: SupabaseClient<Database>,
+  membershipId: string,
+) {
+  const { data, error } = await client.rpc("set_my_active_membership", {
+    target_membership_id: membershipId,
+  });
+  expectSuccess(error);
+  expect(data).toBe(membershipId);
 }
 
 describe.sequential("local school-scoped authorization integration", () => {
@@ -389,6 +406,7 @@ describe.sequential("local school-scoped authorization integration", () => {
             student_id: studentA1,
             academic_year_id: yearA,
             class_section_id: classA1,
+            status: "ACTIVE",
             enrolled_on: "2026-02-02",
           },
           {
@@ -396,13 +414,42 @@ describe.sequential("local school-scoped authorization integration", () => {
             student_id: studentA2,
             academic_year_id: yearA,
             class_section_id: classA2,
+            status: "ACTIVE",
             enrolled_on: "2026-02-02",
+          },
+          {
+            id: enrollmentAWithdrawn,
+            student_id: studentA1,
+            academic_year_id: yearA,
+            class_section_id: classA1,
+            status: "WITHDRAWN",
+            enrolled_on: "2025-02-02",
+            exited_on: "2025-06-01",
+          },
+          {
+            id: enrollmentATransferred,
+            student_id: studentA1,
+            academic_year_id: yearA,
+            class_section_id: classA1,
+            status: "TRANSFERRED",
+            enrolled_on: "2025-02-02",
+            exited_on: "2025-06-01",
+          },
+          {
+            id: enrollmentACompleted,
+            student_id: studentA1,
+            academic_year_id: yearA,
+            class_section_id: classA1,
+            status: "COMPLETED",
+            enrolled_on: "2025-02-02",
+            exited_on: "2025-12-01",
           },
           {
             id: enrollmentB1,
             student_id: studentB1,
             academic_year_id: yearB,
             class_section_id: classB1,
+            status: "ACTIVE",
             enrolled_on: "2026-02-02",
           },
         ])
@@ -480,6 +527,14 @@ describe.sequential("local school-scoped authorization integration", () => {
             name: "Synthetic Mathematics",
             effective_from: "2026-05-25",
           },
+          {
+            id: schemeB1,
+            term_id: termB,
+            grade_level_id: gradeB,
+            subject_id: subjectB1,
+            name: "Synthetic School B English",
+            effective_from: "2026-05-25",
+          },
         ])
       ).error,
     );
@@ -504,6 +559,15 @@ describe.sequential("local school-scoped authorization integration", () => {
             weight_percentage: 100,
             sort_order: 1,
           },
+          {
+            id: componentB1,
+            assessment_scheme_id: schemeB1,
+            name: "Assessment",
+            component_code: "ONE",
+            maximum_score: 100,
+            weight_percentage: 100,
+            sort_order: 1,
+          },
         ])
       ).error,
     );
@@ -512,7 +576,7 @@ describe.sequential("local school-scoped authorization integration", () => {
         await admin
           .from("assessment_schemes")
           .update({ status: "ACTIVE" })
-          .in("id", [schemeA1, schemeA2])
+          .in("id", [schemeA1, schemeA2, schemeB1])
       ).error,
     );
     expectSuccess(
@@ -542,6 +606,14 @@ describe.sequential("local school-scoped authorization integration", () => {
             assessment_scheme_id: schemeA1,
             teaching_assignment_id: teachingA3,
           },
+          {
+            id: sheetB1,
+            term_id: termB,
+            class_section_id: classB1,
+            subject_id: subjectB1,
+            assessment_scheme_id: schemeB1,
+            teaching_assignment_id: teachingB1,
+          },
         ])
       ).error,
     );
@@ -566,6 +638,12 @@ describe.sequential("local school-scoped authorization integration", () => {
             enrollment_id: enrollmentA2,
             score: 70,
           },
+          {
+            mark_sheet_id: sheetB1,
+            assessment_component_id: componentB1,
+            enrollment_id: enrollmentB1,
+            score: 82,
+          },
         ])
       ).error,
     );
@@ -575,19 +653,19 @@ describe.sequential("local school-scoped authorization integration", () => {
     await admin
       .from("marks")
       .delete()
-      .in("mark_sheet_id", [sheetA1, sheetA2, sheetA3]);
+      .in("mark_sheet_id", [sheetA1, sheetA2, sheetA3, sheetB1]);
     await admin
       .from("mark_sheets")
       .delete()
-      .in("id", [sheetA1, sheetA2, sheetA3]);
+      .in("id", [sheetA1, sheetA2, sheetA3, sheetB1]);
     await admin
       .from("assessment_components")
       .delete()
-      .in("id", [componentA1, componentA2]);
+      .in("id", [componentA1, componentA2, componentB1]);
     await admin
       .from("assessment_schemes")
       .delete()
-      .in("id", [schemeA1, schemeA2]);
+      .in("id", [schemeA1, schemeA2, schemeB1]);
     await admin
       .from("class_teacher_assignments")
       .delete()
@@ -599,7 +677,14 @@ describe.sequential("local school-scoped authorization integration", () => {
     await admin
       .from("enrollments")
       .delete()
-      .in("id", [enrollmentA1, enrollmentA2, enrollmentB1]);
+      .in("id", [
+        enrollmentA1,
+        enrollmentA2,
+        enrollmentAWithdrawn,
+        enrollmentATransferred,
+        enrollmentACompleted,
+        enrollmentB1,
+      ]);
     await admin
       .from("students")
       .delete()
@@ -654,6 +739,7 @@ describe.sequential("local school-scoped authorization integration", () => {
     "%s receives the documented effective permissions",
     async (key, count) => {
       const client = await signedInClient(key);
+      await selectMembership(client, identities.get(key)!.membershipId);
       const result = await permissions(
         client,
         identities.get(key)!.membershipId,
@@ -664,29 +750,66 @@ describe.sequential("local school-scoped authorization integration", () => {
 
   it("does not disclose another user permissions", async () => {
     const client = await signedInClient("subject");
+    await selectMembership(client, identities.get("subject")!.membershipId);
     expect(
       (await permissions(client, identities.get("school-admin")!.membershipId))
         .size,
     ).toBe(0);
   });
 
-  it("loads multi-school permissions for only the requested membership", async () => {
-    const client = await signedInClient("multi");
-    const schoolAPermissions = await permissions(
-      client,
-      identities.get("multi")!.membershipId,
-    );
-    const schoolBPermissions = await permissions(
-      client,
-      identities.get("multi-school-b")!.membershipId,
-    );
-    expect(schoolAPermissions.has("SCHOOL_SETTINGS_MANAGE")).toBe(true);
+  it("binds multi-school RLS to one independently selected session membership", async () => {
+    const sessionA = await signedInClient("multi");
+    const sessionB = await signedInClient("multi");
+    const membershipA = identities.get("multi")!.membershipId;
+    const membershipB = identities.get("multi-school-b")!.membershipId;
+
+    expect((await sessionA.from("students").select("id")).data).toEqual([]);
+    expect((await permissions(sessionA, membershipA)).size).toBe(0);
+    expect((await permissions(sessionA, membershipB)).size).toBe(0);
+
+    await selectMembership(sessionA, membershipB);
+    const schoolBPermissions = await permissions(sessionA, membershipB);
     expect(schoolBPermissions.has("SCHOOL_SETTINGS_MANAGE")).toBe(false);
     expect(schoolBPermissions.has("MARKS_ENTER")).toBe(true);
+    expect((await permissions(sessionA, membershipA)).size).toBe(0);
+
+    const [schoolBStudents, schoolBSheets, schoolBMarks, schoolAYears] =
+      await Promise.all([
+        sessionA.from("students").select("id"),
+        sessionA.from("mark_sheets").select("id"),
+        sessionA.from("marks").select("id"),
+        sessionA.from("academic_years").select("id").eq("id", yearA),
+      ]);
+    expect(schoolBStudents.data?.map(({ id }) => id)).toEqual([studentB1]);
+    expect(schoolBSheets.data?.map(({ id }) => id)).toEqual([sheetB1]);
+    expect(schoolBMarks.data).toHaveLength(1);
+    expect(schoolAYears.data).toEqual([]);
+
+    await selectMembership(sessionB, membershipB);
+    await selectMembership(sessionA, membershipA);
+    const schoolAPermissions = await permissions(sessionA, membershipA);
+    expect(schoolAPermissions.has("SCHOOL_SETTINGS_MANAGE")).toBe(true);
+    expect((await permissions(sessionA, membershipB)).size).toBe(0);
+    expect(
+      (await sessionA.from("students").select("id").order("id")).data?.map(
+        ({ id }) => id,
+      ),
+    ).toEqual([studentA1, studentA2].sort());
+    expect(
+      (await sessionA.from("students").select("id").eq("id", studentB1)).data,
+    ).toEqual([]);
+
+    expect((await sessionB.rpc("get_my_active_membership")).data).toBe(
+      membershipB,
+    );
+    expect((await permissions(sessionB, membershipB)).has("MARKS_ENTER")).toBe(
+      true,
+    );
   });
 
   it("stops revoked roles on the next authoritative request", async () => {
     const client = await signedInClient("revoked");
+    await selectMembership(client, identities.get("revoked")!.membershipId);
     expect(
       (await permissions(client, identities.get("revoked")!.membershipId)).size,
     ).toBe(0);
@@ -694,18 +817,22 @@ describe.sequential("local school-scoped authorization integration", () => {
 
   it("limits a subject teacher to assigned students and subject marks", async () => {
     const client = await signedInClient("subject");
-    const [students, sheets, marks] = await Promise.all([
+    await selectMembership(client, identities.get("subject")!.membershipId);
+    const [students, enrollments, sheets, marks] = await Promise.all([
       client.from("students").select("id"),
+      client.from("enrollments").select("id, status"),
       client.from("mark_sheets").select("id"),
       client.from("marks").select("id"),
     ]);
     expect(students.data?.map(({ id }) => id)).toEqual([studentA1]);
+    expect(enrollments.data).toEqual([{ id: enrollmentA1, status: "ACTIVE" }]);
     expect(sheets.data?.map(({ id }) => id)).toEqual([sheetA1]);
     expect(marks.data).toHaveLength(1);
   });
 
   it("lets a class teacher read the assigned class across subjects", async () => {
     const client = await signedInClient("class");
+    await selectMembership(client, identities.get("class")!.membershipId);
     const [students, sheets] = await Promise.all([
       client.from("students").select("id"),
       client.from("mark_sheets").select("id").order("id"),
@@ -718,12 +845,17 @@ describe.sequential("local school-scoped authorization integration", () => {
 
   it("denies roster and mark access to an unassigned teacher", async () => {
     const client = await signedInClient("unassigned");
+    await selectMembership(client, identities.get("unassigned")!.membershipId);
     expect((await client.from("students").select("id")).data).toEqual([]);
     expect((await client.from("marks").select("id")).data).toEqual([]);
   });
 
   it("keeps guardian and parent records denied", async () => {
     const client = await signedInClient("school-admin");
+    await selectMembership(
+      client,
+      identities.get("school-admin")!.membershipId,
+    );
     expect((await client.from("guardians").select("id")).error?.code).toBe(
       "42501",
     );
@@ -738,6 +870,10 @@ describe.sequential("local school-scoped authorization integration", () => {
 
   it("keeps browser writes denied despite future mutation permissions", async () => {
     const client = await signedInClient("school-admin");
+    await selectMembership(
+      client,
+      identities.get("school-admin")!.membershipId,
+    );
     const write = await client
       .from("students")
       .update({ first_name: "Denied" })

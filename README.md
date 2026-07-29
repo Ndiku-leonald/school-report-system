@@ -15,6 +15,11 @@ active-school selection, authentication audit events, and local-only Auth test
 automation. It now also contains a 35-value permission model, migration-owned
 role matrix, caller-scoped permission RPC, assignment-scoped read policies,
 typed server guards, protected workspaces, and server-filtered navigation.
+Migration 11 binds the selected active membership to the verified Supabase
+`session_id` inside PostgreSQL. Every academic RLS decision and effective
+permission lookup uses that one session-selected membership, so direct
+anonymous-key queries cannot combine roles across schools. Separate Auth
+sessions for the same profile may safely select different schools.
 Public registration is disabled, recovery requires a short-lived
 signed user-bound proof, PKCE recovery and invitations require purpose-specific
 signed state bound to the authoritative Auth email, and invitation activation

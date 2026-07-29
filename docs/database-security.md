@@ -9,11 +9,32 @@ mark, attendance/comment, report, and audit tables. Each policy derives school
 scope from database relationships and evaluates active memberships, active
 schools, unrevoked roles, and current assignments.
 
+Migration 11 adds the non-exposed
+`internal.staff_session_active_memberships` table. Its UUID primary key is the
+verified JWT `session_id`; each row also records the authenticated profile and
+one referenced staff membership. `public`, `anon`, and `authenticated` have no
+direct table privileges. Fixed-search-path definer functions are required only
+to read or mutate this internal table and never accept a caller-supplied
+session ID.
+
+Authenticated clients use the narrow `set_my_active_membership`,
+`get_my_active_membership`, and `clear_my_active_membership` RPCs. Selection
+requires the caller's own `ACTIVE` membership and an active school. Every
+permission and assignment predicate rechecks the selection, membership,
+school, current role, and current assignment state. Thus stale selection rows
+cannot grant access, and direct RLS queries authorize at most one membership
+per Supabase session. Separate sessions for the same profile remain
+independent.
+
 Anonymous access and all browser academic writes remain denied. Guardians,
 student-guardian links, student access credentials, parent sessions, and
 unapproved future workflow tables remain inaccessible. Database tests exercise
 positive access, cross-school/class/subject denial, anonymous denial, and
 continued write denial.
+
+Assignment-limited users with `STUDENTS_VIEW_ASSIGNED` can read only
+`ACTIVE` and `REPEATING` enrolments. Authorized schoolwide
+`STUDENTS_VIEW_ALL` users retain historical enrolment reads.
 
 The Supabase service role bypasses RLS and is therefore server-only. It must
 never be placed in `NEXT_PUBLIC_*` configuration, a browser client, logs,
