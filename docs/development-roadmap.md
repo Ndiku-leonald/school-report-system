@@ -86,9 +86,14 @@ Implement Supabase Auth integration for staff sessions, sign-in, sign-out, recov
 - Public signup and anonymous sign-in are disabled, Supabase enforces a
   12-character minimum password, and recovery requires a signed 15-minute
   purpose- and user-bound proof beyond the normal session.
-- Only invitation and recovery confirmation types are supported. Invitation
-  redirects are fixed and same-origin, and token-hash and PKCE recovery are
-  tested locally without remote Supabase changes.
+- PKCE recovery and invitation callbacks require distinct 15-minute HMAC
+  states bound to the authoritative Auth email before code exchange; invitation
+  also requires an own RLS-filtered `INVITED` membership. Redirect destinations
+  are never treated as flow proof.
+- Only invitation and recovery token-hash confirmation types are supported.
+  Token-hash invite/recovery, the signed invitation callback gate, and
+  signed-state PKCE recovery are tested locally without remote Supabase changes
+  or a production email-delivery claim.
 - Unit, local Auth integration, Playwright, build, lint, type, formatting, and
   database checks are part of the repository validation and CI workflows.
 

@@ -2,6 +2,7 @@ import { z } from "zod";
 
 import { recordSystemAuditEvent } from "./lib/system-audit";
 import { getInvitationRedirectUrl } from "../src/lib/auth/invitation-redirect";
+import { createStaffInvitationState } from "../src/lib/auth/invitation-state";
 import { createAdministrativeSupabaseClient } from "../src/lib/supabase/admin";
 import { getAdministrativeEnvironment } from "../src/lib/env/administrative";
 import type { Database } from "../src/types/database.generated";
@@ -106,8 +107,10 @@ async function main() {
     );
   }
 
+  const invitationState = createStaffInvitationState(input.email);
   const redirectTo = getInvitationRedirectUrl(
     environment.NEXT_PUBLIC_APP_URL,
+    invitationState,
     input.redirectUrl,
   );
   const { data: invite, error: inviteError } =

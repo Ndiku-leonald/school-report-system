@@ -3,9 +3,11 @@ import { describe, expect, it, vi } from "vitest";
 vi.mock("server-only", () => ({}));
 
 import {
+  createInvitationState,
   createRecoveryProof,
   createRecoveryState,
-  hashRecoveryEmail,
+  hashAuthenticationFlowEmail,
+  INVITATION_STATE_PURPOSE,
   RECOVERY_PROOF_PURPOSE,
   RECOVERY_STATE_PURPOSE,
   verifyAuthenticationFlowToken,
@@ -28,9 +30,28 @@ describe("signed authentication flow tokens", () => {
     );
 
     expect(payload?.emailHash).toBe(
-      hashRecoveryEmail("staff@example.invalid", secret),
+      hashAuthenticationFlowEmail("staff@example.invalid", secret),
     );
     expect(token).not.toContain("Staff@Example.Invalid");
+  });
+
+  it("creates an invitation state with a one-way normalized email hash", () => {
+    const token = createInvitationState(" Invited@Example.Invalid ", secret, {
+      now,
+      ttlSeconds: 900,
+    });
+    const payload = verifyAuthenticationFlowToken(
+      token,
+      INVITATION_STATE_PURPOSE,
+      secret,
+      now + 899,
+    );
+
+    expect(payload?.emailHash).toBe(
+      hashAuthenticationFlowEmail("invited@example.invalid", secret),
+    );
+    expect(payload?.expiresAt).toBe(now + 900);
+    expect(token).not.toContain("Invited@Example.Invalid");
   });
 
   it("creates a short-lived recovery proof bound to a user", () => {
@@ -86,6 +107,32 @@ describe("signed authentication flow tokens", () => {
 
     expect(
       verifyAuthenticationFlowToken(token, RECOVERY_PROOF_PURPOSE, secret, now),
+    ).toBeNull();
+  });
+
+  it("keeps invitation and recovery states purpose-separated", () => {
+    const invitation = createInvitationState("staff@example.invalid", secret, {
+      now,
+    });
+    const recovery = createRecoveryState("staff@example.invalid", secret, {
+      now,
+    });
+
+    expect(
+      verifyAuthenticationFlowToken(
+        invitation,
+        RECOVERY_STATE_PURPOSE,
+        secret,
+        now,
+      ),
+    ).toBeNull();
+    expect(
+      verifyAuthenticationFlowToken(
+        recovery,
+        INVITATION_STATE_PURPOSE,
+        secret,
+        now,
+      ),
     ).toBeNull();
   });
 

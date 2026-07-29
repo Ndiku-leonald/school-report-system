@@ -4,8 +4,9 @@
 
 Stage 4 uses four complementary layers:
 
-- Vitest unit and component tests validate schemas, signed recovery state and
-  proofs, confirmation types, strict invitation redirects, audit IP parsing,
+- Vitest unit and component tests validate schemas, purpose-separated signed
+  recovery and invitation states, recovery proofs, callback flow selection,
+  confirmation types, strict invitation redirects, audit IP parsing,
   membership routing, redirect cookie propagation, service-client
   configuration, and accessible forms.
 - pgTAP validates own-row identity policies, cross-user isolation, anonymous
@@ -13,14 +14,15 @@ Stage 4 uses four complementary layers:
   service privileges, atomic invitation activation, and transactional auditing.
 - `npm run test:auth` proves public signup rejection, administrative
   invitation, Supabase's 12-character password policy, password sign-in,
-  session creation, membership states, RLS reads, and denied academic/write
-  operations.
+  session creation, membership states including the RLS-filtered invitation
+  gate, RLS reads, and denied academic/write operations.
 - `npm run test:e2e:auth` uses Playwright with generated local invitation and
   recovery links and local captured mail to test protected redirects, generic
-  login failure, active login, logout, unavailable accounts, invitation
-  completion, school selection, token-hash recovery, PKCE recovery,
-  ordinary-session denial, forged-proof cleanup, proof consumption, and fresh
-  login.
+  login failure, active login, logout, unavailable accounts, token-hash
+  invitation completion, trusted CLI signed invitation callback construction,
+  rejection of an unbound invitation callback, school selection, token-hash
+  recovery, signed-state PKCE recovery, ordinary-session denial, forged-proof
+  cleanup, proof consumption, and fresh login.
 
 ## Local commands
 
@@ -70,7 +72,11 @@ http://localhost:3000/auth/confirm
 Preview and production environments must list their exact HTTPS origins and
 the same paths. Do not add broad wildcard origins without a separate review.
 Templates may link to `/auth/confirm` with `token_hash`, `type`, and a safe
-internal `next`; PKCE links return to `/auth/callback` with `code`.
+internal `next`; that route independently verifies invite or recovery token
+hashes and rejects signup and magic-link types. PKCE links return to
+`/auth/callback` with `code` and exactly one signed `recovery_state` or
+`invitation_state`. Redirect destinations are not flow proof, and generic PKCE
+codes are rejected before exchange.
 
 ## Safe cleanup
 

@@ -10,9 +10,9 @@ import {
 import {
   createRecoveryProof,
   createRecoveryState,
+  authenticationFlowEmailHashMatches,
   RECOVERY_PROOF_PURPOSE,
   RECOVERY_STATE_PURPOSE,
-  recoveryEmailHashMatches,
   verifyAuthenticationFlowToken,
 } from "@/lib/auth/flow-token";
 import { getAuthenticationFlowEnvironment } from "@/lib/env/authentication-flow";
@@ -48,7 +48,7 @@ export function recoveryStateMatchesUserEmail(
   email: string,
   expectedHash: string,
 ) {
-  return recoveryEmailHashMatches(email, expectedHash, getSecret());
+  return authenticationFlowEmailHashMatches(email, expectedHash, getSecret());
 }
 
 export function setRecoveryProofCookie(cookies: CookieWriter, userId: string) {

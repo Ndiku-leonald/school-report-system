@@ -13,7 +13,9 @@ contains the Stage 3 database foundation plus cookie-based Supabase Auth,
 server-authoritative staff membership checks, invitation and recovery flows,
 active-school selection, authentication audit events, and local-only Auth test
 automation. Public registration is disabled, recovery requires a short-lived
-signed user-bound proof, and invitation activation is atomic.
+signed user-bound proof, PKCE recovery and invitations require purpose-specific
+signed state bound to the authoritative Auth email, and invitation activation
+is atomic.
 
 Academic authorization remains deny-by-default. Stage 4 grants authenticated
 staff read access only to their own profile, memberships, role labels, and
@@ -100,6 +102,14 @@ enabled so invited staff can sign in; the global signup switch prevents public
 account creation. Configure the corresponding hosted-project signup and
 password settings separately before production. This change did not modify a
 remote Supabase project.
+
+Redirect destinations are navigation data, not authentication-flow proof.
+Generic PKCE callbacks are rejected unless they contain exactly one valid,
+short-lived HMAC state: `recovery_state` or `invitation_state`. The callback
+exchanges the code only after state verification, then binds the state to the
+authoritative Auth email. Token-hash invite and recovery links remain a
+separate verified path. Hosted Supabase Auth URLs, signup policy, password
+policy, and email delivery still require independent production configuration.
 
 Environment parsing is lazy so the Stage 2 placeholder pages, tests, and production build do not require real Supabase credentials. A descriptive configuration error is raised when code first requests missing configuration. Schema tests use synthetic values only.
 

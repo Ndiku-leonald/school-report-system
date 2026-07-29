@@ -2,12 +2,17 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  clearRecoveryProofCookie: vi.fn(),
   exchangeCodeForSession: vi.fn(),
+  from: vi.fn(),
   getUser: vi.fn(),
-  matchesEmail: vi.fn(),
+  invitationMatchesEmail: vi.fn(),
+  membershipResult: vi.fn(),
+  recoveryMatchesEmail: vi.fn(),
   setRecoveryProofCookie: vi.fn(),
   signOut: vi.fn(),
-  verifyState: vi.fn(),
+  verifyInvitationState: vi.fn(),
+  verifyRecoveryState: vi.fn(),
 }));
 
 vi.mock("@/lib/env/public", () => ({
@@ -15,10 +20,15 @@ vi.mock("@/lib/env/public", () => ({
     NEXT_PUBLIC_APP_URL: "https://application.example.invalid",
   }),
 }));
+vi.mock("@/lib/auth/invitation-state", () => ({
+  invitationStateMatchesUserEmail: mocks.invitationMatchesEmail,
+  verifyStaffInvitationState: mocks.verifyInvitationState,
+}));
 vi.mock("@/lib/auth/recovery", () => ({
-  recoveryStateMatchesUserEmail: mocks.matchesEmail,
+  clearRecoveryProofCookie: mocks.clearRecoveryProofCookie,
+  recoveryStateMatchesUserEmail: mocks.recoveryMatchesEmail,
   setRecoveryProofCookie: mocks.setRecoveryProofCookie,
-  verifyPasswordRecoveryState: mocks.verifyState,
+  verifyPasswordRecoveryState: mocks.verifyRecoveryState,
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createServerSupabaseClient: async () => ({
@@ -27,6 +37,7 @@ vi.mock("@/lib/supabase/server", () => ({
       getUser: mocks.getUser,
       signOut: mocks.signOut,
     },
+    from: mocks.from,
   }),
 }));
 
@@ -38,28 +49,93 @@ function request(query: string) {
   );
 }
 
+function mockExchangedUser(email = "staff@example.invalid") {
+  mocks.exchangeCodeForSession.mockResolvedValue({ error: null });
+  mocks.getUser.mockResolvedValue({
+    data: {
+      user: {
+        id: "synthetic-user-id",
+        email,
+      },
+    },
+    error: null,
+  });
+}
+
 describe("PKCE authentication callback", () => {
   beforeEach(() => {
     Object.values(mocks).forEach((mock) => mock.mockReset());
+    mocks.membershipResult.mockReturnValue({
+      data: [{ id: "synthetic-membership-id" }],
+      error: null,
+    });
+    mocks.from.mockImplementation(() => {
+      const query = {
+        eq: vi.fn(() => query),
+        limit: vi.fn(async () => mocks.membershipResult()),
+        select: vi.fn(() => query),
+      };
+      return query;
+    });
   });
 
-  it("does not accept next=/reset-password as recovery proof", async () => {
-    const response = await GET(
-      request("code=synthetic-code&next=/reset-password"),
-    );
+  it("rejects a code without signed state before consuming it", async () => {
+    const response = await GET(request("code=synthetic-code"));
 
-    expect(response.headers.get("location")).toBe(
-      "https://application.example.invalid/auth-error",
-    );
+    expect(response.headers.get("location")).toContain("/auth-error");
     expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
   });
 
-  it.each(["missing", "modified", "expired"])(
-    "rejects a %s recovery state before consuming the code",
+  it("closes the former code plus next invitation bypass", async () => {
+    const response = await GET(
+      request("code=synthetic-code&next=/complete-invitation"),
+    );
+
+    expect(response.headers.get("location")).toContain("/auth-error");
+    expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it("rejects next even when a signed invitation state is present", async () => {
+    mocks.verifyInvitationState.mockReturnValue({
+      emailHash: "synthetic-email-hash",
+    });
+
+    const response = await GET(
+      request(
+        "code=synthetic-code&invitation_state=valid&next=/complete-invitation",
+      ),
+    );
+
+    expect(response.headers.get("location")).toContain("/auth-error");
+    expect(mocks.verifyInvitationState).not.toHaveBeenCalled();
+    expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it("rejects requests containing both flow states before exchange", async () => {
+    mocks.verifyRecoveryState.mockReturnValue({
+      emailHash: "recovery-email-hash",
+    });
+    mocks.verifyInvitationState.mockReturnValue({
+      emailHash: "invitation-email-hash",
+    });
+
+    const response = await GET(
+      request(
+        "code=synthetic-code&recovery_state=recovery&invitation_state=invitation",
+      ),
+    );
+
+    expect(response.headers.get("location")).toContain("/auth-error");
+    expect(mocks.exchangeCodeForSession).not.toHaveBeenCalled();
+  });
+
+  it.each(["modified", "expired"])(
+    "rejects a %s invitation state before consuming the code",
     async () => {
-      mocks.verifyState.mockReturnValue(null);
+      mocks.verifyInvitationState.mockReturnValue(null);
+
       const response = await GET(
-        request("code=synthetic-code&recovery_state=invalid"),
+        request("code=synthetic-code&invitation_state=invalid"),
       );
 
       expect(response.headers.get("location")).toContain("/auth-error");
@@ -68,26 +144,17 @@ describe("PKCE authentication callback", () => {
   );
 
   it("binds a valid recovery state to the authoritative user email", async () => {
-    mocks.verifyState.mockReturnValue({
+    mocks.verifyRecoveryState.mockReturnValue({
       emailHash: "synthetic-email-hash",
     });
-    mocks.exchangeCodeForSession.mockResolvedValue({ error: null });
-    mocks.getUser.mockResolvedValue({
-      data: {
-        user: {
-          id: "synthetic-user-id",
-          email: "staff@example.invalid",
-        },
-      },
-      error: null,
-    });
-    mocks.matchesEmail.mockReturnValue(true);
+    mockExchangedUser();
+    mocks.recoveryMatchesEmail.mockReturnValue(true);
 
     const response = await GET(
       request("code=synthetic-code&recovery_state=valid"),
     );
 
-    expect(mocks.matchesEmail).toHaveBeenCalledWith(
+    expect(mocks.recoveryMatchesEmail).toHaveBeenCalledWith(
       "staff@example.invalid",
       "synthetic-email-hash",
     );
@@ -99,20 +166,11 @@ describe("PKCE authentication callback", () => {
   });
 
   it("rejects recovery when the authoritative user does not match state", async () => {
-    mocks.verifyState.mockReturnValue({
+    mocks.verifyRecoveryState.mockReturnValue({
       emailHash: "synthetic-email-hash",
     });
-    mocks.exchangeCodeForSession.mockResolvedValue({ error: null });
-    mocks.getUser.mockResolvedValue({
-      data: {
-        user: {
-          id: "another-synthetic-user",
-          email: "other@example.invalid",
-        },
-      },
-      error: null,
-    });
-    mocks.matchesEmail.mockReturnValue(false);
+    mockExchangedUser("other@example.invalid");
+    mocks.recoveryMatchesEmail.mockReturnValue(false);
 
     const response = await GET(
       request("code=synthetic-code&recovery_state=valid"),
@@ -120,17 +178,95 @@ describe("PKCE authentication callback", () => {
 
     expect(response.headers.get("location")).toContain("/auth-error");
     expect(mocks.signOut).toHaveBeenCalled();
-    expect(mocks.setRecoveryProofCookie).not.toHaveBeenCalled();
+    expect(mocks.clearRecoveryProofCookie).toHaveBeenCalled();
   });
 
-  it("retains only the fixed invitation completion callback", async () => {
-    mocks.exchangeCodeForSession.mockResolvedValue({ error: null });
+  it("accepts an email-bound invitation with an own invited membership", async () => {
+    mocks.verifyInvitationState.mockReturnValue({
+      emailHash: "synthetic-email-hash",
+    });
+    mockExchangedUser();
+    mocks.invitationMatchesEmail.mockReturnValue(true);
+
     const response = await GET(
-      request("code=synthetic-code&next=/complete-invitation"),
+      request("code=synthetic-code&invitation_state=valid"),
     );
 
+    expect(mocks.invitationMatchesEmail).toHaveBeenCalledWith(
+      "staff@example.invalid",
+      "synthetic-email-hash",
+    );
+    expect(mocks.from).toHaveBeenCalledWith("school_staff_memberships");
     expect(response.headers.get("location")).toBe(
       "https://application.example.invalid/complete-invitation",
     );
+    expect(mocks.setRecoveryProofCookie).not.toHaveBeenCalled();
+  });
+
+  it("rejects an invitation when the authoritative email does not match", async () => {
+    mocks.verifyInvitationState.mockReturnValue({
+      emailHash: "synthetic-email-hash",
+    });
+    mockExchangedUser("other@example.invalid");
+    mocks.invitationMatchesEmail.mockReturnValue(false);
+
+    const response = await GET(
+      request("code=synthetic-code&invitation_state=valid"),
+    );
+
+    expect(response.headers.get("location")).toContain("/auth-error");
+    expect(mocks.from).not.toHaveBeenCalled();
+    expect(mocks.signOut).toHaveBeenCalled();
+  });
+
+  it("rejects an invitation without an invited membership", async () => {
+    mocks.verifyInvitationState.mockReturnValue({
+      emailHash: "synthetic-email-hash",
+    });
+    mockExchangedUser();
+    mocks.invitationMatchesEmail.mockReturnValue(true);
+    mocks.membershipResult.mockReturnValue({ data: [], error: null });
+
+    const response = await GET(
+      request("code=synthetic-code&invitation_state=valid"),
+    );
+
+    expect(response.headers.get("location")).toContain("/auth-error");
+    expect(mocks.signOut).toHaveBeenCalled();
+  });
+
+  it.each(["ACTIVE", "SUSPENDED", "DISABLED"])(
+    "rejects an invitation when only a %s membership exists",
+    async () => {
+      mocks.verifyInvitationState.mockReturnValue({
+        emailHash: "synthetic-email-hash",
+      });
+      mockExchangedUser();
+      mocks.invitationMatchesEmail.mockReturnValue(true);
+      mocks.membershipResult.mockReturnValue({ data: [], error: null });
+
+      const response = await GET(
+        request("code=synthetic-code&invitation_state=valid"),
+      );
+
+      expect(response.headers.get("location")).toContain("/auth-error");
+      expect(mocks.signOut).toHaveBeenCalled();
+    },
+  );
+
+  it("returns the generic error when code exchange fails", async () => {
+    mocks.verifyInvitationState.mockReturnValue({
+      emailHash: "synthetic-email-hash",
+    });
+    mocks.exchangeCodeForSession.mockResolvedValue({
+      error: new Error("synthetic exchange failure"),
+    });
+
+    const response = await GET(
+      request("code=synthetic-code&invitation_state=valid"),
+    );
+
+    expect(response.headers.get("location")).toContain("/auth-error");
+    expect(mocks.getUser).not.toHaveBeenCalled();
   });
 });

@@ -30,6 +30,12 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
   user and recovery purpose. Its HttpOnly cookie is SameSite=Lax, Secure in
   production, scoped to `/reset-password`, and cleared after successful or
   invalid use.
+- Redirect destinations are never authentication-flow proof. A PKCE callback
+  must present exactly one valid 15-minute HMAC state for recovery or
+  invitation before its code is exchanged. Each state contains only a
+  purpose-bound keyed hash of the normalized email and is checked against the
+  authoritative Auth user. Invitation callbacks additionally require the
+  user's own RLS-filtered `INVITED` membership.
 - Public signup and anonymous sign-in must remain disabled. The email/password
   provider remains enabled for invited staff login, and Supabase must enforce a
   minimum password length of 12 locally and in the hosted project.
@@ -72,9 +78,13 @@ urgent account-wide revocation is required.
 
 Proxy redirects propagate only Supabase cookies and their attributes from the
 refresh response, not arbitrary headers. Invitation redirects are fixed,
-same-origin callbacks and require HTTPS except on approved localhost origins.
-Confirmation accepts only `invite` and `recovery`; public `signup` and
-`magiclink` confirmation are rejected.
+same-origin callbacks, carry server-created signed invitation state, and
+require HTTPS except on approved localhost origins. Generic PKCE codes, missing
+or dual states, and operator-supplied state values are rejected before code
+exchange. Token-hash confirmation separately accepts only `invite` and
+`recovery`; public `signup` and `magiclink` confirmation are rejected. Hosted
+Supabase Auth settings and email delivery remain separately configured
+production controls.
 
 ## Known limitations
 

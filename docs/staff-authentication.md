@@ -52,18 +52,25 @@ session cannot reset a password. Success clears recovery and active-school
 cookies, signs out, and requires a fresh login; invalid proofs are cleared.
 
 General `next` destinations accept only same-origin absolute paths and are
-never recovery evidence. The callback accepts a signed recovery state or the
-fixed invitation completion path. Confirmation supports only `invite` and
-`recovery`; `signup` and `magiclink` are rejected.
+never authentication-flow evidence. The PKCE callback requires exactly one
+valid `recovery_state` or `invitation_state` before exchanging a code; generic
+codes and requests with missing or dual states fail closed. Both state types
+are HMAC-SHA-256 signed, expire after 15 minutes, contain a one-way keyed
+normalized-email hash, and are matched to the authoritative Auth user after
+exchange. Confirmation is a separate token-hash path supporting only `invite`
+and `recovery`; `signup` and `magiclink` are rejected.
 
 ## Invitation flow
 
 Administrators provision invitations through the server-only CLI described in
 [staff-provisioning.md](staff-provisioning.md). The staff member follows the
-single-use Auth link, chooses a password, and the trusted server operation
-calls migration 09's service-role-only database function. It locks and
-validates the exact expected membership set, activates all eligible `INVITED`
-rows or none, and writes both success audits in the same transaction.
+single-use Auth link. For PKCE, the CLI supplies a signed invitation state
+bound to the invited email; the callback also requires the authoritative
+user's own RLS-filtered memberships to contain an `INVITED` row before
+redirecting to completion. The staff member chooses a password, and the trusted
+server operation calls migration 09's service-role-only database function. It
+locks and validates the exact expected membership set, activates all eligible
+`INVITED` rows or none, and writes both success audits in the same transaction.
 
 ## Auditing and safe metadata
 

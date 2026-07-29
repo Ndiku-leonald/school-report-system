@@ -1,7 +1,15 @@
 import { NextResponse, type NextRequest } from "next/server";
 
-import { sanitizeNextPath } from "@/lib/auth/safe-redirect";
 import {
+  ACTIVE_SCHOOL_COOKIE,
+  ACTIVE_SCHOOL_COOKIE_OPTIONS,
+} from "@/lib/auth/constants";
+import {
+  invitationStateMatchesUserEmail,
+  verifyStaffInvitationState,
+} from "@/lib/auth/invitation-state";
+import {
+  clearRecoveryProofCookie,
   recoveryStateMatchesUserEmail,
   setRecoveryProofCookie,
   verifyPasswordRecoveryState,
@@ -12,17 +20,32 @@ import { createServerSupabaseClient } from "@/lib/supabase/server";
 export async function GET(request: NextRequest) {
   const applicationUrl = getPublicEnvironment().NEXT_PUBLIC_APP_URL;
   const code = request.nextUrl.searchParams.get("code");
-  const next = sanitizeNextPath(request.nextUrl.searchParams.get("next"));
-  const recoveryStateValue = request.nextUrl.searchParams.get("recovery_state");
-  const recoveryState = recoveryStateValue
-    ? verifyPasswordRecoveryState(recoveryStateValue)
-    : null;
+  const recoveryStateValues =
+    request.nextUrl.searchParams.getAll("recovery_state");
+  const invitationStateValues =
+    request.nextUrl.searchParams.getAll("invitation_state");
+  const hasExactlyOneState =
+    (recoveryStateValues.length === 1 && invitationStateValues.length === 0) ||
+    (recoveryStateValues.length === 0 && invitationStateValues.length === 1);
 
   if (
     !code ||
-    (recoveryStateValue && !recoveryState) ||
-    (!recoveryState && next !== "/complete-invitation")
+    !hasExactlyOneState ||
+    request.nextUrl.searchParams.has("next")
   ) {
+    return NextResponse.redirect(new URL("/auth-error", applicationUrl));
+  }
+
+  const recoveryStateValue = recoveryStateValues[0];
+  const invitationStateValue = invitationStateValues[0];
+  const recoveryState = recoveryStateValue
+    ? verifyPasswordRecoveryState(recoveryStateValue)
+    : null;
+  const invitationState = invitationStateValue
+    ? verifyStaffInvitationState(invitationStateValue)
+    : null;
+
+  if (!recoveryState && !invitationState) {
     return NextResponse.redirect(new URL("/auth-error", applicationUrl));
   }
 
@@ -33,23 +56,54 @@ export async function GET(request: NextRequest) {
     return NextResponse.redirect(new URL("/auth-error", applicationUrl));
   }
 
-  if (!recoveryState) {
-    return NextResponse.redirect(
-      new URL("/complete-invitation", applicationUrl),
-    );
-  }
-
   const {
     data: { user },
     error: userError,
   } = await supabase.auth.getUser();
-  if (
-    userError ||
-    !user?.email ||
-    !recoveryStateMatchesUserEmail(user.email, recoveryState.emailHash)
-  ) {
+  const userEmail = user?.email;
+  let isValidFlow =
+    !userError &&
+    Boolean(userEmail) &&
+    Boolean(
+      (recoveryState &&
+        recoveryStateMatchesUserEmail(
+          userEmail ?? "",
+          recoveryState.emailHash,
+        )) ||
+      (invitationState &&
+        invitationStateMatchesUserEmail(
+          userEmail ?? "",
+          invitationState.emailHash,
+        )),
+    );
+
+  if (isValidFlow && invitationState && user) {
+    const { data: invitedMemberships, error: membershipError } = await supabase
+      .from("school_staff_memberships")
+      .select("id")
+      .eq("profile_id", user.id)
+      .eq("status", "INVITED")
+      .limit(1);
+    isValidFlow = !membershipError && Boolean(invitedMemberships?.length);
+  }
+
+  if (!isValidFlow || !user) {
     await supabase.auth.signOut();
-    return NextResponse.redirect(new URL("/auth-error", applicationUrl));
+    const response = NextResponse.redirect(
+      new URL("/auth-error", applicationUrl),
+    );
+    clearRecoveryProofCookie(response.cookies);
+    response.cookies.set(ACTIVE_SCHOOL_COOKIE, "", {
+      ...ACTIVE_SCHOOL_COOKIE_OPTIONS,
+      maxAge: 0,
+    });
+    return response;
+  }
+
+  if (invitationState) {
+    return NextResponse.redirect(
+      new URL("/complete-invitation", applicationUrl),
+    );
   }
 
   const response = NextResponse.redirect(

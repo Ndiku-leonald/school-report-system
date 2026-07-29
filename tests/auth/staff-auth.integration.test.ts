@@ -250,6 +250,30 @@ describe.sequential("local staff authentication integration", () => {
     },
   );
 
+  it.each([
+    [invitedEmail, 1],
+    [activeEmail, 0],
+    [suspendedEmail, 0],
+    [disabledEmail, 0],
+  ] as const)(
+    "returns %s's own invited memberships for the invitation gate",
+    async (email, expectedCount) => {
+      const client = createClient<Database>(url, anonKey);
+      const { error } = await client.auth.signInWithPassword({
+        email,
+        password,
+      });
+      expect(error).toBeNull();
+
+      const memberships = await client
+        .from("school_staff_memberships")
+        .select("id")
+        .eq("status", "INVITED");
+      expect(memberships.error).toBeNull();
+      expect(memberships.data).toHaveLength(expectedCount);
+    },
+  );
+
   it("does not invent staff access for a valid Auth user without membership", async () => {
     const client = createClient<Database>(url, anonKey);
     const { error } = await client.auth.signInWithPassword({

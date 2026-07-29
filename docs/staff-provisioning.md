@@ -34,18 +34,26 @@ Multiple roles are comma-separated. Allowed values are `SUPER_ADMIN`,
 `SUBJECT_TEACHER`.
 
 `--middle-name` and `--redirect-url` are optional. The tool constructs the final
-destination from `NEXT_PUBLIC_APP_URL` and the fixed
-`/auth/callback?next=/complete-invitation` path. A supplied redirect must
-exactly match that same-origin callback, use HTTPS except on approved localhost
-origins, and contain no credentials, fragment, or extra parameters. External
-origins, protocol-relative URLs, misleading subdomains, and unrelated
-same-origin paths are rejected. The exact callback must be allow-listed in
-Supabase Auth.
+destination from `NEXT_PUBLIC_APP_URL` and the fixed `/auth/callback` path. It
+creates a short-lived HMAC invitation state bound to the normalized invited
+email and appends only `?invitation_state=<signed-state>`. A supplied redirect
+represents the callback base only: it must exactly match that same-origin path,
+use HTTPS except on approved localhost origins, and contain no credentials,
+query, or fragment. External origins, protocol-relative URLs, misleading
+subdomains, unrelated same-origin paths, and operator-supplied state values are
+rejected. The callback base must be allow-listed in Supabase Auth.
 
 The command validates input, confirms the active school, creates the Auth
 invitation, linked profile and `INVITED` membership, adds role labels, and
 appends `STAFF_INVITED`. If database provisioning fails, it removes the newly
-created Auth user. It never prints the service key or invitation token.
+created Auth user. It never prints the service key, invitation token, signed
+state, or final invitation URL.
+
+The callback verifies the signed state before exchanging a PKCE code, binds it
+to the authoritative Auth email, and requires the user's own RLS-filtered
+memberships to contain at least one current `INVITED` row. A redirect
+destination alone never establishes an invitation flow. Token-hash invitation
+links remain separately verified by `/auth/confirm`.
 
 ## Remote-project guard
 
@@ -56,6 +64,10 @@ recipient, and role scope. The flag is confirmation, not authorization.
 
 This repository's Stage 4 delivery and CI do not run that flag and do not apply
 migrations or invitations to a remote project.
+
+Public signup remains disabled. Hosted-project signup, minimum-password,
+redirect allow-list, and email-delivery settings require separate operational
+configuration; local capture does not prove production email delivery.
 
 Invitation acceptance uses migration 09's service-role-only database function.
 It locks and validates the complete expected `INVITED` membership set.

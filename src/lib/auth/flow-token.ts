@@ -4,27 +4,32 @@ import { createHmac, randomBytes, timingSafeEqual } from "node:crypto";
 
 export const RECOVERY_STATE_PURPOSE = "recovery-state";
 export const RECOVERY_PROOF_PURPOSE = "recovery-proof";
+export const INVITATION_STATE_PURPOSE = "invitation-state";
 
-type RecoveryStatePayload = {
+type BaseAuthenticationFlowPayload = {
   version: 1;
-  purpose: typeof RECOVERY_STATE_PURPOSE;
   issuedAt: number;
   expiresAt: number;
   nonce: string;
+};
+
+type InvitationStatePayload = BaseAuthenticationFlowPayload & {
+  purpose: typeof INVITATION_STATE_PURPOSE;
   emailHash: string;
 };
 
-type RecoveryProofPayload = {
-  version: 1;
+type RecoveryStatePayload = BaseAuthenticationFlowPayload & {
+  purpose: typeof RECOVERY_STATE_PURPOSE;
+  emailHash: string;
+};
+
+type RecoveryProofPayload = BaseAuthenticationFlowPayload & {
   purpose: typeof RECOVERY_PROOF_PURPOSE;
-  issuedAt: number;
-  expiresAt: number;
-  nonce: string;
   userId: string;
 };
 
 export type AuthenticationFlowPayload =
-  RecoveryProofPayload | RecoveryStatePayload;
+  InvitationStatePayload | RecoveryProofPayload | RecoveryStatePayload;
 
 type TokenOptions = {
   now?: number;
@@ -47,7 +52,7 @@ function encodePayload(
   payload:
     | Omit<RecoveryProofPayload, "expiresAt" | "issuedAt" | "nonce" | "version">
     | Omit<
-        RecoveryStatePayload,
+        InvitationStatePayload | RecoveryStatePayload,
         "expiresAt" | "issuedAt" | "nonce" | "version"
       >,
   secret: string,
@@ -71,26 +76,49 @@ function encodePayload(
   return `${encodedPayload}.${sign(encodedPayload, secret)}`;
 }
 
-export function normalizeRecoveryEmail(email: string) {
+export function normalizeAuthenticationFlowEmail(email: string) {
   return email.trim().toLowerCase();
 }
 
-export function hashRecoveryEmail(email: string, secret: string) {
+export function hashAuthenticationFlowEmail(email: string, secret: string) {
   assertStrongSecret(secret);
-  return createHmac("sha256", secret)
-    .update("recovery-email\0")
-    .update(normalizeRecoveryEmail(email))
-    .digest("base64url");
+  return (
+    createHmac("sha256", secret)
+      // Retain the original domain label so in-flight 15-minute recovery states
+      // remain valid across this invitation-state deployment.
+      .update("recovery-email\0")
+      .update(normalizeAuthenticationFlowEmail(email))
+      .digest("base64url")
+  );
 }
 
-export function recoveryEmailHashMatches(
+export function authenticationFlowEmailHashMatches(
   email: string,
   expectedHash: string,
   secret: string,
 ) {
-  const actual = Buffer.from(hashRecoveryEmail(email, secret), "base64url");
+  const actual = Buffer.from(
+    hashAuthenticationFlowEmail(email, secret),
+    "base64url",
+  );
   const expected = Buffer.from(expectedHash, "base64url");
   return actual.length === expected.length && timingSafeEqual(actual, expected);
+}
+
+function createEmailBoundState(
+  purpose: typeof INVITATION_STATE_PURPOSE | typeof RECOVERY_STATE_PURPOSE,
+  email: string,
+  secret: string,
+  options?: TokenOptions,
+) {
+  return encodePayload(
+    {
+      purpose,
+      emailHash: hashAuthenticationFlowEmail(email, secret),
+    },
+    secret,
+    options,
+  );
 }
 
 export function createRecoveryState(
@@ -98,11 +126,17 @@ export function createRecoveryState(
   secret: string,
   options?: TokenOptions,
 ) {
-  return encodePayload(
-    {
-      purpose: RECOVERY_STATE_PURPOSE,
-      emailHash: hashRecoveryEmail(email, secret),
-    },
+  return createEmailBoundState(RECOVERY_STATE_PURPOSE, email, secret, options);
+}
+
+export function createInvitationState(
+  email: string,
+  secret: string,
+  options?: TokenOptions,
+) {
+  return createEmailBoundState(
+    INVITATION_STATE_PURPOSE,
+    email,
     secret,
     options,
   );
@@ -146,8 +180,8 @@ export function verifyAuthenticationFlowToken<
   if (!encodedPayload || !providedSignature || extra) return null;
 
   const expectedSignature = sign(encodedPayload, secret);
-  const provided = Buffer.from(providedSignature, "base64url");
-  const expected = Buffer.from(expectedSignature, "base64url");
+  const provided = Buffer.from(providedSignature, "utf8");
+  const expected = Buffer.from(expectedSignature, "utf8");
   if (
     provided.length !== expected.length ||
     !timingSafeEqual(provided, expected)
@@ -168,7 +202,8 @@ export function verifyAuthenticationFlowToken<
       return null;
     }
     if (
-      payload.purpose === RECOVERY_STATE_PURPOSE &&
+      (payload.purpose === INVITATION_STATE_PURPOSE ||
+        payload.purpose === RECOVERY_STATE_PURPOSE) &&
       (typeof payload.emailHash !== "string" || payload.emailHash.length < 32)
     ) {
       return null;

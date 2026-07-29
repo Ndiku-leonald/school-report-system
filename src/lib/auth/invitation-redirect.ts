@@ -1,5 +1,4 @@
 const INVITATION_CALLBACK_PATH = "/auth/callback";
-const INVITATION_COMPLETION_PATH = "/complete-invitation";
 
 function isApprovedLocalhost(url: URL) {
   return (
@@ -25,32 +24,39 @@ function assertSafeApplicationOrigin(applicationUrl: URL) {
 
 export function getInvitationRedirectUrl(
   trustedApplicationUrl: string,
+  invitationState: string,
   suppliedRedirectUrl?: string,
 ) {
   const applicationUrl = new URL(trustedApplicationUrl);
   assertSafeApplicationOrigin(applicationUrl);
-  const canonical = `${applicationUrl.origin}${INVITATION_CALLBACK_PATH}?next=${INVITATION_COMPLETION_PATH}`;
-
-  if (!suppliedRedirectUrl) return canonical;
-  if (suppliedRedirectUrl.startsWith("//")) {
-    throw new Error("Protocol-relative invitation redirects are not allowed.");
+  if (!invitationState) {
+    throw new Error("A signed invitation state is required.");
   }
 
-  const supplied = new URL(suppliedRedirectUrl);
-  assertSafeApplicationOrigin(supplied);
-  if (
-    supplied.origin !== applicationUrl.origin ||
-    supplied.username ||
-    supplied.password ||
-    supplied.hash ||
-    supplied.pathname !== INVITATION_CALLBACK_PATH ||
-    supplied.searchParams.size !== 1 ||
-    supplied.searchParams.get("next") !== INVITATION_COMPLETION_PATH
-  ) {
-    throw new Error(
-      "Invitation redirects must use the fixed same-origin completion callback.",
-    );
+  if (suppliedRedirectUrl) {
+    if (suppliedRedirectUrl.startsWith("//")) {
+      throw new Error(
+        "Protocol-relative invitation redirects are not allowed.",
+      );
+    }
+
+    const supplied = new URL(suppliedRedirectUrl);
+    assertSafeApplicationOrigin(supplied);
+    if (
+      supplied.origin !== applicationUrl.origin ||
+      supplied.username ||
+      supplied.password ||
+      supplied.hash ||
+      supplied.pathname !== INVITATION_CALLBACK_PATH ||
+      supplied.search
+    ) {
+      throw new Error(
+        "Invitation redirects must use the fixed same-origin callback without query parameters.",
+      );
+    }
   }
 
-  return canonical;
+  const callback = new URL(INVITATION_CALLBACK_PATH, applicationUrl.origin);
+  callback.searchParams.set("invitation_state", invitationState);
+  return callback.toString();
 }

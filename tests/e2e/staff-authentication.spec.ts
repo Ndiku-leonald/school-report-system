@@ -1,6 +1,8 @@
 import { createClient } from "@supabase/supabase-js";
 import { expect, test } from "@playwright/test";
+import { execFileSync } from "node:child_process";
 import { randomUUID } from "node:crypto";
+import { join } from "node:path";
 
 import type { Database } from "../../src/types/database.generated";
 
@@ -16,6 +18,7 @@ const suspendedEmail = `synthetic.e2e.suspended.${nonce}@example.invalid`;
 const disabledEmail = `synthetic.e2e.disabled.${nonce}@example.invalid`;
 const noMembershipEmail = `synthetic.e2e.no-membership.${nonce}@example.invalid`;
 const invitedEmail = `synthetic.e2e.invited.${nonce}@example.invalid`;
+const pkceInvitedEmail = `synthetic.e2e.pkce-invited.${nonce}@example.invalid`;
 const multipleEmail = `synthetic.e2e.multiple.${nonce}@example.invalid`;
 const tokenRecoveryEmail = `synthetic.e2e.token-recovery.${nonce}@example.invalid`;
 const pkceRecoveryEmail = `synthetic.e2e.pkce-recovery.${nonce}@example.invalid`;
@@ -81,10 +84,6 @@ async function createInvitation() {
   const { data, error } = await admin!.auth.admin.generateLink({
     type: "invite",
     email: invitedEmail,
-    options: {
-      redirectTo:
-        "http://127.0.0.1:3100/auth/callback?next=/complete-invitation",
-    },
   });
   if (error) throw error;
 
@@ -146,6 +145,7 @@ test.describe.serial("staff authentication", () => {
   test.skip(!enabled, "requires the local Supabase auth test runner");
 
   let inviteToken = "";
+  let invitationCliOutput = "";
 
   test.beforeAll(async () => {
     await createStaff(activeEmail, "ACTIVE");
@@ -156,6 +156,43 @@ test.describe.serial("staff authentication", () => {
     await createStaffWithoutMembership();
     inviteToken = await createInvitation();
     await createMultiSchoolStaff();
+    const tsxCli = join(
+      process.cwd(),
+      "node_modules",
+      "tsx",
+      "dist",
+      "cli.mjs",
+    );
+    invitationCliOutput = execFileSync(
+      process.execPath,
+      [
+        tsxCli,
+        "scripts/invite-staff.ts",
+        "--email",
+        pkceInvitedEmail,
+        "--first-name",
+        "Synthetic",
+        "--last-name",
+        "PKCE Invite",
+        "--employee-number",
+        `E2E-PKCE-INVITED-${nonce}`,
+        "--school-id",
+        schoolId,
+        "--roles",
+        "SUBJECT_TEACHER",
+        "--redirect-url",
+        "http://127.0.0.1:3100/auth/callback",
+      ],
+      {
+        encoding: "utf8",
+        env: {
+          ...process.env,
+          NODE_OPTIONS: [process.env.NODE_OPTIONS, "--conditions=react-server"]
+            .filter(Boolean)
+            .join(" "),
+        },
+      },
+    );
   });
 
   test("protects staff routes and handles failed login generically", async ({
@@ -236,6 +273,77 @@ test.describe.serial("staff authentication", () => {
     await page.getByRole("button", { name: "Activate staff account" }).click();
 
     await expect(page).toHaveURL(/\/dashboard$/);
+  });
+
+  test("emits a trusted signed invitation callback without disclosing state", async ({
+    request,
+  }) => {
+    expect(invitationCliOutput).toContain(
+      "Staff invitation provisioned successfully.",
+    );
+    expect(invitationCliOutput).not.toContain("invitation_state");
+    expect(invitationCliOutput).not.toContain("/auth/callback");
+
+    await expect
+      .poll(async () => {
+        const response = await request.get(
+          "http://127.0.0.1:54324/api/v1/messages",
+        );
+        const body = (await response.json()) as {
+          messages: {
+            ID: string;
+            To: { Address: string }[];
+          }[];
+        };
+        return body.messages.find(({ To }) =>
+          To.some(({ Address }) => Address === pkceInvitedEmail),
+        )?.ID;
+      })
+      .toBeTruthy();
+
+    const messagesResponse = await request.get(
+      "http://127.0.0.1:54324/api/v1/messages",
+    );
+    const messages = (await messagesResponse.json()) as {
+      messages: {
+        ID: string;
+        To: { Address: string }[];
+      }[];
+    };
+    const invitationMessage = messages.messages.find(({ To }) =>
+      To.some(({ Address }) => Address === pkceInvitedEmail),
+    );
+    expect(invitationMessage?.ID).toBeTruthy();
+
+    const messageResponse = await request.get(
+      `http://127.0.0.1:54324/api/v1/message/${invitationMessage!.ID}`,
+    );
+    const message = (await messageResponse.json()) as { Text: string };
+    const invitationLink = message.Text.match(
+      /\(\s*(https?:\/\/\S+)\s*\)/,
+    )?.[1];
+    expect(invitationLink).toBeTruthy();
+
+    const verificationUrl = new URL(invitationLink!);
+    const redirectTo = verificationUrl.searchParams.get("redirect_to");
+    expect(redirectTo).toBeTruthy();
+    const callbackUrl = new URL(redirectTo!);
+    expect(callbackUrl.origin).toBe("http://127.0.0.1:3100");
+    expect(callbackUrl.pathname).toBe("/auth/callback");
+    const invitationState =
+      callbackUrl.searchParams.get("invitation_state") ?? "";
+    expect(invitationState).toBeTruthy();
+    expect(callbackUrl.searchParams.has("next")).toBe(false);
+    expect(invitationCliOutput).not.toContain(invitationState);
+  });
+
+  test("rejects an unbound invitation destination before code exchange", async ({
+    page,
+  }) => {
+    await page.goto(
+      "/auth/callback?code=synthetic-unbound-code&next=/complete-invitation",
+    );
+    await expect(page).toHaveURL(/\/auth-error$/);
   });
 
   test("requires and persists a revalidated multi-school selection", async ({
