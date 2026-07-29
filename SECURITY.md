@@ -19,6 +19,7 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
 - The Supabase service-role key is server-only and must never appear in browser code, client bundles, public environment variables, logs, screenshots, or user-visible errors.
 - Student reports must use private storage. Access must be granted only after server-side authorization or secure, short-lived delivery controls.
 - Every sensitive read and mutation must be authorized server-side. Hiding a menu or disabling a button is not authorization.
+- Membership-backed workflow actors must belong to the target record's school even when a privileged server credential performs the write. Database scope validation is required in addition to Stage 5 role authorization.
 - PostgreSQL Row Level Security must be enabled and explicitly tested for protected application tables and storage objects.
 - Subject teachers must be restricted to their current, explicit class and subject assignments. Class-level access must also be scoped to an authorized academic period.
 - Marks approval, locking, unlocking, report publication, report withdrawal, role changes, and other sensitive actions must produce tamper-resistant audit events with the actor, action, target, and time.
@@ -41,7 +42,7 @@ Severity should reflect realistic reachability and impact. Unauthorized access t
 
 ## Known limitations
 
-Application authorization controls do not yet exist. Stage 3 deliberately defines no permissive database policies: `anon` and `authenticated` cannot directly access academic data. Before any real data is introduced, the implementation must complete threat modeling, scoped Stage 5 RLS policies, secure report-delivery testing, secrets scanning, dependency review, and parent-access abuse-case testing. No real student information may be used to compensate for missing test fixtures.
+Application authorization controls do not yet exist. Stage 3 deliberately defines no permissive database policies: `anon` and `authenticated` cannot directly access academic data. Same-school actor triggers prevent cross-school workflow attribution but do not decide which roles are authorized to act. Before any real data is introduced, the implementation must complete threat modeling, scoped Stage 5 RLS policies, secure report-delivery testing, secrets scanning, dependency review, and parent-access abuse-case testing. No real student information may be used to compensate for missing test fixtures.
 
 Database-specific controls and limitations are documented in [docs/database-security.md](docs/database-security.md).
 

@@ -44,12 +44,15 @@ Design the normalized data model, constraints, indexes, generated types, migrati
 
 **Completion evidence (2026-07-29)**
 
-- Six ordered Supabase migrations create 36 normalized public tables, stable
+- Seven ordered Supabase migrations create 36 normalized public tables, stable
   workflow enums, internal trigger functions, cross-scope validation, explicit
   indexes, and restrictive foreign-key behavior.
+- Membership-backed workflow actors are independently constrained to the
+  record's school, including privileged writes; Stage 5 remains responsible for
+  deciding which roles may perform each action.
 - All public application tables force RLS with no permissive policies, and
   browser-role table, sequence, and function privileges are revoked.
-- A deterministic configuration-only seed and 66 pgTAP assertions pass through
+- A deterministic configuration-only seed and 93 pgTAP assertions pass through
   a clean local database reset; Supabase schema lint reports no errors.
 - TypeScript database definitions are generated from the local schema and used
   by both Supabase client factories.

@@ -20,6 +20,24 @@ screenshots, or error responses. A privileged server operation must still
 authorize its caller and expose only the required result; possession of the
 service credential is not business authorization.
 
+## Actor scope and authorization
+
+Database triggers reject membership-backed workflow actors from a different
+school, including role grantors; mark-sheet and mark actors; attendance and
+comment actors; report actors; and audit actors. This invariant also applies to
+service-role and database-owner writes, so privileged execution cannot attach
+an unrelated school's membership to an academic event.
+
+Same-school scope is not role authorization. Stage 5 must still determine which
+active roles and assignments may perform each operation and enforce workflow
+transitions. Mark-sheet submission currently requires the teaching assignment
+membership; any later administrative override must be explicit and audited.
+
+Audit events may use a same-school membership, a profile with evidence of
+membership in that school, or null profile and membership values for a
+documented system-generated event. An unrelated profile cannot be attached to
+the event merely because the write uses a privileged credential.
+
 ## Tamper resistance and sensitive values
 
 Report snapshots and audit logs reject updates and deletes through database

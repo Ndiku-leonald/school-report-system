@@ -120,6 +120,68 @@ values (
   '2026-02-02'
 );
 
+insert into public.schools (
+  id,
+  name,
+  slug,
+  school_code
+)
+values (
+  '10000000-0000-4000-8000-000000000002',
+  'Synthetic Second School',
+  'synthetic-second-school',
+  'SYNTH-002'
+);
+
+insert into auth.users (
+  id,
+  aud,
+  role,
+  email,
+  encrypted_password,
+  email_confirmed_at,
+  raw_app_meta_data,
+  raw_user_meta_data,
+  created_at,
+  updated_at
+)
+values (
+  '70000000-0000-4000-8000-000000000002',
+  'authenticated',
+  'authenticated',
+  'synthetic.other-school@example.invalid',
+  extensions.crypt('local-test-only', extensions.gen_salt('bf')),
+  now(),
+  '{"provider":"email","providers":["email"]}'::jsonb,
+  '{}'::jsonb,
+  now(),
+  now()
+);
+
+insert into public.profiles (id, first_name, last_name)
+values (
+  '70000000-0000-4000-8000-000000000002',
+  'Synthetic',
+  'Other School Teacher'
+);
+
+insert into public.school_staff_memberships (
+  id,
+  school_id,
+  profile_id,
+  employee_number,
+  status,
+  joined_at
+)
+values (
+  '71000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000002',
+  '70000000-0000-4000-8000-000000000002',
+  'TEST-OTHER-001',
+  'ACTIVE',
+  '2026-02-02'
+);
+
 insert into public.staff_role_assignments (
   membership_id,
   role
@@ -138,6 +200,38 @@ select extensions.throws_ok(
     )
   $$,
   '23505'
+);
+
+select extensions.throws_ok(
+  $$
+    insert into public.staff_role_assignments (
+      membership_id,
+      role,
+      granted_by
+    )
+    values (
+      '71000000-0000-4000-8000-000000000001',
+      'CLASS_TEACHER',
+      '71000000-0000-4000-8000-000000000002'
+    )
+  $$,
+  '23514'
+);
+
+select extensions.lives_ok(
+  $$
+    insert into public.staff_role_assignments (
+      membership_id,
+      role,
+      granted_by
+    )
+    values (
+      '71000000-0000-4000-8000-000000000001',
+      'CLASS_TEACHER',
+      '71000000-0000-4000-8000-000000000001'
+    )
+  $$,
+  'same-school role grantors remain valid'
 );
 
 insert into public.class_sections (
@@ -387,6 +481,65 @@ values (
 
 select extensions.throws_ok(
   $$
+    update public.mark_sheets
+    set submitted_by = '71000000-0000-4000-8000-000000000002'
+    where id = '77000000-0000-4000-8000-000000000001'
+  $$,
+  '23514'
+);
+
+select extensions.throws_ok(
+  $$
+    update public.mark_sheets
+    set reviewed_by = '71000000-0000-4000-8000-000000000002'
+    where id = '77000000-0000-4000-8000-000000000001'
+  $$,
+  '23514'
+);
+
+select extensions.throws_ok(
+  $$
+    update public.mark_sheets
+    set approved_by = '71000000-0000-4000-8000-000000000002'
+    where id = '77000000-0000-4000-8000-000000000001'
+  $$,
+  '23514'
+);
+
+select extensions.throws_ok(
+  $$
+    update public.mark_sheets
+    set locked_by = '71000000-0000-4000-8000-000000000002'
+    where id = '77000000-0000-4000-8000-000000000001'
+  $$,
+  '23514'
+);
+
+select extensions.throws_ok(
+  $$
+    update public.mark_sheets
+    set returned_by = '71000000-0000-4000-8000-000000000002'
+    where id = '77000000-0000-4000-8000-000000000001'
+  $$,
+  '23514'
+);
+
+select extensions.lives_ok(
+  $$
+    update public.mark_sheets
+    set
+      submitted_by = '71000000-0000-4000-8000-000000000001',
+      reviewed_by = '71000000-0000-4000-8000-000000000001',
+      approved_by = '71000000-0000-4000-8000-000000000001',
+      locked_by = '71000000-0000-4000-8000-000000000001',
+      returned_by = '71000000-0000-4000-8000-000000000001'
+    where id = '77000000-0000-4000-8000-000000000001'
+  $$,
+  'same-school mark-sheet actors remain valid'
+);
+
+select extensions.throws_ok(
+  $$
     insert into public.marks (
       mark_sheet_id,
       assessment_component_id,
@@ -437,6 +590,160 @@ select extensions.throws_ok(
     )
   $$,
   '23514'
+);
+
+select extensions.throws_ok(
+  $$
+    insert into public.marks (
+      mark_sheet_id,
+      assessment_component_id,
+      enrollment_id,
+      score,
+      created_by
+    )
+    values (
+      '77000000-0000-4000-8000-000000000001',
+      '51000000-0000-4000-8000-000000000002',
+      '74000000-0000-4000-8000-000000000001',
+      50,
+      '71000000-0000-4000-8000-000000000002'
+    )
+  $$,
+  '23514'
+);
+
+insert into public.marks (
+  id,
+  mark_sheet_id,
+  assessment_component_id,
+  enrollment_id,
+  score,
+  created_by
+)
+values (
+  '83000000-0000-4000-8000-000000000001',
+  '77000000-0000-4000-8000-000000000001',
+  '51000000-0000-4000-8000-000000000001',
+  '74000000-0000-4000-8000-000000000001',
+  50,
+  '71000000-0000-4000-8000-000000000001'
+);
+
+select extensions.throws_ok(
+  $$
+    update public.marks
+    set updated_by = '71000000-0000-4000-8000-000000000002'
+    where id = '83000000-0000-4000-8000-000000000001'
+  $$,
+  '23514'
+);
+
+select extensions.lives_ok(
+  $$
+    update public.marks
+    set
+      score = 51,
+      updated_by = '71000000-0000-4000-8000-000000000001'
+    where id = '83000000-0000-4000-8000-000000000001'
+  $$,
+  'same-school mark actors remain valid'
+);
+
+select extensions.throws_ok(
+  $$
+    insert into public.term_attendance (
+      term_id,
+      enrollment_id,
+      days_open,
+      days_present,
+      days_absent,
+      recorded_by
+    )
+    values (
+      '21000000-0000-4000-8000-000000000001',
+      '74000000-0000-4000-8000-000000000001',
+      60,
+      55,
+      5,
+      '71000000-0000-4000-8000-000000000002'
+    )
+  $$,
+  '23514'
+);
+
+select extensions.lives_ok(
+  $$
+    insert into public.term_attendance (
+      id,
+      term_id,
+      enrollment_id,
+      days_open,
+      days_present,
+      days_absent,
+      recorded_by
+    )
+    values (
+      '84000000-0000-4000-8000-000000000001',
+      '21000000-0000-4000-8000-000000000001',
+      '74000000-0000-4000-8000-000000000001',
+      60,
+      55,
+      5,
+      '71000000-0000-4000-8000-000000000001'
+    )
+  $$,
+  'same-school attendance recorders remain valid'
+);
+
+select extensions.throws_ok(
+  $$
+    insert into public.student_term_comments (
+      term_id,
+      enrollment_id,
+      class_teacher_comment,
+      created_by
+    )
+    values (
+      '21000000-0000-4000-8000-000000000001',
+      '74000000-0000-4000-8000-000000000001',
+      'Synthetic comment',
+      '71000000-0000-4000-8000-000000000002'
+    )
+  $$,
+  '23514'
+);
+
+insert into public.student_term_comments (
+  id,
+  term_id,
+  enrollment_id,
+  class_teacher_comment,
+  created_by
+)
+values (
+  '85000000-0000-4000-8000-000000000001',
+  '21000000-0000-4000-8000-000000000001',
+  '74000000-0000-4000-8000-000000000001',
+  'Synthetic comment',
+  '71000000-0000-4000-8000-000000000001'
+);
+
+select extensions.throws_ok(
+  $$
+    update public.student_term_comments
+    set updated_by = '71000000-0000-4000-8000-000000000002'
+    where id = '85000000-0000-4000-8000-000000000001'
+  $$,
+  '23514'
+);
+
+select extensions.lives_ok(
+  $$
+    update public.student_term_comments
+    set updated_by = '71000000-0000-4000-8000-000000000001'
+    where id = '85000000-0000-4000-8000-000000000001'
+  $$,
+  'same-school student-comment actors remain valid'
 );
 
 select extensions.throws_ok(
@@ -544,6 +851,55 @@ values (
 
 select extensions.throws_ok(
   $$
+    update public.reports
+    set created_by = '71000000-0000-4000-8000-000000000002'
+    where id = '80000000-0000-4000-8000-000000000001'
+  $$,
+  '23514'
+);
+
+select extensions.throws_ok(
+  $$
+    update public.reports
+    set reviewed_by = '71000000-0000-4000-8000-000000000002'
+    where id = '80000000-0000-4000-8000-000000000001'
+  $$,
+  '23514'
+);
+
+select extensions.throws_ok(
+  $$
+    update public.reports
+    set published_by = '71000000-0000-4000-8000-000000000002'
+    where id = '80000000-0000-4000-8000-000000000001'
+  $$,
+  '23514'
+);
+
+select extensions.throws_ok(
+  $$
+    update public.reports
+    set withdrawn_by = '71000000-0000-4000-8000-000000000002'
+    where id = '80000000-0000-4000-8000-000000000001'
+  $$,
+  '23514'
+);
+
+select extensions.lives_ok(
+  $$
+    update public.reports
+    set
+      created_by = '71000000-0000-4000-8000-000000000001',
+      reviewed_by = '71000000-0000-4000-8000-000000000001',
+      published_by = '71000000-0000-4000-8000-000000000001',
+      withdrawn_by = '71000000-0000-4000-8000-000000000001'
+    where id = '80000000-0000-4000-8000-000000000001'
+  $$,
+  'same-school report actors remain valid'
+);
+
+select extensions.throws_ok(
+  $$
     insert into public.reports (
       batch_id,
       term_id,
@@ -632,19 +988,122 @@ select extensions.throws_ok(
   '23514'
 );
 
-insert into public.audit_logs (
-  id,
-  school_id,
-  action,
-  entity_type,
-  entity_id
-)
-values (
-  '82000000-0000-4000-8000-000000000001',
-  '10000000-0000-4000-8000-000000000001',
-  'SYNTHETIC_TEST',
-  'test_fixture',
-  '73000000-0000-4000-8000-000000000001'
+select extensions.throws_ok(
+  $$
+    insert into public.audit_logs (
+      school_id,
+      actor_membership_id,
+      action,
+      entity_type
+    )
+    values (
+      '10000000-0000-4000-8000-000000000001',
+      '71000000-0000-4000-8000-000000000002',
+      'CROSS_SCHOOL_MEMBERSHIP',
+      'test_fixture'
+    )
+  $$,
+  '23514'
+);
+
+select extensions.throws_ok(
+  $$
+    insert into public.audit_logs (
+      school_id,
+      actor_profile_id,
+      action,
+      entity_type
+    )
+    values (
+      '10000000-0000-4000-8000-000000000001',
+      '70000000-0000-4000-8000-000000000002',
+      'CROSS_SCHOOL_PROFILE',
+      'test_fixture'
+    )
+  $$,
+  '23514'
+);
+
+select extensions.throws_ok(
+  $$
+    insert into public.audit_logs (
+      school_id,
+      actor_profile_id,
+      actor_membership_id,
+      action,
+      entity_type
+    )
+    values (
+      '10000000-0000-4000-8000-000000000001',
+      '70000000-0000-4000-8000-000000000002',
+      '71000000-0000-4000-8000-000000000001',
+      'MISMATCHED_PROFILE',
+      'test_fixture'
+    )
+  $$,
+  '23514'
+);
+
+select extensions.lives_ok(
+  $$
+    insert into public.audit_logs (
+      id,
+      school_id,
+      actor_profile_id,
+      action,
+      entity_type
+    )
+    values (
+      '82000000-0000-4000-8000-000000000002',
+      '10000000-0000-4000-8000-000000000001',
+      '70000000-0000-4000-8000-000000000001',
+      'SAME_SCHOOL_PROFILE',
+      'test_fixture'
+    )
+  $$,
+  'same-school profile-only audit actors remain valid'
+);
+
+select extensions.lives_ok(
+  $$
+    insert into public.audit_logs (
+      id,
+      school_id,
+      actor_profile_id,
+      actor_membership_id,
+      action,
+      entity_type
+    )
+    values (
+      '82000000-0000-4000-8000-000000000003',
+      '10000000-0000-4000-8000-000000000001',
+      '70000000-0000-4000-8000-000000000001',
+      '71000000-0000-4000-8000-000000000001',
+      'SAME_SCHOOL_MEMBERSHIP',
+      'test_fixture'
+    )
+  $$,
+  'same-school membership audit actors remain valid'
+);
+
+select extensions.lives_ok(
+  $$
+    insert into public.audit_logs (
+      id,
+      school_id,
+      action,
+      entity_type,
+      entity_id
+    )
+    values (
+      '82000000-0000-4000-8000-000000000001',
+      '10000000-0000-4000-8000-000000000001',
+      'SYNTHETIC_SYSTEM_TEST',
+      'test_fixture',
+      '73000000-0000-4000-8000-000000000001'
+    )
+  $$,
+  'null audit actors explicitly represent a system event'
 );
 
 select extensions.throws_ok(

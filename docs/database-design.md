@@ -93,6 +93,33 @@ Key database checks include:
 - override reasons and promotion-term confirmation requirements; and
 - one active parent credential per student, with hashes rather than plaintext.
 
+## Workflow actor integrity
+
+Membership-backed actor columns are checked against the school that owns the
+target record. This applies independently of RLS and also protects writes made
+through privileged server operations:
+
+- role grantors must share the receiving membership's school;
+- mark-sheet submitters must match the teaching assignment membership, while
+  reviewers, approvers, lockers, and returners must share the sheet's school;
+- mark creators/updaters, attendance recorders, and student-comment
+  creators/updaters must share the applicable academic school;
+- report creators, reviewers, publishers, and withdrawers must share the
+  report's school; and
+- the existing assessment/rule/template creators, report-batch requesters,
+  promotion confirmers, credential creators, and teaching/class assignments
+  retain their same-school checks.
+
+Audit memberships must share the event school and match the supplied profile.
+A profile-only audit actor must have a membership in the event school. Both
+audit actor columns being null explicitly identifies a system-generated event.
+
+These checks establish referential scope, not permission. Stage 5 will decide
+which roles may grant roles, review or publish reports, approve or lock mark
+sheets, and perform other workflow actions. A future administrative
+mark-submission override would require an explicit, documented schema and audit
+mechanism rather than substituting an unrelated submitter.
+
 ## Deletion decisions
 
 Foreign keys use `ON DELETE RESTRICT` throughout the Stage 3 academic model.
