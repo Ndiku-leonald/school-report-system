@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   EnvironmentConfigurationError,
+  parseAuthenticationFlowEnvironment,
+  parseAdministrativeEnvironment,
   parsePublicEnvironment,
   parseServerEnvironment,
 } from "@/lib/env/schema";
@@ -43,6 +45,37 @@ describe("environment validation", () => {
     expect(parseServerEnvironment(serverEnvironment)).toEqual(
       serverEnvironment,
     );
+  });
+
+  it("validates the narrow administrative environment without database URLs", () => {
+    const administrativeEnvironment = {
+      ...validPublicEnvironment,
+      SUPABASE_SERVICE_ROLE_KEY: "synthetic-service-role-key-for-tests",
+    };
+
+    expect(parseAdministrativeEnvironment(administrativeEnvironment)).toEqual(
+      administrativeEnvironment,
+    );
+  });
+
+  it("accepts a server-only authentication flow secret of at least 32 bytes", () => {
+    expect(
+      parseAuthenticationFlowEnvironment({
+        AUTH_FLOW_SIGNING_SECRET:
+          "synthetic-auth-flow-secret-with-more-than-thirty-two-bytes",
+      }),
+    ).toEqual({
+      AUTH_FLOW_SIGNING_SECRET:
+        "synthetic-auth-flow-secret-with-more-than-thirty-two-bytes",
+    });
+  });
+
+  it("rejects an undersized authentication flow secret", () => {
+    expect(() =>
+      parseAuthenticationFlowEnvironment({
+        AUTH_FLOW_SIGNING_SECRET: "too-short",
+      }),
+    ).toThrow(/AUTH_FLOW_SIGNING_SECRET/);
   });
 
   it("rejects invalid URLs with a useful configuration error", () => {

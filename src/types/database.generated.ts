@@ -2215,7 +2215,12 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
-      [_ in never]: never;
+      activate_staff_invitation: {
+        Args: { expected_membership_ids: string[]; target_profile_id: string };
+        Returns: {
+          membership_id: string;
+        }[];
+      };
     };
     Enums: {
       academic_year_status: "DRAFT" | "ACTIVE" | "CLOSED" | "ARCHIVED";

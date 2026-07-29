@@ -59,7 +59,7 @@ Design the normalized data model, constraints, indexes, generated types, migrati
 - CI reproduces the local database, tests it, regenerates types, and checks that
   the committed generated contract is current without remote credentials.
 
-## 4. Staff authentication
+## 4. Staff authentication — Implemented for review
 
 Implement Supabase Auth integration for staff sessions, sign-in, sign-out, recovery, and account-state handling.
 
@@ -69,6 +69,33 @@ Implement Supabase Auth integration for staff sessions, sign-in, sign-out, recov
 - Session refresh, logout, disabled-account, and recovery behavior are tested.
 - Secrets and privileged Supabase credentials remain server-only.
 - Authentication events provide appropriate audit and operational signals without logging credentials.
+
+**Implementation evidence (2026-07-29)**
+
+- Cookie-based Supabase SSR sessions refresh through the Next.js 16 proxy while
+  protected layouts and actions independently validate the user and membership;
+  redirects preserve rotated and cleared Supabase cookies.
+- Sign-in, POST sign-out, invitation completion, recovery, account-unavailable,
+  and multi-school selection flows are implemented with generic failures and
+  sanitized internal redirects.
+- Migration 08 grants narrow own-identity reads only; academic access and
+  browser writes remain denied and are covered by pgTAP.
+- Migration 09 provides service-role-only, invoker-rights atomic invitation
+  activation with row locking, exact-set verification, and transactional
+  success audits.
+- Public signup and anonymous sign-in are disabled, Supabase enforces a
+  12-character minimum password, and recovery requires a signed 15-minute
+  purpose- and user-bound proof beyond the normal session.
+- PKCE recovery and invitation callbacks require distinct 15-minute HMAC
+  states bound to the authoritative Auth email before code exchange; invitation
+  also requires an own RLS-filtered `INVITED` membership. Redirect destinations
+  are never treated as flow proof.
+- Only invitation and recovery token-hash confirmation types are supported.
+  Token-hash invite/recovery, the signed invitation callback gate, and
+  signed-state PKCE recovery are tested locally without remote Supabase changes
+  or a production email-delivery claim.
+- Unit, local Auth integration, Playwright, build, lint, type, formatting, and
+  database checks are part of the repository validation and CI workflows.
 
 ## 5. Roles and permissions
 

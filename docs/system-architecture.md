@@ -24,7 +24,9 @@ Vercel
     └── Production deployment
 ```
 
-The application and Stage 3 PostgreSQL boundaries are implemented. Authentication, domain services, calculations, report rendering, storage, and final authorization policies remain deferred.
+The application, Stage 3 PostgreSQL foundation, and Stage 4 staff
+authentication boundary are implemented. Domain services, calculations, report
+rendering, storage, and role/assignment authorization remain deferred.
 
 ## Application responsibilities
 
@@ -142,3 +144,24 @@ These decisions refine the planned architecture without changing its domain boun
 The detailed model and security boundary are in
 [database-design.md](database-design.md) and
 [database-security.md](database-security.md).
+
+## Stage 4 implementation decisions
+
+- Supabase Auth sessions use `@supabase/ssr` cookies. `src/proxy.ts` refreshes
+  tokens with validated claims and performs only optimistic redirects.
+- Protected layouts and server actions load the current Auth user and query the
+  caller's profile, memberships, role labels, and schools through RLS.
+- An HttpOnly active-membership cookie is treated as untrusted input and matched
+  against the current user's active membership set.
+- A separate server-only service-role client is limited to invitation
+  provisioning, membership activation, and authentication audit writes.
+- Stage 4 migration 08 grants only authenticated `SELECT` on the four identity
+  context tables. Academic tables and all browser writes remain denied.
+- Invitation and recovery links support both PKCE callback codes and
+  email-template token hashes, sanitize internal destinations, and fail with
+  generic messages.
+- Authentication tests run only against the local Supabase stack. No workflow
+  applies migrations or creates users in a remote project.
+
+See [staff-authentication.md](staff-authentication.md) for the request and trust
+boundaries.

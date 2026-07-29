@@ -26,6 +26,30 @@ set
   address = excluded.address,
   timezone = excluded.timezone;
 
+insert into public.schools (
+  id,
+  name,
+  slug,
+  school_code,
+  address,
+  timezone
+)
+values (
+  '10000000-0000-4000-8000-000000000099',
+  'Synthetic Multi-School Test Campus',
+  'synthetic-multi-school-test-campus',
+  'SYNTH-MULTI-099',
+  'Synthetic local authentication testing only',
+  'Africa/Kampala'
+)
+on conflict (id) do update
+set
+  name = excluded.name,
+  slug = excluded.slug,
+  school_code = excluded.school_code,
+  address = excluded.address,
+  timezone = excluded.timezone;
+
 insert into public.academic_years (
   id,
   school_id,

@@ -4,7 +4,9 @@
 
 This repository is intended to contain a web application for managing sensitive primary-school academic records. The planned system boundary includes the Next.js staff dashboard, teacher workspace, parent report portal, server-side application interfaces, report-generation services, Supabase PostgreSQL, Supabase Auth, Row Level Security policies, private Supabase Storage, migrations, and Vercel deployments.
 
-The repository is currently in the database-foundation stage. Public application tables have deny-by-default Row Level Security and revoked browser-role privileges. Authentication, scoped authorization policies, parent verification, and storage controls remain future work, so no real data is permitted.
+Staff authentication is implemented with cookie-based Supabase sessions and a
+narrow identity-read RLS boundary. Academic authorization, parent verification,
+and storage controls remain future work, so no real academic data is permitted.
 
 ## Threat model and trust boundaries
 
@@ -17,6 +19,26 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
 - Real student records, parent credentials, private reports, and production data exports must never be committed to the repository.
 - API keys, passwords, tokens, private keys, database credentials, and other secrets must never be committed to source control.
 - The Supabase service-role key is server-only and must never appear in browser code, client bundles, public environment variables, logs, screenshots, or user-visible errors.
+- Proxy routing is an optimistic usability boundary only. Protected layouts,
+  server actions, and later domain services must establish a validated user and
+  current active membership again.
+- An active-school cookie is only a selector. It must be HttpOnly, SameSite=Lax,
+  Secure in production, and revalidated against the authenticated user's active
+  memberships on every authoritative request.
+- A normal authenticated session is not authority to reset a password. Recovery
+  additionally requires a signed, 15-minute proof bound to the current Auth
+  user and recovery purpose. Its HttpOnly cookie is SameSite=Lax, Secure in
+  production, scoped to `/reset-password`, and cleared after successful or
+  invalid use.
+- Redirect destinations are never authentication-flow proof. A PKCE callback
+  must present exactly one valid 15-minute HMAC state for recovery or
+  invitation before its code is exchanged. Each state contains only a
+  purpose-bound keyed hash of the normalized email and is checked against the
+  authoritative Auth user. Invitation callbacks additionally require the
+  user's own RLS-filtered `INVITED` membership.
+- Public signup and anonymous sign-in must remain disabled. The email/password
+  provider remains enabled for invited staff login, and Supabase must enforce a
+  minimum password length of 12 locally and in the hosted project.
 - Student reports must use private storage. Access must be granted only after server-side authorization or secure, short-lived delivery controls.
 - Every sensitive read and mutation must be authorized server-side. Hiding a menu or disabling a button is not authorization.
 - Membership-backed workflow actors must belong to the target record's school even when a privileged server credential performs the write. Database scope validation is required in addition to Stage 5 role authorization.
@@ -30,7 +52,7 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
 
 ## Secrets and environment handling
 
-Only variables explicitly prefixed with `NEXT_PUBLIC_` may be considered for browser exposure, and that prefix does not make a sensitive value safe. `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `DIRECT_URL`, and equivalent privileged credentials are server-only.
+Only variables explicitly prefixed with `NEXT_PUBLIC_` may be considered for browser exposure, and that prefix does not make a sensitive value safe. `AUTH_FLOW_SIGNING_SECRET`, `SUPABASE_SERVICE_ROLE_KEY`, `DATABASE_URL`, `DIRECT_URL`, and equivalent privileged credentials are server-only. The Auth-flow secret must contain at least 32 random bytes, must not be a Supabase key, and must never be logged.
 
 Use local ignored environment files and the hosting provider's encrypted environment configuration. Rotate a credential immediately if it is committed, published, logged, or otherwise exposed; deleting it from the latest revision is not sufficient because Git history and external copies may retain it.
 
@@ -40,9 +62,37 @@ Please report suspected vulnerabilities involving unauthorized student-data acce
 
 Severity should reflect realistic reachability and impact. Unauthorized access to student records, staff privileges, private reports, production secrets, or the integrity of approved academic results is considered high impact.
 
+## Authentication controls and limitations
+
+The administrative Supabase client exists only for narrowly scoped trusted
+operations: staff provisioning, invitation activation, and authentication
+audit writes. Its auth client disables token persistence, URL detection, and
+automatic refresh. Browser modules must never import it.
+
+Login and password-reset requests use generic responses to reduce account
+enumeration. Authentication audit metadata excludes passwords, recovery codes,
+access tokens, refresh tokens, invitation token hashes, and service keys.
+Disabling or suspending a membership blocks workspace access on the next
+authoritative request; administrators should also revoke Auth sessions when
+urgent account-wide revocation is required.
+
+Proxy redirects propagate only Supabase cookies and their attributes from the
+refresh response, not arbitrary headers. Invitation redirects are fixed,
+same-origin callbacks, carry server-created signed invitation state, and
+require HTTPS except on approved localhost origins. Generic PKCE codes, missing
+or dual states, and operator-supplied state values are rejected before code
+exchange. Token-hash confirmation separately accepts only `invite` and
+`recovery`; public `signup` and `magiclink` confirmation are rejected. Hosted
+Supabase Auth settings and email delivery remain separately configured
+production controls.
+
 ## Known limitations
 
-Application authorization controls do not yet exist. Stage 3 deliberately defines no permissive database policies: `anon` and `authenticated` cannot directly access academic data. Same-school actor triggers prevent cross-school workflow attribution but do not decide which roles are authorized to act. Before any real data is introduced, the implementation must complete threat modeling, scoped Stage 5 RLS policies, secure report-delivery testing, secrets scanning, dependency review, and parent-access abuse-case testing. No real student information may be used to compensate for missing test fixtures.
+Role and assignment authorization controls do not yet exist. Stage 4 allows
+authenticated staff to read only their own identity context; academic tables
+remain inaccessible. Same-school actor triggers do not decide which roles are
+authorized to act. Before any real data is introduced, the implementation must
+complete Stage 5 RLS policies and the later production security work.
 
 Database-specific controls and limitations are documented in [docs/database-security.md](docs/database-security.md).
 

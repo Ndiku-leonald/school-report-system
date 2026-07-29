@@ -37,7 +37,7 @@ export default function TeacherPage() {
   return (
     <div className="space-y-8">
       <PageHeader
-        eyebrow="Stage 2 workspace"
+        eyebrow="Authenticated workspace"
         title="Teacher workspace"
         description="A focused area for future class assignments, subject responsibilities, marks preparation, and submission tracking."
         actions={<Badge variant="info">No assignments connected</Badge>}

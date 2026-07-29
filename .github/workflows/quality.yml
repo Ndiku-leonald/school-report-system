@@ -77,11 +77,20 @@ jobs:
       - name: Run database tests
         run: npm run db:test
 
+      - name: Run local authentication integration tests
+        run: npm run test:auth
+
       - name: Verify generated database types
         run: |
           npm run db:types
           npx prettier --write src/types/database.generated.ts
           git diff --exit-code -- src/types/database.generated.ts
+
+      - name: Install Chromium for authentication tests
+        run: npx playwright install --with-deps chromium
+
+      - name: Run local authentication browser tests
+        run: npm run test:e2e:auth
 
       - name: Stop local Supabase
         if: always()

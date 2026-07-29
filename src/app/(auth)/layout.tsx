@@ -20,12 +20,12 @@ export default function AuthLayout({ children }: { children: ReactNode }) {
             Secure academic work starts with clear boundaries.
           </p>
           <p className="mt-4 text-sm leading-6 text-white/75">
-            Authentication and permissions will be connected in later stages.
-            This screen currently demonstrates the intended interface only.
+            Staff identity, account status, and school membership are verified
+            before academic workspaces are opened.
           </p>
         </div>
         <p className="text-xs text-white/60">
-          Do not use real credentials during the foundation stage.
+          Never share passwords or invitation links.
         </p>
       </aside>
       <section className="flex min-h-[100dvh] flex-col">
