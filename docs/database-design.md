@@ -154,3 +154,12 @@ active schools, unrevoked role assignments, and current teacher assignments.
 The public permission RPC returns generated enum values only for the caller's
 own requested membership. No Stage 3 domain table shape or historical
 migration was rewritten, and no browser mutation policy was added.
+
+## Stage 6 mutation model
+
+Migration 12 adds configuration lifecycle indexes, term overlap and promotion
+term constraints, unique active subject ordering, curriculum ordering, and
+retirement timestamps for versioned scales and rules. It exposes narrow RPCs
+for each configuration aggregate. Draft assessment components and grading bands
+are replaced transactionally with their parent draft; activation performs
+aggregate validation. Existing migrations 1–11 remain unchanged.

@@ -569,6 +569,7 @@ export type Database = {
           id: string;
           is_active: boolean;
           name: string;
+          retired_at: string | null;
           school_id: string;
           updated_at: string;
           version: number;
@@ -582,6 +583,7 @@ export type Database = {
           id?: string;
           is_active?: boolean;
           name: string;
+          retired_at?: string | null;
           school_id: string;
           updated_at?: string;
           version?: number;
@@ -595,6 +597,7 @@ export type Database = {
           id?: string;
           is_active?: boolean;
           name?: string;
+          retired_at?: string | null;
           school_id?: string;
           updated_at?: string;
           version?: number;
@@ -1061,6 +1064,7 @@ export type Database = {
           minimum_subjects_passed: number | null;
           name: string;
           required_subject_rules: Json;
+          retired_at: string | null;
           school_id: string;
           updated_at: string;
           version: number;
@@ -1079,6 +1083,7 @@ export type Database = {
           minimum_subjects_passed?: number | null;
           name: string;
           required_subject_rules?: Json;
+          retired_at?: string | null;
           school_id: string;
           updated_at?: string;
           version?: number;
@@ -1097,6 +1102,7 @@ export type Database = {
           minimum_subjects_passed?: number | null;
           name?: string;
           required_subject_rules?: Json;
+          retired_at?: string | null;
           school_id?: string;
           updated_at?: string;
           version?: number;
@@ -1143,6 +1149,7 @@ export type Database = {
           is_active: boolean;
           name: string;
           ranking_basis: Database["public"]["Enums"]["ranking_basis"];
+          retired_at: string | null;
           school_id: string;
           tie_method: Database["public"]["Enums"]["ranking_tie_method"];
           updated_at: string;
@@ -1158,6 +1165,7 @@ export type Database = {
           is_active?: boolean;
           name: string;
           ranking_basis: Database["public"]["Enums"]["ranking_basis"];
+          retired_at?: string | null;
           school_id: string;
           tie_method: Database["public"]["Enums"]["ranking_tie_method"];
           updated_at?: string;
@@ -1173,6 +1181,7 @@ export type Database = {
           is_active?: boolean;
           name?: string;
           ranking_basis?: Database["public"]["Enums"]["ranking_basis"];
+          retired_at?: string | null;
           school_id?: string;
           tie_method?: Database["public"]["Enums"]["ranking_tie_method"];
           updated_at?: string;
@@ -2236,21 +2245,422 @@ export type Database = {
       [_ in never]: never;
     };
     Functions: {
+      activate_academic_year: {
+        Args: {
+          expected_updated_at: string;
+          target_year_id: string;
+          transition_reason?: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      activate_assessment_scheme: {
+        Args: { expected_updated_at: string; target_scheme_id: string };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      activate_grading_scale: {
+        Args: { expected_updated_at: string; target_scale_id: string };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      activate_promotion_rule: {
+        Args: { expected_updated_at: string; target_rule_id: string };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      activate_ranking_rule: {
+        Args: { expected_updated_at: string; target_rule_id: string };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
       activate_staff_invitation: {
         Args: { expected_membership_ids: string[]; target_profile_id: string };
         Returns: {
           membership_id: string;
         }[];
       };
+      archive_academic_year: {
+        Args: {
+          expected_updated_at: string;
+          target_year_id: string;
+          transition_reason?: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
       clear_my_active_membership: { Args: never; Returns: boolean };
+      close_academic_year: {
+        Args: {
+          expected_updated_at: string;
+          target_year_id: string;
+          transition_reason?: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      create_academic_year: {
+        Args: {
+          year_ends_on: string;
+          year_name: string;
+          year_starts_on: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      create_class_section: {
+        Args: {
+          section_capacity?: number;
+          section_code: string;
+          section_name: string;
+          target_academic_year_id: string;
+          target_grade_level_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      create_grade_level: {
+        Args: {
+          grade_code: string;
+          grade_is_final?: boolean;
+          grade_name: string;
+          grade_sort_order: number;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      create_subject: {
+        Args: {
+          subject_code: string;
+          subject_contributes_to_aggregate: boolean;
+          subject_description: string;
+          subject_is_core: boolean;
+          subject_name: string;
+          subject_sort_order: number;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      create_term: {
+        Args: {
+          promotion_term?: boolean;
+          target_academic_year_id: string;
+          target_term_number: number;
+          term_ends_on: string;
+          term_name: string;
+          term_starts_on: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      deactivate_grading_scale: {
+        Args: { expected_updated_at: string; target_scale_id: string };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      deactivate_promotion_rule: {
+        Args: { expected_updated_at: string; target_rule_id: string };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      deactivate_ranking_rule: {
+        Args: { expected_updated_at: string; target_rule_id: string };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
       get_my_active_membership: { Args: never; Returns: string };
       get_my_effective_permissions: {
         Args: { target_membership_id: string };
         Returns: Database["public"]["Enums"]["app_permission"][];
       };
+      open_term: {
+        Args: { expected_updated_at: string; target_term_id: string };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      remove_grade_level_subject: {
+        Args: { expected_updated_at: string; target_mapping_id: string };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      reorder_grade_levels: {
+        Args: { ordered_grades: Json };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      reorder_subjects: {
+        Args: { ordered_subjects: Json };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      retire_assessment_scheme: {
+        Args: { expected_updated_at: string; target_scheme_id: string };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      save_assessment_scheme_draft: {
+        Args: {
+          expected_updated_at: string;
+          scheme_components: Json;
+          scheme_effective_from: string;
+          scheme_name: string;
+          target_grade_level_id: string;
+          target_scheme_id: string;
+          target_subject_id: string;
+          target_term_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      save_grading_scale_draft: {
+        Args: {
+          expected_updated_at: string;
+          scale_bands: Json;
+          scale_effective_from: string;
+          scale_name: string;
+          target_academic_year_id: string;
+          target_grade_level_id: string;
+          target_scale_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      save_promotion_rule: {
+        Args: {
+          expected_updated_at: string;
+          rule_additional_configuration: Json;
+          rule_maximum_aggregate: number;
+          rule_minimum_attendance_percentage: number;
+          rule_minimum_average: number;
+          rule_minimum_subjects_passed: number;
+          rule_name: string;
+          rule_required_subjects: Json;
+          target_academic_year_id: string;
+          target_grade_level_id: string;
+          target_rule_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      save_ranking_rule: {
+        Args: {
+          expected_updated_at: string;
+          rule_configuration: Json;
+          rule_name: string;
+          rule_ranking_basis: Database["public"]["Enums"]["ranking_basis"];
+          rule_tie_method: Database["public"]["Enums"]["ranking_tie_method"];
+          target_academic_year_id: string;
+          target_grade_level_id: string;
+          target_rule_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      set_class_section_active: {
+        Args: {
+          expected_updated_at: string;
+          target_active: boolean;
+          target_class_section_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      set_grade_level_active: {
+        Args: {
+          expected_updated_at: string;
+          target_active: boolean;
+          target_grade_level_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      set_grade_level_subject: {
+        Args: {
+          expected_updated_at?: string;
+          mapping_contributes_to_aggregate: boolean;
+          mapping_required: boolean;
+          mapping_sort_order: number;
+          target_grade_level_id: string;
+          target_mapping_id?: string;
+          target_subject_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
       set_my_active_membership: {
         Args: { target_membership_id: string };
         Returns: string;
+      };
+      set_subject_active: {
+        Args: {
+          expected_updated_at: string;
+          target_active: boolean;
+          target_subject_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      update_academic_year: {
+        Args: {
+          expected_updated_at: string;
+          target_year_id: string;
+          year_ends_on: string;
+          year_name: string;
+          year_starts_on: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      update_class_section: {
+        Args: {
+          expected_updated_at: string;
+          section_capacity: number;
+          section_code: string;
+          section_name: string;
+          target_academic_year_id: string;
+          target_class_section_id: string;
+          target_grade_level_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      update_grade_level: {
+        Args: {
+          expected_updated_at: string;
+          grade_code: string;
+          grade_is_final: boolean;
+          grade_name: string;
+          grade_sort_order: number;
+          target_grade_level_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      update_subject: {
+        Args: {
+          expected_updated_at: string;
+          subject_code: string;
+          subject_contributes_to_aggregate: boolean;
+          subject_description: string;
+          subject_is_core: boolean;
+          subject_name: string;
+          subject_sort_order: number;
+          target_subject_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      update_term: {
+        Args: {
+          expected_updated_at: string;
+          promotion_term: boolean;
+          target_term_id: string;
+          target_term_number: number;
+          term_ends_on: string;
+          term_name: string;
+          term_starts_on: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
       };
     };
     Enums: {

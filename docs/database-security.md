@@ -108,3 +108,10 @@ independently reviewed.
 
 The helper and RPC security review is documented in
 [authorization-model.md](authorization-model.md).
+
+Stage 6 mutation functions are reviewed `SECURITY DEFINER` boundaries with fixed
+search paths and no dynamic SQL. Execution is revoked from `PUBLIC` and `anon`
+and granted only to `authenticated`; every call still fails unless the current
+JWT `session_id` has a selected, owned, active membership in an active school
+with live `ACADEMIC_CONFIGURATION_MANAGE`. Direct authenticated table writes
+remain revoked. Conflict and validation failures roll back their audit insert.

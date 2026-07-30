@@ -135,7 +135,7 @@ Implement proposed staff roles, contextual assignments, server-side permission c
   suites run in CI alongside the retained Stage 4 tests. No hosted Supabase
   project is linked or modified.
 
-## 6. Academic configuration
+## 6. Academic configuration — Complete
 
 Implement academic years, terms, classes, streams, subjects, assessment models, grading scales, aggregate rules, ranking behavior, and promotion-rule configuration.
 
@@ -145,6 +145,19 @@ Implement academic years, terms, classes, streams, subjects, assessment models, 
 - Validation prevents overlapping, incomplete, or internally inconsistent active rules.
 - Effective scope or versioning preserves historical interpretation.
 - School identity and all academic labels and thresholds remain configurable.
+
+**Implementation evidence (2026-07-30)**
+
+- Migration 12 adds selected-session, school-scoped configuration RPCs with
+  optimistic concurrency, transactional audits, explicit lifecycle checks, and
+  version protection while direct browser table writes stay denied.
+- The permission-aware `/dashboard/academic` route family exposes school
+  configuration and a read-only experience for non-managing staff.
+- Shared Zod schemas, generated database contracts, a 40-assertion pgTAP suite,
+  signed-in integration tests, Playwright scenarios, and CI entry points cover
+  the Stage 6 boundary.
+- The full application, local database, signed-in integration, and Playwright
+  validation suites pass without linking or modifying a remote project.
 
 ## 7. Student management
 

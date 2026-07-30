@@ -35,16 +35,10 @@ export const dashboardNavigation: NavigationItem[] = [
     unavailable: true,
   },
   {
-    label: "Classes",
+    label: "Academic setup",
+    href: "/dashboard/academic",
     icon: Shapes,
     permissions: ["ACADEMIC_CONFIGURATION_VIEW"],
-    unavailable: true,
-  },
-  {
-    label: "Subjects",
-    icon: BookOpen,
-    permissions: ["ACADEMIC_CONFIGURATION_VIEW"],
-    unavailable: true,
   },
   {
     label: "Marks",
@@ -91,6 +85,12 @@ export const dashboardNavigation: NavigationItem[] = [
 ];
 
 export const teacherNavigation: NavigationItem[] = [
+  {
+    label: "Academic setup",
+    href: "/dashboard/academic",
+    icon: BookOpen,
+    permissions: ["ACADEMIC_CONFIGURATION_VIEW"],
+  },
   {
     label: "Workspace",
     href: "/teacher",

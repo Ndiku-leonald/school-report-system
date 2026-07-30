@@ -200,3 +200,14 @@ boundaries.
 
 See [authorization-model.md](authorization-model.md) and
 [authorization-testing.md](authorization-testing.md).
+
+## Stage 6 configuration boundary
+
+Academic configuration pages read through the normal server Supabase client
+under forced RLS. Server Actions validate Zod inputs, require live manage
+permission, and invoke entity-specific RPCs; they never use a service-role
+client. PostgreSQL derives the selected school from the verified Auth session,
+locks target rows, checks `expected_updated_at`, validates state and scope, and
+commits the mutation with one append-only audit event. Versioned active rules
+are cloned rather than edited. See
+[academic-configuration.md](academic-configuration.md).

@@ -8,7 +8,7 @@ The product must remain configurable for different schools. School identity, sub
 
 ## Current status
 
-**Stage 5: roles and scoped authorization is implemented for review.** The repository
+**Stage 6: academic configuration management is implemented for review.** The repository
 contains the Stage 3 database foundation plus cookie-based Supabase Auth,
 server-authoritative staff membership checks, invitation and recovery flows,
 active-school selection, authentication audit events, and local-only Auth test
@@ -25,8 +25,9 @@ signed user-bound proof, PKCE recovery and invitations require purpose-specific
 signed state bound to the authoritative Auth email, and invitation activation
 is atomic.
 
-Academic writes remain deny-by-default. Stage 5 grants only reviewed,
-school- and assignment-scoped reads. Live CRUD, marks transitions,
+Academic table writes remain deny-by-default. Stage 6 adds narrow,
+audited and concurrency-protected configuration RPCs while retaining reviewed,
+school- and assignment-scoped reads. Marks transitions,
 calculations, report generation, storage, analytics, promotion processing, and
 parent verification have not been implemented.
 
@@ -131,10 +132,12 @@ npm run typecheck
 npm test
 npm run test:auth
 npm run test:authorization
+npm run test:academic-config
 npm run build
 npm run test:e2e
 npm run test:e2e:auth
 npm run test:e2e:authorization
+npm run test:e2e:academic-config
 ```
 
 Use `npx playwright install chromium` once if the local Playwright browser is not installed.
@@ -199,6 +202,8 @@ Security requirements and vulnerability-reporting guidance are defined in [SECUR
 - [Roles and permissions](docs/roles-and-permissions.md)
 - [Authorization model](docs/authorization-model.md)
 - [Authorization testing](docs/authorization-testing.md)
+- [Academic configuration](docs/academic-configuration.md)
+- [Academic configuration testing](docs/academic-configuration-testing.md)
 - [Academic workflow](docs/academic-workflow.md)
 - [Database design](docs/database-design.md)
 - [Database security](docs/database-security.md)

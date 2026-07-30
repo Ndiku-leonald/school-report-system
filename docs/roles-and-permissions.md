@@ -134,3 +134,11 @@ reviewed migration and separation-of-duties review.
 - Revoke effective access when a staff account, assignment, enrolment, or academic period becomes inactive.
 - Audit role changes, assignment changes, marks transitions, privileged reads, publication actions, and exceptional overrides.
 - Test denied paths, including cross-class, cross-subject, cross-student, expired-assignment, anonymous, and client-manipulation attempts.
+
+## Academic configuration roles
+
+`HEAD_TEACHER`, `CLASS_TEACHER`, and `SUBJECT_TEACHER` may view configuration
+for their selected school but cannot mutate it. `ACADEMIC_REGISTRAR`,
+`SCHOOL_ADMIN`, and `SUPER_ADMIN` may manage configuration. The role matrix
+remains migration-controlled; the UI does not infer or grant permission from a
+role label, and RPCs evaluate current unrevoked mappings on every call.

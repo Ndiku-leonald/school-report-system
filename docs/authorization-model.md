@@ -109,3 +109,10 @@ browser mutation paths remain denied.
 
 Stages 6–17 remain responsible for CRUD, marks workflows, calculations,
 reports/PDFs, parent access, analytics, and promotion behavior.
+
+Stage 6 now adds only academic-configuration mutations. They reuse the
+session-selected membership boundary and require
+`ACADEMIC_CONFIGURATION_MANAGE` inside both the Server Action and database RPC.
+View-only roles retain school-scoped `ACADEMIC_CONFIGURATION_VIEW`. Later
+stages remain responsible for student and assignment CRUD, marks workflows,
+calculations, reports/PDFs, parent access, analytics, and promotion decisions.

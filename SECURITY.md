@@ -9,6 +9,12 @@ Stage 5 adds active-membership, school-scoped role permissions and
 assignment-scoped academic-read RLS. Parent verification and storage controls
 remain future work, so no real academic data is permitted.
 
+Stage 6 keeps configuration table writes denied to browser roles. Narrow
+configuration RPCs derive the school from the JWT-session-selected membership,
+recheck live manage permission, apply optimistic concurrency, and append audit
+events transactionally. Active historical configuration is versioned or
+retired instead of overwritten.
+
 ## Threat model and trust boundaries
 
 Protected assets include student records, marks, report snapshots, generated reports, parent access credentials, staff identities, authorization assignments, school configuration, audit events, and server-side secrets.
