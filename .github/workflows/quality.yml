@@ -80,6 +80,9 @@ jobs:
       - name: Run local authentication integration tests
         run: npm run test:auth
 
+      - name: Run local authorization integration tests
+        run: npm run test:authorization
+
       - name: Verify generated database types
         run: |
           npm run db:types
@@ -91,6 +94,9 @@ jobs:
 
       - name: Run local authentication browser tests
         run: npm run test:e2e:auth
+
+      - name: Run local authorization browser tests
+        run: npm run test:e2e:authorization
 
       - name: Stop local Supabase
         if: always()

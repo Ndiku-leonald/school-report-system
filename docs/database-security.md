@@ -3,18 +3,38 @@
 ## Current access boundary
 
 Every application table in `public` has Row Level Security enabled and forced.
-Stage 4 adds authenticated `SELECT` policies only for `profiles`,
-`school_staff_memberships`, `staff_role_assignments`, and `schools`. Each policy
-is restricted to the current `auth.uid()` identity and its memberships.
-Anonymous access, browser writes, sequences, functions, and every academic
-table remain denied.
+Stage 4 own-identity reads remain in place. Stage 5 adds authenticated `SELECT`
+only for the approved academic-configuration, assignment, student/enrolment,
+mark, attendance/comment, report, and audit tables. Each policy derives school
+scope from database relationships and evaluates active memberships, active
+schools, unrevoked roles, and current assignments.
 
-Consequently, anonymous sessions cannot read or mutate identity or academic
-data. An authenticated user can establish only their own staff context and has
-no direct academic access. Database tests exercise own-row access, cross-user
-isolation, denied writes, anonymous denial, and continued academic denial.
-Stage 5 will add narrow academic policies based on active memberships, roles,
-staff assignments, academic periods, workflow state, and the requested record.
+Migration 11 adds the non-exposed
+`internal.staff_session_active_memberships` table. Its UUID primary key is the
+verified JWT `session_id`; each row also records the authenticated profile and
+one referenced staff membership. `public`, `anon`, and `authenticated` have no
+direct table privileges. Fixed-search-path definer functions are required only
+to read or mutate this internal table and never accept a caller-supplied
+session ID.
+
+Authenticated clients use the narrow `set_my_active_membership`,
+`get_my_active_membership`, and `clear_my_active_membership` RPCs. Selection
+requires the caller's own `ACTIVE` membership and an active school. Every
+permission and assignment predicate rechecks the selection, membership,
+school, current role, and current assignment state. Thus stale selection rows
+cannot grant access, and direct RLS queries authorize at most one membership
+per Supabase session. Separate sessions for the same profile remain
+independent.
+
+Anonymous access and all browser academic writes remain denied. Guardians,
+student-guardian links, student access credentials, parent sessions, and
+unapproved future workflow tables remain inaccessible. Database tests exercise
+positive access, cross-school/class/subject denial, anonymous denial, and
+continued write denial.
+
+Assignment-limited users with `STUDENTS_VIEW_ASSIGNED` can read only
+`ACTIVE` and `REPEATING` enrolments. Authorized schoolwide
+`STUDENTS_VIEW_ALL` users retain historical enrolment reads.
 
 The Supabase service role bypasses RLS and is therefore server-only. It must
 never be placed in `NEXT_PUBLIC_*` configuration, a browser client, logs,
@@ -39,10 +59,10 @@ comment actors; report actors; and audit actors. This invariant also applies to
 service-role and database-owner writes, so privileged execution cannot attach
 an unrelated school's membership to an academic event.
 
-Same-school scope is not role authorization. Stage 5 must still determine which
-active roles and assignments may perform each operation and enforce workflow
-transitions. Mark-sheet submission currently requires the teaching assignment
-membership; any later administrative override must be explicit and audited.
+Same-school scope triggers remain integrity checks rather than role
+authorization. Stage 5 read policies now determine which active roles and
+assignments can see a record. Workflow mutations remain deferred; any later
+administrative override must be explicit and audited.
 
 Audit events may use a same-school membership, a profile with evidence of
 membership in that school, or null profile and membership values for a
@@ -81,7 +101,10 @@ issues, and pull requests. The repository must never contain real school,
 student, guardian, or staff records; parent credentials; reports; database
 dumps; access tokens; database passwords; or service-role keys.
 
-The current RLS foundation is not the complete production authorization model.
-No real records may be introduced until authentication, Stage 5 policies,
-storage controls, abuse-case tests, backup/restore procedures, and operational
-monitoring are independently reviewed.
+The current RLS boundary is not the complete production security model. No real
+records may be introduced until later mutation workflows, storage controls,
+abuse-case tests, backup/restore procedures, and operational monitoring are
+independently reviewed.
+
+The helper and RPC security review is documented in
+[authorization-model.md](authorization-model.md).

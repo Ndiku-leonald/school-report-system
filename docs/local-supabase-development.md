@@ -27,6 +27,7 @@ Run database linting and pgTAP tests:
 npm run db:lint
 npm run db:test
 npm run test:auth
+npm run test:authorization
 ```
 
 Generate and format the committed TypeScript representation of `public`:
@@ -55,9 +56,11 @@ Run browser authentication scenarios while the local stack is running:
 ```bash
 npx playwright install chromium
 npm run test:e2e:auth
+npm run test:e2e:authorization
 ```
 
-The Auth test runners obtain local API values from `supabase status -o env`,
+The Auth and authorization test runners obtain local API values from
+`supabase status -o env`,
 pass them only to child processes, and do not print the local service-role key.
 They also inject a synthetic `AUTH_FLOW_SIGNING_SECRET` without printing it and
 refuse to substitute a remote project.
@@ -103,4 +106,4 @@ Local configuration does not alter a hosted Supabase project. Before
 production, independently disable hosted public signup and anonymous sign-in,
 enable email/password only for invited staff login, set the minimum password
 length to 12, and configure exact trusted callback origins. No remote Supabase
-project was modified during this Stage 4 hardening work.
+project was modified during the Stage 4 or Stage 5 work.

@@ -8,20 +8,27 @@ The product must remain configurable for different schools. School identity, sub
 
 ## Current status
 
-**Stage 4: staff authentication is implemented for review.** The repository
+**Stage 5: roles and scoped authorization is implemented for review.** The repository
 contains the Stage 3 database foundation plus cookie-based Supabase Auth,
 server-authoritative staff membership checks, invitation and recovery flows,
 active-school selection, authentication audit events, and local-only Auth test
-automation. Public registration is disabled, recovery requires a short-lived
+automation. It now also contains a 35-value permission model, migration-owned
+role matrix, caller-scoped permission RPC, assignment-scoped read policies,
+typed server guards, protected workspaces, and server-filtered navigation.
+Migration 11 binds the selected active membership to the verified Supabase
+`session_id` inside PostgreSQL. Every academic RLS decision and effective
+permission lookup uses that one session-selected membership, so direct
+anonymous-key queries cannot combine roles across schools. Separate Auth
+sessions for the same profile may safely select different schools.
+Public registration is disabled, recovery requires a short-lived
 signed user-bound proof, PKCE recovery and invitations require purpose-specific
 signed state bound to the authoritative Auth email, and invitation activation
 is atomic.
 
-Academic authorization remains deny-by-default. Stage 4 grants authenticated
-staff read access only to their own profile, memberships, role labels, and
-schools. Stage 5 role and assignment authorization, live academic data,
-calculations, report generation, storage, and parent verification have not been
-implemented.
+Academic writes remain deny-by-default. Stage 5 grants only reviewed,
+school- and assignment-scoped reads. Live CRUD, marks transitions,
+calculations, report generation, storage, analytics, promotion processing, and
+parent verification have not been implemented.
 
 ## Planned technology stack
 
@@ -123,9 +130,11 @@ npm run lint
 npm run typecheck
 npm test
 npm run test:auth
+npm run test:authorization
 npm run build
 npm run test:e2e
 npm run test:e2e:auth
+npm run test:e2e:authorization
 ```
 
 Use `npx playwright install chromium` once if the local Playwright browser is not installed.
@@ -173,6 +182,7 @@ Routes currently available:
 - `/complete-invitation` — invitation acceptance and membership activation
 - `/select-school` — active-school choice for multi-school staff
 - `/dashboard` and `/teacher` — authenticated staff shells
+- `/forbidden` — generic insufficient-permission state
 - `/account-unavailable` — safe unavailable-membership state
 - `/parent` — visual parent verification placeholder
 
@@ -187,6 +197,8 @@ Security requirements and vulnerability-reporting guidance are defined in [SECUR
 - [Product requirements](docs/product-requirements.md)
 - [System architecture](docs/system-architecture.md)
 - [Roles and permissions](docs/roles-and-permissions.md)
+- [Authorization model](docs/authorization-model.md)
+- [Authorization testing](docs/authorization-testing.md)
 - [Academic workflow](docs/academic-workflow.md)
 - [Database design](docs/database-design.md)
 - [Database security](docs/database-security.md)

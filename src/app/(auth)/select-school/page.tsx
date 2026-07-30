@@ -41,8 +41,8 @@ export default async function SelectSchoolPage({
       <CardHeader>
         <CardTitle>Select a school workspace</CardTitle>
         <CardDescription>
-          Your selection is stored in a secure, short-lived browser cookie and
-          is revalidated on every protected request.
+          Your selection is bound to this authenticated session and revalidated
+          on every protected request.
         </CardDescription>
       </CardHeader>
       <CardContent>

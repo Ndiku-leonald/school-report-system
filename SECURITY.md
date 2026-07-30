@@ -4,9 +4,10 @@
 
 This repository is intended to contain a web application for managing sensitive primary-school academic records. The planned system boundary includes the Next.js staff dashboard, teacher workspace, parent report portal, server-side application interfaces, report-generation services, Supabase PostgreSQL, Supabase Auth, Row Level Security policies, private Supabase Storage, migrations, and Vercel deployments.
 
-Staff authentication is implemented with cookie-based Supabase sessions and a
-narrow identity-read RLS boundary. Academic authorization, parent verification,
-and storage controls remain future work, so no real academic data is permitted.
+Staff authentication is implemented with cookie-based Supabase sessions.
+Stage 5 adds active-membership, school-scoped role permissions and
+assignment-scoped academic-read RLS. Parent verification and storage controls
+remain future work, so no real academic data is permitted.
 
 ## Threat model and trust boundaries
 
@@ -24,7 +25,16 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
   current active membership again.
 - An active-school cookie is only a selector. It must be HttpOnly, SameSite=Lax,
   Secure in production, and revalidated against the authenticated user's active
-  memberships on every authoritative request.
+  memberships on every authoritative request. It cannot constrain PostgreSQL
+  by itself: the server must also bind the membership to the verified JWT
+  `session_id`, and the cookie and database selection must agree.
+- Exactly one active membership may authorize a given authenticated Supabase
+  session. Separate sessions for the same profile may hold independent
+  selections. Roles and assignments from different memberships must never be
+  combined in one session.
+- Browser roles cannot directly access
+  `internal.staff_session_active_memberships`. Selection changes use narrow
+  caller-scoped RPCs that revalidate membership and school status.
 - A normal authenticated session is not authority to reset a password. Recovery
   additionally requires a signed, 15-minute proof bound to the current Auth
   user and recovery purpose. Its HttpOnly cookie is SameSite=Lax, Secure in
@@ -88,11 +98,16 @@ production controls.
 
 ## Known limitations
 
-Role and assignment authorization controls do not yet exist. Stage 4 allows
-authenticated staff to read only their own identity context; academic tables
-remain inaccessible. Same-school actor triggers do not decide which roles are
-authorized to act. Before any real data is introduced, the implementation must
-complete Stage 5 RLS policies and the later production security work.
+Role and assignment authorization is evaluated from current database state,
+not user metadata, JWT role claims, navigation visibility, or browser cookies.
+The verified JWT `session_id` identifies only the selection row; active
+membership, school, roles, revocation, and assignments remain live database
+checks. A stale row therefore cannot grant a new or unavailable session access.
+Stage 5 grants no browser academic mutations and exposes no guardian, parent
+credential, or parent session records. Same-school actor triggers remain
+integrity controls rather than business authorization. Before any real data is
+introduced, the later workflow controls and production security work must be
+completed.
 
 Database-specific controls and limitations are documented in [docs/database-security.md](docs/database-security.md).
 

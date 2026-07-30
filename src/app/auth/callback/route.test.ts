@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const mocks = vi.hoisted(() => ({
+  clearSessionActiveMembership: vi.fn(),
   clearRecoveryProofCookie: vi.fn(),
   exchangeCodeForSession: vi.fn(),
   from: vi.fn(),
@@ -29,6 +30,9 @@ vi.mock("@/lib/auth/recovery", () => ({
   recoveryStateMatchesUserEmail: mocks.recoveryMatchesEmail,
   setRecoveryProofCookie: mocks.setRecoveryProofCookie,
   verifyPasswordRecoveryState: mocks.verifyRecoveryState,
+}));
+vi.mock("@/lib/auth/session-membership", () => ({
+  clearSessionActiveMembership: mocks.clearSessionActiveMembership,
 }));
 vi.mock("@/lib/supabase/server", () => ({
   createServerSupabaseClient: async () => ({

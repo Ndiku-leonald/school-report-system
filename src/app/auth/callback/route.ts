@@ -14,6 +14,7 @@ import {
   setRecoveryProofCookie,
   verifyPasswordRecoveryState,
 } from "@/lib/auth/recovery";
+import { clearSessionActiveMembership } from "@/lib/auth/session-membership";
 import { getPublicEnvironment } from "@/lib/env/public";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
@@ -88,6 +89,7 @@ export async function GET(request: NextRequest) {
   }
 
   if (!isValidFlow || !user) {
+    await clearSessionActiveMembership(supabase);
     await supabase.auth.signOut();
     const response = NextResponse.redirect(
       new URL("/auth-error", applicationUrl),

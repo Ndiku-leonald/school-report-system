@@ -8,7 +8,7 @@ All sensitive permission checks must be enforced server-side and reinforced by R
 
 Users may hold more than one role if the future access model permits it. Effective access should be the smallest explicitly granted set, with conflicts and privileged combinations reviewed and audited.
 
-## Stage 4 authentication boundary
+## Stage 5 authorization boundary
 
 Authentication proves the Supabase user identity but does not grant an academic
 capability. An authenticated user can read only their own profile, memberships,
@@ -17,11 +17,16 @@ required to enter the dashboard or teacher shell. `INVITED` memberships enter
 the completion flow; `SUSPENDED`, `DISABLED`, and missing memberships enter the
 account-unavailable state.
 
-Role labels are loaded only to establish context. Stage 4 does not interpret a
-role as permission to read or change academic records. Those policies remain
-Stage 5 work.
+The untrusted active-membership cookie is reconciled with one selection bound
+to the verified Supabase JWT `session_id`. The selected active membership is
+then passed to the caller-scoped `get_my_effective_permissions` RPC. Current,
+unrevoked role assignments are joined to the migration-controlled permission
+matrix on every authoritative request. The RPC and academic RLS accept only
+the session-selected membership, so permissions from different school
+memberships are never combined. Users may securely switch among their own
+active memberships; a separate Auth session keeps its independent selection.
 
-## Proposed roles
+## Staff roles
 
 ### `SUPER_ADMIN`
 
@@ -97,7 +102,7 @@ Intended for subject-specific marks entry.
 
 Subject teachers must only access assigned classes and subjects. They cannot approve their own marks, alter locked results, view unrelated full student result profiles, or publish reports unless a separate explicit role grants that capability.
 
-## Permission matrix
+## Initial Stage 5 permission matrix
 
 | Capability                            | Super admin   | School admin | Head teacher  | Registrar      | Class teacher               | Subject teacher |
 | ------------------------------------- | ------------- | ------------ | ------------- | -------------- | --------------------------- | --------------- |
@@ -115,7 +120,11 @@ Subject teachers must only access assigned classes and subjects. They cannot app
 | Confirm promotion decisions           | No by default | Prepare      | Yes           | Recommend      | Recommend                   | No              |
 | View schoolwide analytics             | Authorized    | Yes          | Yes           | Yes            | No                          | No              |
 
-The matrix is a proposal for domain design, not an implemented policy. Final permissions and separation-of-duties rules require stakeholder approval before schema or authorization code is created.
+The enum-level matrix implemented by migration 10 is authoritative and listed
+in [Authorization model](authorization-model.md). The capability table above
+remains longer-term domain guidance: permissions naming future mutations do not
+create browser write policies in Stage 5. Future matrix changes require a
+reviewed migration and separation-of-duties review.
 
 ## Enforcement requirements
 

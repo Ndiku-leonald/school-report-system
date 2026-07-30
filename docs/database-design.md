@@ -141,3 +141,16 @@ storage paths, report artifact checksums, and parent session metadata are
 schema foundations for later stages. Stage 3 does not implement calculation
 engines, final report layouts, storage policies, parent verification, or
 automatic promotion.
+
+## Stage 5 authorization structures
+
+Migration 10 adds the stable `app_permission` enum and the
+`role_permissions` system-configuration table. The role/permission pair is
+unique, RLS is enabled and forced, browser access is revoked, and the initial
+matrix is migration-controlled rather than school-editable.
+
+Caller-scoped helpers derive authority from `auth.uid()`, active memberships,
+active schools, unrevoked role assignments, and current teacher assignments.
+The public permission RPC returns generated enum values only for the caller's
+own requested membership. No Stage 3 domain table shape or historical
+migration was rewritten, and no browser mutation policy was added.
