@@ -2332,6 +2332,20 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      create_assessment_scheme_version: {
+        Args: {
+          expected_updated_at: string;
+          scheme_components: Json;
+          scheme_effective_from: string;
+          scheme_name: string;
+          source_scheme_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
       create_class_section: {
         Args: {
           section_capacity?: number;
@@ -2352,6 +2366,67 @@ export type Database = {
           grade_is_final?: boolean;
           grade_name: string;
           grade_sort_order: number;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      create_grade_level_subject: {
+        Args: {
+          mapping_contributes_to_aggregate: boolean;
+          mapping_required: boolean;
+          mapping_sort_order: number;
+          target_grade_level_id: string;
+          target_subject_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      create_grading_scale_version: {
+        Args: {
+          expected_updated_at: string;
+          scale_bands: Json;
+          scale_effective_from: string;
+          scale_name: string;
+          source_scale_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      create_promotion_rule_version: {
+        Args: {
+          expected_updated_at: string;
+          rule_additional_configuration: Json;
+          rule_maximum_aggregate: number;
+          rule_minimum_attendance_percentage: number;
+          rule_minimum_average: number;
+          rule_minimum_subjects_passed: number;
+          rule_name: string;
+          rule_required_subjects: Json;
+          source_rule_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      create_ranking_rule_version: {
+        Args: {
+          expected_updated_at: string;
+          rule_configuration: Json;
+          rule_name: string;
+          rule_ranking_basis: Database["public"]["Enums"]["ranking_basis"];
+          rule_tie_method: Database["public"]["Enums"]["ranking_tie_method"];
+          source_rule_id: string;
         };
         Returns: {
           entity_id: string;
@@ -2622,6 +2697,20 @@ export type Database = {
           grade_name: string;
           grade_sort_order: number;
           target_grade_level_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      update_grade_level_subject: {
+        Args: {
+          expected_updated_at: string;
+          mapping_contributes_to_aggregate: boolean;
+          mapping_required: boolean;
+          mapping_sort_order: number;
+          target_mapping_id: string;
         };
         Returns: {
           entity_id: string;

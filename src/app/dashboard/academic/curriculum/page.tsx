@@ -1,6 +1,6 @@
 import { ConfigurationList } from "@/components/academic-configuration/configuration-list";
+import { CurriculumMappingEditForm } from "@/components/academic-configuration/entity-management-forms";
 import { StructuredCreateForm } from "@/components/academic-configuration/structured-create-form";
-import { ConfigurationTransitionButton } from "@/components/academic-configuration/transition-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { getAcademicConfigurationData } from "@/lib/academic-configuration/data";
@@ -22,13 +22,17 @@ export default async function CurriculumPage() {
             title: `${mapping.grade_levels.code} · ${mapping.subjects.name}`,
             description: `Order ${mapping.sort_order} · ${mapping.is_required ? "Required" : "Optional"} · ${mapping.contributes_to_aggregate ? "Aggregate" : "Non-aggregate"}`,
             status: "MAPPED",
-            action: data.canManage ? (
-              <ConfigurationTransitionButton
-                id={mapping.id}
-                expectedUpdatedAt={mapping.updated_at}
-                label="Remove"
-                transition="remove-mapping"
-                variant="danger"
+            editor: data.canManage ? (
+              <CurriculumMappingEditForm
+                mapping={{
+                  id: mapping.id,
+                  pairLabel: `${mapping.grade_levels.name} · ${mapping.subjects.name}`,
+                  isRequired: mapping.is_required,
+                  contributesToAggregate: mapping.contributes_to_aggregate,
+                  sortOrder: mapping.sort_order,
+                  updatedAt: mapping.updated_at,
+                  inUse: mapping.in_use,
+                }}
               />
             ) : undefined,
           }))}

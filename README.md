@@ -123,6 +123,22 @@ Environment parsing is lazy so the Stage 2 placeholder pages, tests, and product
 
 No real credentials belong in `.env.example`, documentation, source files, commits, issues, or pull requests.
 
+## Academic configuration
+
+Stage 6 provides complete school-scoped create and edit workflows for academic
+periods, grades, subjects, classes, curriculum mappings, assessment schemes,
+grading scales, ranking rules, and promotion rules. Referenced class year/grade
+scope and curriculum grade-subject identity are immutable. Draft versioned
+records edit in place; active or retired records create a separate draft
+version. Assessment components, grading bands, and rule options use structured
+accessible controls rather than administrator-authored JSON.
+
+Every browser mutation uses the normal signed-in anonymous-key client, live
+permission checks, optimistic concurrency, database validation, forced RLS, and
+transactional audit events. Head and subject teachers retain read-only access.
+See [Academic configuration](docs/academic-configuration.md) and
+[Academic configuration testing](docs/academic-configuration-testing.md).
+
 ## Validation commands
 
 ```bash

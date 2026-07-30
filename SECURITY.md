@@ -65,6 +65,18 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
 - Parent code and PIN verification must be rate-limited and monitored to reduce enumeration and brute-force risk.
 - Parent sessions must be secure, short-lived where appropriate, revocable, and restricted to the verified student's published reports.
 - Authentication and authorization failures must fail closed and must not reveal whether unrelated students, accounts, or reports exist.
+- Referenced class sections must not be moved to another year or grade. The
+  database enforces this after enrolment, assignment, mark-sheet, or report use,
+  independent of disabled UI controls.
+- A curriculum mapping's grade-subject pair is immutable. Flag changes and
+  dependency-aware removal use separate narrow RPCs; callers cannot repoint an
+  existing identity.
+- Academic configuration uses optimistic concurrency for every edited or
+  reordered row. Conflict failures must be immediate, atomic, and must not
+  append a success audit event.
+- Draft configuration may be edited, but active and retired assessment,
+  grading, ranking, and promotion history must be preserved through explicit
+  version-from-existing operations.
 
 ## Secrets and environment handling
 

@@ -32,7 +32,12 @@ const local = parseEnvironment(
   }),
 );
 
-if (!local.API_URL || !local.ANON_KEY || !local.SERVICE_ROLE_KEY) {
+if (
+  !local.API_URL ||
+  !local.ANON_KEY ||
+  !local.SERVICE_ROLE_KEY ||
+  !local.DB_URL
+) {
   throw new Error("The local Supabase stack is unavailable.");
 }
 
@@ -52,6 +57,7 @@ const result = spawnSync(
       NEXT_PUBLIC_SUPABASE_URL: local.API_URL,
       NEXT_PUBLIC_SUPABASE_ANON_KEY: local.ANON_KEY,
       SUPABASE_SERVICE_ROLE_KEY: local.SERVICE_ROLE_KEY,
+      SUPABASE_LOCAL_DB_URL: local.DB_URL,
       AUTH_FLOW_SIGNING_SECRET:
         "synthetic-academic-config-secret-for-local-tests-0123456789",
     },

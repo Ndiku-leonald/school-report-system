@@ -5,6 +5,7 @@ import { Card, CardContent } from "@/components/ui/card";
 
 type ConfigurationListItem = {
   action?: ReactNode;
+  editor?: ReactNode;
   id: string;
   title: string;
   description: string;
@@ -32,22 +33,29 @@ export function ConfigurationList({
       {items.map((item) => (
         <li key={item.id}>
           <Card>
-            <CardContent className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="min-w-0">
-                <p className="text-foreground font-semibold">{item.title}</p>
-                <p className="text-muted-foreground mt-1 text-sm">
-                  {item.description}
-                </p>
-                {item.meta ? (
-                  <div className="text-muted-foreground mt-2 text-xs">
-                    {item.meta}
-                  </div>
-                ) : null}
+            <CardContent className="py-4">
+              <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                <div className="min-w-0">
+                  <p className="text-foreground font-semibold">{item.title}</p>
+                  <p className="text-muted-foreground mt-1 text-sm">
+                    {item.description}
+                  </p>
+                  {item.meta ? (
+                    <div className="text-muted-foreground mt-2 text-xs">
+                      {item.meta}
+                    </div>
+                  ) : null}
+                </div>
+                <div className="flex shrink-0 flex-wrap items-center gap-3">
+                  {item.status ? <Badge>{item.status}</Badge> : null}
+                  {item.action}
+                </div>
               </div>
-              <div className="flex shrink-0 items-center gap-3">
-                {item.status ? <Badge>{item.status}</Badge> : null}
-                {item.action}
-              </div>
+              {item.editor ? (
+                <div className="border-border mt-4 border-t pt-4">
+                  {item.editor}
+                </div>
+              ) : null}
             </CardContent>
           </Card>
         </li>

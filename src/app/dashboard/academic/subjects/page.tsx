@@ -1,4 +1,8 @@
 import { ConfigurationList } from "@/components/academic-configuration/configuration-list";
+import {
+  ConfigurationReorderForm,
+  SubjectEditForm,
+} from "@/components/academic-configuration/entity-management-forms";
 import { SubjectCreateForm } from "@/components/academic-configuration/quick-create-forms";
 import { ConfigurationTransitionButton } from "@/components/academic-configuration/transition-button";
 import { PageHeader } from "@/components/layout/page-header";
@@ -35,17 +39,52 @@ export default async function SubjectsPage() {
                 }
               />
             ) : undefined,
+            editor: data.canManage ? (
+              <SubjectEditForm
+                subject={{
+                  id: subject.id,
+                  code: subject.code,
+                  name: subject.name,
+                  description: subject.description ?? "",
+                  isCore: subject.is_core,
+                  contributesToAggregate: subject.contributes_to_aggregate,
+                  sortOrder: subject.sort_order,
+                  updatedAt: subject.updated_at,
+                }}
+              />
+            ) : undefined,
           }))}
         />
         {data.canManage ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Add subject</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <SubjectCreateForm />
-            </CardContent>
-          </Card>
+          <div className="grid content-start gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Add subject</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <SubjectCreateForm />
+              </CardContent>
+            </Card>
+            {data.subjects.filter((subject) => subject.is_active).length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Reorder active subjects</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ConfigurationReorderForm
+                    kind="subjects"
+                    items={data.subjects
+                      .filter((subject) => subject.is_active)
+                      .map((subject) => ({
+                        id: subject.id,
+                        label: `${subject.code} · ${subject.name}`,
+                        updatedAt: subject.updated_at,
+                      }))}
+                  />
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>

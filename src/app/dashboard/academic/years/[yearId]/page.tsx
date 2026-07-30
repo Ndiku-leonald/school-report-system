@@ -1,6 +1,7 @@
 import { notFound } from "next/navigation";
 
 import { ConfigurationList } from "@/components/academic-configuration/configuration-list";
+import { TermEditForm } from "@/components/academic-configuration/entity-management-forms";
 import { StructuredCreateForm } from "@/components/academic-configuration/structured-create-form";
 import { ConfigurationTransitionButton } from "@/components/academic-configuration/transition-button";
 import { PageHeader } from "@/components/layout/page-header";
@@ -42,6 +43,20 @@ export default async function AcademicYearDetailPage({
                   expectedUpdatedAt={term.updated_at}
                   label="Open term"
                   transition="open-term"
+                />
+              ) : undefined,
+            editor:
+              data.canManage && term.status === "DRAFT" ? (
+                <TermEditForm
+                  term={{
+                    id: term.id,
+                    name: term.name,
+                    termNumber: term.term_number,
+                    startsOn: term.starts_on,
+                    endsOn: term.ends_on,
+                    isPromotionTerm: term.is_promotion_term,
+                    updatedAt: term.updated_at,
+                  }}
                 />
               ) : undefined,
             meta: term.is_promotion_term ? "Promotion term" : undefined,

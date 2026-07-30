@@ -1,4 +1,8 @@
 import { ConfigurationList } from "@/components/academic-configuration/configuration-list";
+import {
+  ConfigurationReorderForm,
+  GradeLevelEditForm,
+} from "@/components/academic-configuration/entity-management-forms";
 import { GradeLevelCreateForm } from "@/components/academic-configuration/quick-create-forms";
 import { ConfigurationTransitionButton } from "@/components/academic-configuration/transition-button";
 import { PageHeader } from "@/components/layout/page-header";
@@ -32,17 +36,50 @@ export default async function GradeLevelsPage() {
                 }
               />
             ) : undefined,
+            editor: data.canManage ? (
+              <GradeLevelEditForm
+                grade={{
+                  id: grade.id,
+                  code: grade.code,
+                  name: grade.name,
+                  sortOrder: grade.sort_order,
+                  isFinalGrade: grade.is_final_grade,
+                  updatedAt: grade.updated_at,
+                }}
+              />
+            ) : undefined,
           }))}
         />
         {data.canManage ? (
-          <Card>
-            <CardHeader>
-              <CardTitle>Add grade level</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <GradeLevelCreateForm />
-            </CardContent>
-          </Card>
+          <div className="grid content-start gap-6">
+            <Card>
+              <CardHeader>
+                <CardTitle>Add grade level</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <GradeLevelCreateForm />
+              </CardContent>
+            </Card>
+            {data.grades.filter((grade) => grade.is_active).length > 0 ? (
+              <Card>
+                <CardHeader>
+                  <CardTitle>Reorder active grades</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ConfigurationReorderForm
+                    kind="grades"
+                    items={data.grades
+                      .filter((grade) => grade.is_active)
+                      .map((grade) => ({
+                        id: grade.id,
+                        label: `${grade.code} · ${grade.name}`,
+                        updatedAt: grade.updated_at,
+                      }))}
+                  />
+                </CardContent>
+              </Card>
+            ) : null}
+          </div>
         ) : null}
       </div>
     </div>

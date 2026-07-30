@@ -1,5 +1,5 @@
+import { AssessmentSchemeForm } from "@/components/academic-configuration/assessment-scheme-form";
 import { ConfigurationList } from "@/components/academic-configuration/configuration-list";
-import { StructuredCreateForm } from "@/components/academic-configuration/structured-create-form";
 import { ConfigurationTransitionButton } from "@/components/academic-configuration/transition-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -7,12 +7,25 @@ import { getAcademicConfigurationData } from "@/lib/academic-configuration/data"
 
 export default async function AssessmentSchemesPage() {
   const data = await getAcademicConfigurationData();
+  const terms = data.terms.map((term) => ({
+    id: term.id,
+    label: `${term.academic_years.name} · ${term.name}`,
+  }));
+  const grades = data.grades.map((grade) => ({
+    id: grade.id,
+    label: grade.name,
+  }));
+  const subjects = data.subjects.map((subject) => ({
+    id: subject.id,
+    label: subject.name,
+  }));
+
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Version protected"
         title="Assessment schemes"
-        description="Review assessment-component weights and immutable active versions. Marks entry is intentionally outside this module."
+        description="Review structured assessment-component weights and immutable historical versions. Marks entry is intentionally outside this module."
       />
       <div className="grid gap-6 xl:grid-cols-[minmax(0,1fr)_24rem]">
         <ConfigurationList
@@ -35,6 +48,33 @@ export default async function AssessmentSchemesPage() {
                   }
                 />
               ) : undefined,
+            editor: data.canManage ? (
+              <AssessmentSchemeForm
+                mode={scheme.status === "DRAFT" ? "edit" : "version"}
+                terms={terms}
+                grades={grades}
+                subjects={subjects}
+                initial={{
+                  id: scheme.id,
+                  updatedAt: scheme.updated_at,
+                  termId: scheme.term_id,
+                  gradeLevelId: scheme.grade_level_id,
+                  subjectId: scheme.subject_id,
+                  name: scheme.name,
+                  effectiveFrom: scheme.effective_from,
+                  components: [...scheme.assessment_components]
+                    .sort((left, right) => left.sort_order - right.sort_order)
+                    .map((component) => ({
+                      name: component.name,
+                      componentCode: component.component_code,
+                      maximumScore: component.maximum_score,
+                      weightPercentage: component.weight_percentage,
+                      sortOrder: component.sort_order,
+                      isRequired: component.is_required,
+                    })),
+                }}
+              />
+            ) : undefined,
             meta: scheme.assessment_components
               .map(
                 (component) =>
@@ -49,20 +89,10 @@ export default async function AssessmentSchemesPage() {
               <CardTitle>New assessment scheme</CardTitle>
             </CardHeader>
             <CardContent>
-              <StructuredCreateForm
-                kind="assessment"
-                terms={data.terms.map((term) => ({
-                  id: term.id,
-                  label: `${term.academic_years.name} · ${term.name}`,
-                }))}
-                grades={data.grades.map((grade) => ({
-                  id: grade.id,
-                  label: grade.name,
-                }))}
-                subjects={data.subjects.map((subject) => ({
-                  id: subject.id,
-                  label: subject.name,
-                }))}
+              <AssessmentSchemeForm
+                terms={terms}
+                grades={grades}
+                subjects={subjects}
               />
             </CardContent>
           </Card>

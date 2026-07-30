@@ -148,16 +148,21 @@ Implement academic years, terms, classes, streams, subjects, assessment models, 
 
 **Implementation evidence (2026-07-30)**
 
-- Migration 12 adds selected-session, school-scoped configuration RPCs with
-  optimistic concurrency, transactional audits, explicit lifecycle checks, and
-  version protection while direct browser table writes stay denied.
+- Migrations 12 and 13 add selected-session, school-scoped configuration RPCs,
+  immediate optimistic-concurrency conflicts, dependency-backed class scope and
+  curriculum identity locks, transactional audits, explicit lifecycle checks,
+  and version-from-existing protection while direct browser writes stay denied.
 - The permission-aware `/dashboard/academic` route family exposes school
-  configuration and a read-only experience for non-managing staff.
-- Shared Zod schemas, generated database contracts, a 40-assertion pgTAP suite,
-  signed-in integration tests, Playwright scenarios, and CI entry points cover
-  the Stage 6 boundary.
+  configuration, full edit and reorder controls, structured component, band,
+  ranking, and promotion editors, and a read-only experience for non-managing
+  staff.
+- Shared Zod schemas, generated database contracts, 302 pgTAP assertions, 18
+  focused signed-in integration tests, and 24 Playwright scenarios cover the
+  Stage 6 boundary.
 - The full application, local database, signed-in integration, and Playwright
   validation suites pass without linking or modifying a remote project.
+- Stage 7 remains unstarted: no student-management workflow, calculation,
+  ranking execution, or promotion decision was added.
 
 ## 7. Student management
 

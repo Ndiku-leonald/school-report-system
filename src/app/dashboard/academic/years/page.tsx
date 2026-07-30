@@ -1,7 +1,8 @@
 import Link from "next/link";
 
-import { AcademicYearCreateForm } from "@/components/academic-configuration/quick-create-forms";
 import { ConfigurationList } from "@/components/academic-configuration/configuration-list";
+import { AcademicYearEditForm } from "@/components/academic-configuration/entity-management-forms";
+import { AcademicYearCreateForm } from "@/components/academic-configuration/quick-create-forms";
 import { ConfigurationTransitionButton } from "@/components/academic-configuration/transition-button";
 import { PageHeader } from "@/components/layout/page-header";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -45,6 +46,18 @@ export default async function AcademicYearsPage() {
                         : "archive-year"
                   }
                   variant={year.status === "DRAFT" ? "primary" : "secondary"}
+                />
+              ) : undefined,
+            editor:
+              data.canManage && year.status === "DRAFT" ? (
+                <AcademicYearEditForm
+                  year={{
+                    id: year.id,
+                    name: year.name,
+                    startsOn: year.starts_on,
+                    endsOn: year.ends_on,
+                    updatedAt: year.updated_at,
+                  }}
                 />
               ) : undefined,
             meta: (

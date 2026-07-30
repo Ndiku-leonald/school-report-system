@@ -163,3 +163,17 @@ retirement timestamps for versioned scales and rules. It exposes narrow RPCs
 for each configuration aggregate. Draft assessment components and grading bands
 are replaced transactionally with their parent draft; activation performs
 aggregate validation. Existing migrations 1–11 remain unchanged.
+
+Migration 13 preserves migration 12 and completes its workflow invariants. It
+locks class-section year/grade identity after any enrolment, teaching or class
+teacher assignment, mark sheet, or report dependency; makes curriculum
+grade-subject identity immutable; and splits mapping creation from flag updates.
+It also adds explicit version-from-existing functions for assessment, grading,
+ranking, and promotion configuration, structured rule validation, transactional
+whole-set reorder functions, and distinct create, edit, version, and lifecycle
+audit actions. Promotion required-subject rules are a structured JSON array,
+while ranking and additional promotion options use documented versioned objects.
+
+Stage 6 stores configuration and history only. It does not calculate marks,
+grades, rankings, aggregates, promotion recommendations, or promotion decisions;
+those remain Stage 7 and later concerns.

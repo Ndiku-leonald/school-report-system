@@ -211,3 +211,16 @@ locks target rows, checks `expected_updated_at`, validates state and scope, and
 commits the mutation with one append-only audit event. Versioned active rules
 are cloned rather than edited. See
 [academic-configuration.md](academic-configuration.md).
+
+The Stage 6 corrective layer keeps React Hook Form field-array state in isolated
+client components while pages and configuration reads remain server-rendered.
+Server Actions parse documented structured schemas, map stable database errors
+to useful feedback, and revalidate only the affected route. PostgreSQL remains
+authoritative for school scope, dependency locks, lifecycle, version identity,
+ordering, concurrency, RLS, and audit atomicity.
+
+Versioned configuration follows one directional flow: draft records edit in
+place; active or retired sources can only produce a new draft with a new ID and
+incremented version. The Stage 6 boundary ends at configuration persistence.
+Calculation, ranking execution, promotion recommendations, and learner
+progression begin in Stage 7 or later and are not invoked by these routes.

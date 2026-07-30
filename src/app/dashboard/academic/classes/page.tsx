@@ -1,4 +1,5 @@
 import { ConfigurationList } from "@/components/academic-configuration/configuration-list";
+import { ClassSectionEditForm } from "@/components/academic-configuration/entity-management-forms";
 import { StructuredCreateForm } from "@/components/academic-configuration/structured-create-form";
 import { ConfigurationTransitionButton } from "@/components/academic-configuration/transition-button";
 import { PageHeader } from "@/components/layout/page-header";
@@ -32,6 +33,33 @@ export default async function ClassSectionsPage() {
                 }
               />
             ) : undefined,
+            editor:
+              data.canManage &&
+              (section.academic_years.status === "DRAFT" ||
+                section.academic_years.status === "ACTIVE") ? (
+                <ClassSectionEditForm
+                  section={{
+                    id: section.id,
+                    academicYearId: section.academic_year_id,
+                    gradeLevelId: section.grade_level_id,
+                    name: section.name,
+                    classCode: section.class_code,
+                    capacity: section.capacity,
+                    updatedAt: section.updated_at,
+                  }}
+                  scopeLocked={section.scope_locked}
+                  years={data.years
+                    .filter(
+                      (year) =>
+                        year.status === "DRAFT" || year.status === "ACTIVE",
+                    )
+                    .map((year) => ({ id: year.id, label: year.name }))}
+                  grades={data.grades.map((grade) => ({
+                    id: grade.id,
+                    label: `${grade.code} · ${grade.name}`,
+                  }))}
+                />
+              ) : undefined,
           }))}
         />
         {data.canManage ? (
