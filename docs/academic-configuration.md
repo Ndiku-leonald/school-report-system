@@ -107,3 +107,18 @@ functioning mutation controls.
 Stage 6 validation is local-only. The repository is not linked to a remote
 Supabase project, and this work does not guess a project reference, apply remote
 migrations, or reset remote data.
+
+## Historical immutability
+
+Migration 14 requires every mark sheet to reference an active, compatible
+assessment scheme. Once a scheme has a mark-sheet or mark dependency, its
+scope, version, effective date, and components cannot change; retirement
+preserves its historical interpretation. Database triggers also protect active
+and retired grading scales and bands, ranking rules, and promotion rules from
+redefinition or deletion. Promotion decisions may select only an active rule at
+selection time, while later retirement leaves the recorded decision valid.
+
+Component and grading-band array position is the authoritative display order:
+the server derives sequential `sort_order` values on every save. Coverage checks
+continue to use grading score boundaries, not display order. Repeated lifecycle
+requests fail as no-ops and create no audit event. Stage 7 was not started.

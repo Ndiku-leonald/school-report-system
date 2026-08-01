@@ -481,6 +481,62 @@ test.describe.serial("academic configuration", () => {
     ).toBeVisible();
   });
 
+  test("assessment component arrow order persists after saving and reload", async ({
+    page,
+  }) => {
+    await login(page, "registrar");
+    await page.goto("/dashboard/academic/assessment-schemes");
+    const card = page
+      .locator("li")
+      .filter({ hasText: "Editable E2E assessment saved" });
+    await card.getByText("Edit draft").click();
+
+    await card
+      .getByRole("group", { name: "Component 1" })
+      .getByLabel("Name")
+      .fill("A");
+    await card
+      .getByRole("group", { name: "Component 1" })
+      .getByLabel("Component code")
+      .fill("A");
+    await card
+      .getByRole("group", { name: "Component 1" })
+      .getByLabel("Weight percentage")
+      .fill("34");
+    await card.getByRole("button", { name: "Add component" }).click();
+    await card.getByRole("button", { name: "Add component" }).click();
+
+    for (const [position, name, code, weight] of [
+      ["2", "B", "B", "33"],
+      ["3", "C", "C", "33"],
+    ] as const) {
+      const component = card.getByRole("group", {
+        name: `Component ${position}`,
+      });
+      await component.getByLabel("Name").fill(name);
+      await component.getByLabel("Component code").fill(code);
+      await component.getByLabel("Weight percentage").fill(weight);
+    }
+
+    await card.getByRole("button", { name: "Move component 3 up" }).click();
+    await card.getByRole("button", { name: "Move component 2 up" }).click();
+    await card.getByRole("button", { name: "Save draft changes" }).click();
+    await expect(
+      card
+        .getByRole("status")
+        .filter({ hasText: "Draft assessment scheme updated." }),
+    ).toBeVisible();
+
+    await page.reload();
+    const reloaded = page
+      .locator("li")
+      .filter({ hasText: "Editable E2E assessment saved" });
+    await reloaded.getByText("Edit draft").click();
+    await expect(
+      reloaded.getByRole("group", { name: "Component 1" }).getByLabel("Name"),
+    ).toHaveValue("C");
+  });
+
   test("an active assessment offers explicit new-version creation", async ({
     page,
   }) => {
@@ -512,6 +568,51 @@ test.describe.serial("academic configuration", () => {
     await expect(
       active.locator("summary").filter({ hasText: "Create new version" }),
     ).toBeVisible();
+  });
+
+  test("grading band arrow order persists after saving and reload", async ({
+    page,
+  }) => {
+    await login(page, "admin");
+    await page.goto("/dashboard/academic/grading");
+    const card = page.locator("li").filter({ hasText: "Editable E2E grading" });
+    await card.getByText("Edit draft").click();
+
+    const first = card.getByRole("group", { name: "Band 1" });
+    await first.getByLabel("Minimum score").fill("0");
+    await first.getByLabel("Maximum score").fill("34");
+    await first.getByLabel("Grade").fill("A");
+    await card.getByRole("button", { name: "Add band" }).click();
+    await card.getByRole("button", { name: "Add band" }).click();
+
+    for (const [position, minimum, maximum, grade, points] of [
+      ["2", "34", "67", "B", "2"],
+      ["3", "67", "100", "C", "3"],
+    ] as const) {
+      const band = card.getByRole("group", { name: `Band ${position}` });
+      await band.getByLabel("Minimum score").fill(minimum);
+      await band.getByLabel("Maximum score").fill(maximum);
+      await band.getByLabel("Grade").fill(grade);
+      await band.getByLabel("Aggregate points").fill(points);
+    }
+
+    await card.getByRole("button", { name: "Move band 3 up" }).click();
+    await card.getByRole("button", { name: "Move band 2 up" }).click();
+    await card.getByRole("button", { name: "Save draft changes" }).click();
+    await expect(
+      card
+        .getByRole("status")
+        .filter({ hasText: "Draft grading scale updated." }),
+    ).toBeVisible();
+
+    await page.reload();
+    const reloaded = page
+      .locator("li")
+      .filter({ hasText: "Editable E2E grading" });
+    await reloaded.getByText("Edit draft").click();
+    await expect(
+      reloaded.getByRole("group", { name: "Band 1" }).getByLabel("Grade"),
+    ).toHaveValue("C");
   });
 
   test("ranking drafts edit while active rules version", async ({ page }) => {

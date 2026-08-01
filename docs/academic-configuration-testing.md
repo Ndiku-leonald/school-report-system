@@ -43,3 +43,10 @@ component, band, ranking, and promotion controls.
 CI rebuilds the database solely from ordered migrations and seed data, regenerates
 database types, and fails if the committed types differ. Never run `db reset`
 against a remote project.
+
+Migration 14 adds a seventh pgTAP file covering active-scheme mark-sheet
+validation, referenced-scheme protection, direct privileged mutation attempts,
+grading/rule lifecycle immutability, promotion-rule selection, and no-op audit
+suppression. The database suite now has 324 assertions. The signed-in suite has
+19 workflows, and the dedicated Chromium suite has 26 scenarios, including
+save-and-reload persistence of component and band arrow ordering.

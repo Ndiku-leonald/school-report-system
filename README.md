@@ -211,6 +211,12 @@ Routes currently available:
 
 Security requirements and vulnerability-reporting guidance are defined in [SECURITY.md](SECURITY.md).
 
+Stage 6 configuration history is database-enforced: mark sheets require active
+assessment schemes; referenced schemes and all active or retired versioned
+configuration are immutable; and component or grading-band display order is the
+saved field-array order. No-op lifecycle requests fail without creating audits.
+Stage 7 workflows and all remote Supabase changes remain out of scope.
+
 ## Project documentation
 
 - [Product requirements](docs/product-requirements.md)

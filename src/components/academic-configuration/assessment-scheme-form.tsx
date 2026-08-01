@@ -269,6 +269,8 @@ export function AssessmentSchemeForm({
           <div
             className="border-border bg-surface-muted grid gap-3 rounded-xl border p-4"
             key={field.id}
+            role="group"
+            aria-label={`Component ${index + 1}`}
           >
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold">Component {index + 1}</p>
@@ -379,21 +381,6 @@ export function AssessmentSchemeForm({
                   error={
                     form.formState.errors.components?.[index]?.weightPercentage
                   }
-                />
-              </div>
-              <div>
-                <Label
-                  htmlFor={`assessment-${initial?.id ?? "new"}-${index}-order`}
-                >
-                  Sort order
-                </Label>
-                <Input
-                  id={`assessment-${initial?.id ?? "new"}-${index}-order`}
-                  type="number"
-                  min={1}
-                  {...form.register(`components.${index}.sortOrder`, {
-                    valueAsNumber: true,
-                  })}
                 />
               </div>
               <label className="flex items-center gap-2 self-end pb-3 text-sm font-medium">

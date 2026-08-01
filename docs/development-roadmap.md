@@ -156,8 +156,12 @@ Implement academic years, terms, classes, streams, subjects, assessment models, 
   configuration, full edit and reorder controls, structured component, band,
   ranking, and promotion editors, and a read-only experience for non-managing
   staff.
-- Shared Zod schemas, generated database contracts, 302 pgTAP assertions, 18
-  focused signed-in integration tests, and 24 Playwright scenarios cover the
+- Corrective migration 14 requires active assessment schemes for mark sheets,
+  freezes referenced scheme definitions, protects active/retired configuration
+  history even from privileged direct writes, persists field-array ordering,
+  and rejects no-op lifecycle audits.
+- Shared Zod schemas, generated database contracts, 324 pgTAP assertions, 19
+  focused signed-in integration tests, and 26 Playwright scenarios cover the
   Stage 6 boundary.
 - The full application, local database, signed-in integration, and Playwright
   validation suites pass without linking or modifying a remote project.

@@ -297,6 +297,10 @@ values (
   1
 );
 
+update public.assessment_schemes
+set status = 'ACTIVE'
+where id = 'e4900000-0000-4000-8000-000000000001';
+
 insert into public.mark_sheets (
   id, term_id, class_section_id, subject_id, assessment_scheme_id,
   teaching_assignment_id
@@ -949,6 +953,36 @@ select extensions.throws_ok(
   '34. cross-school update identifiers are rejected'
 );
 
+create temporary table no_op_lifecycle_audit_count as
+select count(*)::bigint as count
+from public.audit_logs
+where entity_id = 'e4200000-0000-4000-8000-000000000001';
+
+select extensions.throws_ok(
+  $$
+    select public.set_grade_level_active(
+      'e4200000-0000-4000-8000-000000000001',
+      (select updated_at from public.grade_levels where id = 'e4200000-0000-4000-8000-000000000001'),
+      true
+    )
+  $$,
+  '55000',
+  'ACADEMIC_CONFIGURATION_LIFECYCLE_NO_CHANGE',
+  '34a. a no-op grade activation is rejected without pretending to succeed'
+);
+
+reset role;
+select extensions.is(
+  (
+    select count(*)::bigint
+    from public.audit_logs
+    where entity_id = 'e4200000-0000-4000-8000-000000000001'
+  ),
+  (select count from no_op_lifecycle_audit_count),
+  '34b. a no-op lifecycle request creates no audit event'
+);
+
+set local role authenticated;
 select set_config(
   'request.jwt.claims',
   '{"sub":"e2000000-0000-4000-8000-000000000002","role":"authenticated","session_id":"e5000000-0000-4000-8000-000000000002"}',

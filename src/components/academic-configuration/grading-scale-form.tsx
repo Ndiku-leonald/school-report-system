@@ -262,6 +262,8 @@ export function GradingScaleForm({
           <div
             className="border-border bg-surface-muted grid gap-3 rounded-xl border p-4"
             key={field.id}
+            role="group"
+            aria-label={`Band ${index + 1}`}
           >
             <div className="flex items-center justify-between gap-3">
               <p className="text-sm font-semibold">Band {index + 1}</p>
@@ -381,21 +383,6 @@ export function GradingScaleForm({
                 <Input
                   id={`grading-${initial?.id ?? "new"}-${index}-description`}
                   {...form.register(`bands.${index}.description`)}
-                />
-              </div>
-              <div>
-                <Label
-                  htmlFor={`grading-${initial?.id ?? "new"}-${index}-order`}
-                >
-                  Sort order
-                </Label>
-                <Input
-                  id={`grading-${initial?.id ?? "new"}-${index}-order`}
-                  type="number"
-                  min={1}
-                  {...form.register(`bands.${index}.sortOrder`, {
-                    valueAsNumber: true,
-                  })}
                 />
               </div>
               <label className="flex items-center gap-2 self-end pb-3 text-sm font-medium">

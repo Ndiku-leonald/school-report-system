@@ -640,6 +640,30 @@ describe.sequential("local academic configuration workflows", () => {
     ).toBeNull();
   });
 
+  it("rejects no-op lifecycle requests without creating an audit event", async () => {
+    const before = await database.query<{ count: string }>(
+      `select count(*)::text as count
+       from public.audit_logs
+       where entity_id = $1`,
+      [state.grade.entity_id],
+    );
+    const noOp = await registrar.rpc("set_grade_level_active", {
+      target_grade_level_id: state.grade.entity_id,
+      expected_updated_at: state.grade.updated_at,
+      target_active: true,
+    });
+    expect(noOp.error?.message).toContain(
+      "ACADEMIC_CONFIGURATION_LIFECYCLE_NO_CHANGE",
+    );
+    const after = await database.query<{ count: string }>(
+      `select count(*)::text as count
+       from public.audit_logs
+       where entity_id = $1`,
+      [state.grade.entity_id],
+    );
+    expect(after.rows[0]?.count).toBe(before.rows[0]?.count);
+  });
+
   it("rejects stale edits with an optimistic-concurrency conflict", async () => {
     const stale = await registrar.rpc("update_grade_level_subject", {
       target_mapping_id: state.mapping.entity_id,

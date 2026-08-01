@@ -129,6 +129,12 @@ completed.
 
 Database-specific controls and limitations are documented in [docs/database-security.md](docs/database-security.md).
 
+Migration 14 treats historical configuration as an integrity boundary even for
+privileged direct writes. Mark sheets can select only active, compatible
+assessment schemes; referenced schemes cannot be redefined; and active or
+retired grading, ranking, and promotion records cannot be altered or deleted.
+No remote Supabase project was modified for this work.
+
 ## Reporting a vulnerability
 
 Do not open a public issue containing vulnerability details, personal data, credentials, or exploit material. Use the repository's private GitHub vulnerability-reporting or Security Advisory channel when available. If no private channel is enabled, contact the repository owner through an established private channel and disclose only the minimum information needed to coordinate a secure report.

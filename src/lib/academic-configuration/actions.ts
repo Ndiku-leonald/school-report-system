@@ -184,12 +184,14 @@ function assessmentComponents(
     isRequired: boolean;
   }[],
 ): Json {
-  return components.map((component) => ({
+  return components.map((component, index) => ({
     name: component.name,
     component_code: component.componentCode,
     maximum_score: component.maximumScore,
     weight_percentage: component.weightPercentage,
-    sort_order: component.sortOrder,
+    // Visual array order is the authoritative persisted order. Do not trust a
+    // stale browser value after a field-array swap, add, or removal.
+    sort_order: index + 1,
     is_required: component.isRequired,
   }));
 }
@@ -205,14 +207,16 @@ function gradingBands(
     sortOrder: number;
   }[],
 ): Json {
-  return bands.map((band) => ({
+  return bands.map((band, index) => ({
     minimum_score: band.minimumScore,
     maximum_score: band.maximumScore,
     grade: band.grade,
     aggregate_points: band.aggregatePoints,
     description: band.description,
     is_pass: band.isPass,
-    sort_order: band.sortOrder,
+    // Score coverage is evaluated from boundaries; display order is persisted
+    // independently from the trusted submitted array position.
+    sort_order: index + 1,
   }));
 }
 

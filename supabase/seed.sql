@@ -251,7 +251,7 @@ values (
   null,
   'Standard Percentage Scale',
   1,
-  true,
+  false,
   '2026-02-02'
 )
 on conflict (id) do update
@@ -287,5 +287,9 @@ set
   description = excluded.description,
   is_pass = excluded.is_pass,
   sort_order = excluded.sort_order;
+
+update public.grading_scales
+set is_active = true
+where id = '60000000-0000-4000-8000-000000000001';
 
 commit;

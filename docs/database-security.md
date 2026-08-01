@@ -128,3 +128,10 @@ Configuration audit actions distinguish creation, draft editing, explicit
 version creation, activation, deactivation, and retirement. A version event
 records its source and new record identity. Failed validation, permission,
 scope, dependency, and concurrency transactions produce no success audit.
+
+Migration 14 keeps helper functions in the private `internal` schema with fixed
+search paths and revokes helper execution from browser roles. Lifecycle and
+dependency triggers apply to privileged writes as well as RPC calls. They block
+historical redefinition, draft/retired scheme use by mark sheets, and false
+no-op lifecycle audits; direct browser table writes and service-role exposure
+remain prohibited.

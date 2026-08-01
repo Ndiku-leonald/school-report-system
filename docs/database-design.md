@@ -177,3 +177,12 @@ while ranking and additional promotion options use documented versioned objects.
 Stage 6 stores configuration and history only. It does not calculate marks,
 grades, rankings, aggregates, promotion recommendations, or promotion decisions;
 those remain Stage 7 and later concerns.
+
+Migration 14 adds trigger-enforced historical immutability. `mark_sheets`
+require an active assessment scheme within the existing term, grade, subject,
+class, and teaching-assignment scope. A referenced assessment scheme cannot be
+re-scoped, re-versioned, re-dated, or have components changed. Active and
+retired grading scales/bands, ranking rules, and promotion rules are similarly
+immutable; draft records remain the only editable versions. Promotion-decision
+inserts validate the selected active rule without invalidating historic decisions
+after later retirement.

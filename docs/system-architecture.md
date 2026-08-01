@@ -224,3 +224,10 @@ place; active or retired sources can only produce a new draft with a new ID and
 incremented version. The Stage 6 boundary ends at configuration persistence.
 Calculation, ranking execution, promotion recommendations, and learner
 progression begin in Stage 7 or later and are not invoked by these routes.
+
+The Stage 6 history layer is enforced below Server Actions: migration 14 validates
+active assessment-scheme references for mark sheets and prevents any direct
+redefinition of referenced, active, or retired versions. Server Actions derive
+component and band order from submitted field-array position, while PostgreSQL
+retains score-range validation and lifecycle protection. No remote Supabase
+service participates in this architecture.

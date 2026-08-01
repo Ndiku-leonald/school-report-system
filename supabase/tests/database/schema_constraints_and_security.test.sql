@@ -40,6 +40,28 @@ select extensions.has_table('public', 'student_access_credentials', 'student_acc
 select extensions.has_table('public', 'parent_access_sessions', 'parent_access_sessions table exists');
 select extensions.has_table('public', 'audit_logs', 'audit_logs table exists');
 
+insert into public.grading_scales (
+  id, school_id, academic_year_id, grade_level_id, name, version,
+  is_active, effective_from
+)
+values (
+  '60000000-0000-4000-8000-000000000002',
+  '10000000-0000-4000-8000-000000000001',
+  '20000000-0000-4000-8000-000000000001',
+  null,
+  'Draft overlap fixture',
+  2,
+  false,
+  '2026-02-02'
+);
+
+insert into public.grading_bands (
+  grading_scale_id, minimum_score, maximum_score, grade, sort_order
+)
+values (
+  '60000000-0000-4000-8000-000000000002', 0, 80, 'BASE', 1
+);
+
 select extensions.throws_ok(
   $$
     insert into public.academic_years (
@@ -756,7 +778,7 @@ select extensions.throws_ok(
       sort_order
     )
     values (
-      '60000000-0000-4000-8000-000000000001',
+      '60000000-0000-4000-8000-000000000002',
       75,
       85,
       'OVERLAP',
