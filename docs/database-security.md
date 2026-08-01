@@ -142,3 +142,19 @@ retired. Inserts and changed scheme references still require `ACTIVE`; every
 update still checks term, year, class, grade, subject, teaching assignment, and
 scheme agreement. The replacement trigger function retains a fixed search path
 and is not executable by `public`, `anon`, or `authenticated`.
+
+## Stage 7 student and Storage security
+
+Student-management RPCs are `SECURITY DEFINER` functions with fixed
+`pg_catalog, public, internal` search paths, no dynamic SQL and explicit
+authenticated-only execution. The manager helper accepts no caller school or
+membership authority. Failed permission, scope, validation, capacity and
+concurrency checks roll back without success audit rows.
+
+Guardian tables retain no broad authenticated `SELECT`; contacts are exposed
+only through a schoolwide caller-scoped function. Assigned teachers receive
+student and current-enrolment projections only for live assignments. Storage
+object policies require the private bucket, a valid school/student key and live
+view or manage authority. Signed URLs are short-lived and never persisted or
+audited. `student_access_credentials` and `parent_access_sessions` remain
+denied and untouched.

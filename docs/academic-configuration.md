@@ -131,4 +131,10 @@ later retirement leaves the recorded decision valid.
 Component and grading-band array position is the authoritative display order:
 the server derives sequential `sort_order` values on every save. Coverage checks
 continue to use grading score boundaries, not display order. Repeated lifecycle
-requests fail as no-ops and create no audit event. Stage 7 was not started.
+requests fail as no-ops and create no audit event.
+
+Stage 7 consumes configured academic years, grade levels, active classes and
+class capacity without redefining them. It adds student, guardian and enrolment
+workflows only. Teacher-assignment management remains Stage 8; marks,
+calculations, reports, parent access and promotion execution remain later
+stages.

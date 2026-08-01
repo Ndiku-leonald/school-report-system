@@ -142,3 +142,14 @@ for their selected school but cannot mutate it. `ACADEMIC_REGISTRAR`,
 `SCHOOL_ADMIN`, and `SUPER_ADMIN` may manage configuration. The role matrix
 remains migration-controlled; the UI does not infer or grant permission from a
 role label, and RPCs evaluate current unrevoked mappings on every call.
+
+## Student-management roles
+
+`ACADEMIC_REGISTRAR`, `SCHOOL_ADMIN` and `SUPER_ADMIN` have
+`STUDENTS_MANAGE` plus schoolwide student visibility. `HEAD_TEACHER` has
+schoolwide read-only visibility. `CLASS_TEACHER` and `SUBJECT_TEACHER` have
+assignment-scoped student visibility only. Assignment-only roles never receive
+guardian contacts. A class-capacity override additionally requires a live
+`SCHOOL_ADMIN` or `SUPER_ADMIN` role; the permission alone is insufficient.
+Navigation follows these permissions for usability, while routes, Actions,
+RPCs, RLS and Storage policies remain the enforcement layers.

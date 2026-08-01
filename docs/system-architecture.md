@@ -235,3 +235,20 @@ remain immutable. Server Actions derive component and band order from submitted
 field-array position, while PostgreSQL retains score-range validation and
 lifecycle protection. No remote Supabase service participates in this
 architecture.
+
+## Stage 7 student-management boundary
+
+The `/dashboard/students` route family reads through caller-scoped PostgreSQL
+functions. Server Components fetch the directory, references, detail, history,
+private guardian projection and short-lived photo URL. Client leaf forms use
+React Hook Form where structured profile input benefits from immediate
+feedback; every mutation crosses a Server Action using the ordinary
+authenticated Supabase client and then a narrow RPC.
+
+Migration 16 derives school and actor from the JWT-session-selected membership.
+Schoolwide and assignment-scoped reads share no guardian projection.
+Concurrency, lifecycle graphs, capacity authority, dependency-safe movement,
+normalization and audit atomicity are enforced below the UI. Storage RLS parses
+the school/student object path and reuses the same live selected-session
+permissions. Stage 8 assignments and Stage 15 parent access are not created by
+this architecture.

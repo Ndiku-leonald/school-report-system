@@ -106,9 +106,16 @@ Local configuration does not alter a hosted Supabase project. Before
 production, independently disable hosted public signup and anonymous sign-in,
 enable email/password only for invited staff login, set the minimum password
 length to 12, and configure exact trusted callback origins. No remote Supabase
-project was modified during the Stage 4, Stage 5, or Stage 6 work.
+project was modified during the Stage 4, Stage 5, Stage 6, or Stage 7 work.
 
 Stage 6 adds `npm run test:academic-config` and
 `npm run test:e2e:academic-config`. Both discover credentials from the running
 local CLI stack and provision only synthetic `.invalid` identities. Run them
 after a local reset; never provide a remote project reference to these commands.
+
+Stage 7 adds `npm run test:students` and `npm run test:e2e:students`. The
+integration runner refuses a non-loopback API URL and provisions disposable
+synthetic `.invalid` identities. The browser suite covers 26 student-management
+scenarios and must run in CI. Student photo objects remain inside the local
+private Storage service. On Windows, if the standard local ports are reserved,
+use a temporary local remap and restore `supabase/config.toml` before staging.

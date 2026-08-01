@@ -19,6 +19,8 @@ export default async function DashboardLayout({
   const context = await requireAnyPermission([
     "DASHBOARD_VIEW",
     "ACADEMIC_CONFIGURATION_VIEW",
+    "STUDENTS_VIEW_ALL",
+    "STUDENTS_VIEW_ASSIGNED",
   ]);
   const staffName = context.staff.profile
     ? `${context.staff.profile.first_name} ${context.staff.profile.last_name}`

@@ -167,12 +167,14 @@ Implement academic years, terms, classes, streams, subjects, assessment models, 
   Stage 6 boundary.
 - The full application, local database, signed-in integration, and Playwright
   validation suites pass without linking or modifying a remote project.
-- Stage 7 remains unstarted: no student-management workflow, calculation,
-  ranking execution, or promotion decision was added.
+- Stage 7 was not part of the Stage 6 merge; calculation, ranking execution and
+  promotion decisions remain unimplemented.
 
-## 7. Student management
+## 7. Student management â€” Implemented for review
 
-Implement student profiles, academic-period enrolment, class or stream placement, status changes, and secure access-code administration.
+Implement student profiles, guardian relationships, academic-period enrolment,
+class or stream placement and status changes. Secure access credentials remain
+Stage 15.
 
 **Acceptance criteria**
 
@@ -180,6 +182,20 @@ Implement student profiles, academic-period enrolment, class or stream placement
 - Transfers, withdrawals, and duplicate-record constraints are handled predictably.
 - Views expose only the minimum necessary personal information.
 - Tests use synthetic data and sensitive changes are audited.
+
+**Implementation evidence (2026-08-01)**
+
+- Migration 16 adds normalized identity constraints, lifecycle and capacity
+  rules, selected-session RPCs, optimistic concurrency, private photo policies,
+  no-physical-delete protection and transactional audits.
+- `/dashboard/students` provides server-side search/filtering/pagination,
+  responsive directory/detail/admission/edit/enrolment interfaces, guarded
+  guardian contacts and short-lived private images.
+- 401 pgTAP assertions, 21 focused signed-in integration scenarios and 26
+  dedicated Playwright scenarios cover the Stage 7 boundary while all earlier
+  suites remain in CI.
+- No remote Supabase project was linked or modified. Stage 8 teacher-assignment
+  management and Stage 15 parent access were not started.
 
 ## 8. Teacher assignments
 
