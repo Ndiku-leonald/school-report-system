@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import type { ReactNode } from "react";
 
 import { AppShell } from "@/components/layout/app-shell";
-import { requirePermission } from "@/lib/authorization/guards";
+import { requireAnyPermission } from "@/lib/authorization/guards";
 import { filterNavigation } from "@/lib/authorization/navigation";
 import { dashboardNavigation } from "@/lib/navigation";
 
@@ -16,7 +16,10 @@ export default async function DashboardLayout({
 }: {
   children: ReactNode;
 }) {
-  const context = await requirePermission("DASHBOARD_VIEW");
+  const context = await requireAnyPermission([
+    "DASHBOARD_VIEW",
+    "ACADEMIC_CONFIGURATION_VIEW",
+  ]);
   const staffName = context.staff.profile
     ? `${context.staff.profile.first_name} ${context.staff.profile.last_name}`
     : "Staff member";

@@ -8,7 +8,7 @@ The product must remain configurable for different schools. School identity, sub
 
 ## Current status
 
-**Stage 5: roles and scoped authorization is implemented for review.** The repository
+**Stage 6: academic configuration management is implemented for review.** The repository
 contains the Stage 3 database foundation plus cookie-based Supabase Auth,
 server-authoritative staff membership checks, invitation and recovery flows,
 active-school selection, authentication audit events, and local-only Auth test
@@ -25,8 +25,9 @@ signed user-bound proof, PKCE recovery and invitations require purpose-specific
 signed state bound to the authoritative Auth email, and invitation activation
 is atomic.
 
-Academic writes remain deny-by-default. Stage 5 grants only reviewed,
-school- and assignment-scoped reads. Live CRUD, marks transitions,
+Academic table writes remain deny-by-default. Stage 6 adds narrow,
+audited and concurrency-protected configuration RPCs while retaining reviewed,
+school- and assignment-scoped reads. Marks transitions,
 calculations, report generation, storage, analytics, promotion processing, and
 parent verification have not been implemented.
 
@@ -122,6 +123,28 @@ Environment parsing is lazy so the Stage 2 placeholder pages, tests, and product
 
 No real credentials belong in `.env.example`, documentation, source files, commits, issues, or pull requests.
 
+## Academic configuration
+
+Stage 6 provides complete school-scoped create and edit workflows for academic
+periods, grades, subjects, classes, curriculum mappings, assessment schemes,
+grading scales, ranking rules, and promotion rules. Referenced class year/grade
+scope and curriculum grade-subject identity are immutable. Draft versioned
+records edit in place; active or retired records create a separate draft
+version. Assessment components, grading bands, and rule options use structured
+accessible controls rather than administrator-authored JSON.
+
+Only `ACTIVE` assessment schemes can be selected for new mark sheets or replace
+the scheme on an existing sheet. Retirement removes a scheme from future
+selection without invalidating sheets that already reference it: those sheets
+retain their historical scheme and remain updateable by later trusted workflow
+operations. Retired scheme definitions and components remain immutable.
+
+Every browser mutation uses the normal signed-in anonymous-key client, live
+permission checks, optimistic concurrency, database validation, forced RLS, and
+transactional audit events. Head and subject teachers retain read-only access.
+See [Academic configuration](docs/academic-configuration.md) and
+[Academic configuration testing](docs/academic-configuration-testing.md).
+
 ## Validation commands
 
 ```bash
@@ -131,10 +154,12 @@ npm run typecheck
 npm test
 npm run test:auth
 npm run test:authorization
+npm run test:academic-config
 npm run build
 npm run test:e2e
 npm run test:e2e:auth
 npm run test:e2e:authorization
+npm run test:e2e:academic-config
 ```
 
 Use `npx playwright install chromium` once if the local Playwright browser is not installed.
@@ -192,6 +217,14 @@ Routes currently available:
 
 Security requirements and vulnerability-reporting guidance are defined in [SECURITY.md](SECURITY.md).
 
+Stage 6 configuration history is database-enforced: new or changed mark-sheet
+scheme references require an active scheme, while existing sheets retain an
+unchanged retired-scheme reference for later workflow transitions. Referenced
+schemes and all active or retired versioned configuration are immutable, and
+component or grading-band display order is the saved field-array order. No-op
+lifecycle requests fail without creating audits. Stage 7 workflows and all
+remote Supabase changes remain out of scope.
+
 ## Project documentation
 
 - [Product requirements](docs/product-requirements.md)
@@ -199,6 +232,8 @@ Security requirements and vulnerability-reporting guidance are defined in [SECUR
 - [Roles and permissions](docs/roles-and-permissions.md)
 - [Authorization model](docs/authorization-model.md)
 - [Authorization testing](docs/authorization-testing.md)
+- [Academic configuration](docs/academic-configuration.md)
+- [Academic configuration testing](docs/academic-configuration-testing.md)
 - [Academic workflow](docs/academic-workflow.md)
 - [Database design](docs/database-design.md)
 - [Database security](docs/database-security.md)

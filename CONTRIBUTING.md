@@ -23,10 +23,12 @@ npm run typecheck
 npm test
 npm run test:auth
 npm run test:authorization
+npm run test:academic-config
 npm run build
 npm run test:e2e
 npm run test:e2e:auth
 npm run test:e2e:authorization
+npm run test:e2e:academic-config
 npm run db:reset
 npm run db:lint
 npm run db:test
@@ -53,6 +55,9 @@ and must never be imported by client code.
 - Run `npm run test:authorization` and
   `npm run test:e2e:authorization` for authorization changes; keep fixtures
   local, synthetic, and scoped to `.invalid` identities.
+- Academic configuration changes must preserve migration order, direct-write
+  denial, selected-membership scoping, expected-version checks, atomic audits,
+  and historical immutability. Run both academic configuration test commands.
 - Never commit secrets, real student records, parent credentials, or private reports.
 - Treat `.env.example` as a variable-name template only.
 - Keep business rules configurable; do not hard-code school identity, subjects, classes, streams, grading, aggregates, assessment weights, promotion thresholds, or report-card layout.

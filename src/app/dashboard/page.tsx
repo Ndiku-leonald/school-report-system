@@ -9,6 +9,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requirePermission } from "@/lib/authorization/guards";
 
 const readinessAreas = [
   {
@@ -33,7 +34,9 @@ const readinessAreas = [
   },
 ];
 
-export default function DashboardPage() {
+export default async function DashboardPage() {
+  await requirePermission("DASHBOARD_VIEW");
+
   return (
     <div className="space-y-8">
       <PageHeader

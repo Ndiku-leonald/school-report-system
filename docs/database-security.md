@@ -108,3 +108,37 @@ independently reviewed.
 
 The helper and RPC security review is documented in
 [authorization-model.md](authorization-model.md).
+
+Stage 6 mutation functions are reviewed `SECURITY DEFINER` boundaries with fixed
+search paths and no dynamic SQL. Execution is revoked from `PUBLIC` and `anon`
+and granted only to `authenticated`; every call still fails unless the current
+JWT `session_id` has a selected, owned, active membership in an active school
+with live `ACADEMIC_CONFIGURATION_MANAGE`. Direct authenticated table writes
+remain revoked. Conflict and validation failures roll back their audit insert.
+
+Migration 13 adds defense-in-depth triggers for class-section and curriculum
+identity. These triggers apply even to privileged writes and therefore do not
+depend on a page hiding a field. Stale mutations raise the stable
+`ACADEMIC_CONFIGURATION_CONFLICT` with PostgREST SQLSTATE `PT409`, producing an
+immediate HTTP 409 without retrying a serialization error. Mapping creation,
+flag editing, dependency-aware removal, and version creation are separate
+least-authority functions.
+
+Configuration audit actions distinguish creation, draft editing, explicit
+version creation, activation, deactivation, and retirement. A version event
+records its source and new record identity. Failed validation, permission,
+scope, dependency, and concurrency transactions produce no success audit.
+
+Migration 14 keeps helper functions in the private `internal` schema with fixed
+search paths and revokes helper execution from browser roles. Lifecycle and
+dependency triggers apply to privileged writes as well as RPC calls. They block
+historical redefinition, new draft/retired scheme selection by mark sheets, and
+false no-op lifecycle audits; direct browser table writes and service-role
+exposure remain prohibited.
+
+Migration 15 preserves those privileges and immutability controls while allowing
+trusted workflow updates to an existing sheet whose unchanged scheme later
+retired. Inserts and changed scheme references still require `ACTIVE`; every
+update still checks term, year, class, grade, subject, teaching assignment, and
+scheme agreement. The replacement trigger function retains a fixed search path
+and is not executable by `public`, `anon`, or `authenticated`.

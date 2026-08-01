@@ -135,7 +135,7 @@ Implement proposed staff roles, contextual assignments, server-side permission c
   suites run in CI alongside the retained Stage 4 tests. No hosted Supabase
   project is linked or modified.
 
-## 6. Academic configuration
+## 6. Academic configuration — Complete
 
 Implement academic years, terms, classes, streams, subjects, assessment models, grading scales, aggregate rules, ranking behavior, and promotion-rule configuration.
 
@@ -145,6 +145,30 @@ Implement academic years, terms, classes, streams, subjects, assessment models, 
 - Validation prevents overlapping, incomplete, or internally inconsistent active rules.
 - Effective scope or versioning preserves historical interpretation.
 - School identity and all academic labels and thresholds remain configurable.
+
+**Implementation evidence (2026-07-30)**
+
+- Migrations 12 and 13 add selected-session, school-scoped configuration RPCs,
+  immediate optimistic-concurrency conflicts, dependency-backed class scope and
+  curriculum identity locks, transactional audits, explicit lifecycle checks,
+  and version-from-existing protection while direct browser writes stay denied.
+- The permission-aware `/dashboard/academic` route family exposes school
+  configuration, full edit and reorder controls, structured component, band,
+  ranking, and promotion editors, and a read-only experience for non-managing
+  staff.
+- Corrective migration 14 freezes referenced scheme definitions, protects
+  active/retired configuration history even from privileged direct writes,
+  persists field-array ordering, and rejects no-op lifecycle audits. Migration
+  15 requires active schemes only for new or changed mark-sheet references,
+  retains existing retired-scheme references for later trusted workflow
+  transitions, and continues full scope validation on every update.
+- Shared Zod schemas, generated database contracts, 341 pgTAP assertions, 20
+  focused signed-in integration tests, and 26 Playwright scenarios cover the
+  Stage 6 boundary.
+- The full application, local database, signed-in integration, and Playwright
+  validation suites pass without linking or modifying a remote project.
+- Stage 7 remains unstarted: no student-management workflow, calculation,
+  ranking execution, or promotion decision was added.
 
 ## 7. Student management
 

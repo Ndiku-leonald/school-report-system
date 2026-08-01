@@ -9,6 +9,12 @@ Stage 5 adds active-membership, school-scoped role permissions and
 assignment-scoped academic-read RLS. Parent verification and storage controls
 remain future work, so no real academic data is permitted.
 
+Stage 6 keeps configuration table writes denied to browser roles. Narrow
+configuration RPCs derive the school from the JWT-session-selected membership,
+recheck live manage permission, apply optimistic concurrency, and append audit
+events transactionally. Active historical configuration is versioned or
+retired instead of overwritten.
+
 ## Threat model and trust boundaries
 
 Protected assets include student records, marks, report snapshots, generated reports, parent access credentials, staff identities, authorization assignments, school configuration, audit events, and server-side secrets.
@@ -59,6 +65,18 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
 - Parent code and PIN verification must be rate-limited and monitored to reduce enumeration and brute-force risk.
 - Parent sessions must be secure, short-lived where appropriate, revocable, and restricted to the verified student's published reports.
 - Authentication and authorization failures must fail closed and must not reveal whether unrelated students, accounts, or reports exist.
+- Referenced class sections must not be moved to another year or grade. The
+  database enforces this after enrolment, assignment, mark-sheet, or report use,
+  independent of disabled UI controls.
+- A curriculum mapping's grade-subject pair is immutable. Flag changes and
+  dependency-aware removal use separate narrow RPCs; callers cannot repoint an
+  existing identity.
+- Academic configuration uses optimistic concurrency for every edited or
+  reordered row. Conflict failures must be immediate, atomic, and must not
+  append a success audit event.
+- Draft configuration may be edited, but active and retired assessment,
+  grading, ranking, and promotion history must be preserved through explicit
+  version-from-existing operations.
 
 ## Secrets and environment handling
 
@@ -110,6 +128,16 @@ introduced, the later workflow controls and production security work must be
 completed.
 
 Database-specific controls and limitations are documented in [docs/database-security.md](docs/database-security.md).
+
+Migrations 14 and 15 treat historical configuration as an integrity boundary
+even for privileged direct writes. New mark sheets and changed scheme
+references can select only active, compatible assessment schemes. Retirement
+blocks future selection but does not block trusted workflow updates to an
+existing sheet with an unchanged retired-scheme reference. Referenced and
+retired scheme definitions and components cannot be redefined, and active or
+retired grading, ranking, and promotion records cannot be altered or deleted.
+Direct browser table writes remain denied. No remote Supabase project was
+modified for this work.
 
 ## Reporting a vulnerability
 

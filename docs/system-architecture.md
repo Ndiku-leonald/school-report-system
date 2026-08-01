@@ -200,3 +200,38 @@ boundaries.
 
 See [authorization-model.md](authorization-model.md) and
 [authorization-testing.md](authorization-testing.md).
+
+## Stage 6 configuration boundary
+
+Academic configuration pages read through the normal server Supabase client
+under forced RLS. Server Actions validate Zod inputs, require live manage
+permission, and invoke entity-specific RPCs; they never use a service-role
+client. PostgreSQL derives the selected school from the verified Auth session,
+locks target rows, checks `expected_updated_at`, validates state and scope, and
+commits the mutation with one append-only audit event. Versioned active rules
+are cloned rather than edited. See
+[academic-configuration.md](academic-configuration.md).
+
+The Stage 6 corrective layer keeps React Hook Form field-array state in isolated
+client components while pages and configuration reads remain server-rendered.
+Server Actions parse documented structured schemas, map stable database errors
+to useful feedback, and revalidate only the affected route. PostgreSQL remains
+authoritative for school scope, dependency locks, lifecycle, version identity,
+ordering, concurrency, RLS, and audit atomicity.
+
+Versioned configuration follows one directional flow: draft records edit in
+place; active or retired sources can only produce a new draft with a new ID and
+incremented version. The Stage 6 boundary ends at configuration persistence.
+Calculation, ranking execution, promotion recommendations, and learner
+progression begin in Stage 7 or later and are not invoked by these routes.
+
+The Stage 6 history layer is enforced below Server Actions. Migration 14
+prevents direct redefinition of referenced, active, or retired versions.
+Migration 15 requires an active assessment scheme when a mark sheet is inserted
+or changes schemes, but permits later trusted workflow transitions when an
+existing sheet keeps the same scheme after retirement. Full academic-scope
+validation still runs on every update, and the retired definition and components
+remain immutable. Server Actions derive component and band order from submitted
+field-array position, while PostgreSQL retains score-range validation and
+lifecycle protection. No remote Supabase service participates in this
+architecture.

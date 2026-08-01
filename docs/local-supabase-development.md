@@ -106,4 +106,9 @@ Local configuration does not alter a hosted Supabase project. Before
 production, independently disable hosted public signup and anonymous sign-in,
 enable email/password only for invited staff login, set the minimum password
 length to 12, and configure exact trusted callback origins. No remote Supabase
-project was modified during the Stage 4 or Stage 5 work.
+project was modified during the Stage 4, Stage 5, or Stage 6 work.
+
+Stage 6 adds `npm run test:academic-config` and
+`npm run test:e2e:academic-config`. Both discover credentials from the running
+local CLI stack and provision only synthetic `.invalid` identities. Run them
+after a local reset; never provide a remote project reference to these commands.
