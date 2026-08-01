@@ -2295,6 +2295,30 @@ export type Database = {
           membership_id: string;
         }[];
       };
+      admit_student: {
+        Args: {
+          admission_date: string;
+          admission_number: string;
+          capacity_override?: boolean;
+          capacity_override_reason?: string;
+          class_number?: string;
+          date_of_birth: string;
+          enrollment_status?: Database["public"]["Enums"]["enrollment_status"];
+          first_guardian?: Json;
+          first_name: string;
+          gender: string;
+          initial_academic_year_id?: string;
+          initial_class_section_id?: string;
+          last_name: string;
+          middle_name: string;
+        };
+        Returns: {
+          enrollment_id: string;
+          student_id: string;
+          student_status: Database["public"]["Enums"]["student_status"];
+          updated_at: string;
+        }[];
+      };
       archive_academic_year: {
         Args: {
           expected_updated_at: string;
@@ -2304,6 +2328,34 @@ export type Database = {
         Returns: {
           entity_id: string;
           entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      change_enrollment_status: {
+        Args: {
+          exited_on: string;
+          expected_updated_at: string;
+          reason: string;
+          target_enrollment_id: string;
+          target_status: Database["public"]["Enums"]["enrollment_status"];
+        };
+        Returns: {
+          enrollment_id: string;
+          status: Database["public"]["Enums"]["enrollment_status"];
+          updated_at: string;
+        }[];
+      };
+      change_student_status: {
+        Args: {
+          effective_date: string;
+          expected_updated_at: string;
+          reason: string;
+          target_status: Database["public"]["Enums"]["student_status"];
+          target_student_id: string;
+        };
+        Returns: {
+          student_id: string;
+          student_status: Database["public"]["Enums"]["student_status"];
           updated_at: string;
         }[];
       };
@@ -2329,6 +2381,24 @@ export type Database = {
         Returns: {
           entity_id: string;
           entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      create_and_link_guardian: {
+        Args: {
+          email: string;
+          first_name: string;
+          last_name: string;
+          middle_name: string;
+          phone: string;
+          primary_guardian?: boolean;
+          relationship: string;
+          report_access_eligible?: boolean;
+          target_student_id: string;
+        };
+        Returns: {
+          guardian_id: string;
+          relationship_id: string;
           updated_at: string;
         }[];
       };
@@ -2401,6 +2471,20 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      create_guardian: {
+        Args: {
+          email: string;
+          first_name: string;
+          last_name: string;
+          middle_name: string;
+          phone: string;
+        };
+        Returns: {
+          guardian_id: string;
+          is_active: boolean;
+          updated_at: string;
+        }[];
+      };
       create_promotion_rule_version: {
         Args: {
           expected_updated_at: string;
@@ -2431,6 +2515,23 @@ export type Database = {
         Returns: {
           entity_id: string;
           entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      create_student_enrollment: {
+        Args: {
+          capacity_override?: boolean;
+          capacity_override_reason?: string;
+          class_number: string;
+          enrolled_on: string;
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"];
+          target_academic_year_id: string;
+          target_class_section_id: string;
+          target_student_id: string;
+        };
+        Returns: {
+          enrollment_id: string;
+          status: Database["public"]["Enums"]["enrollment_status"];
           updated_at: string;
         }[];
       };
@@ -2488,10 +2589,141 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      get_class_roster: {
+        Args: {
+          page_number?: number;
+          page_size?: number;
+          target_class_section_id: string;
+        };
+        Returns: {
+          admission_number: string;
+          class_number: string;
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"];
+          first_name: string;
+          last_name: string;
+          middle_name: string;
+          student_id: string;
+          total_count: number;
+        }[];
+      };
       get_my_active_membership: { Args: never; Returns: string };
       get_my_effective_permissions: {
         Args: { target_membership_id: string };
         Returns: Database["public"]["Enums"]["app_permission"][];
+      };
+      get_student_details: {
+        Args: { target_student_id: string };
+        Returns: {
+          admission_date: string;
+          admission_number: string;
+          date_of_birth: string;
+          first_name: string;
+          gender: string;
+          last_name: string;
+          middle_name: string;
+          photo_storage_path: string;
+          status: Database["public"]["Enums"]["student_status"];
+          student_id: string;
+          updated_at: string;
+        }[];
+      };
+      get_student_enrollment_history: {
+        Args: { target_student_id: string };
+        Returns: {
+          academic_year_id: string;
+          academic_year_name: string;
+          class_name: string;
+          class_number: string;
+          class_section_id: string;
+          enrolled_on: string;
+          enrollment_id: string;
+          exited_on: string;
+          grade_name: string;
+          status: Database["public"]["Enums"]["enrollment_status"];
+          updated_at: string;
+        }[];
+      };
+      get_student_guardians: {
+        Args: { target_student_id: string };
+        Returns: {
+          can_access_reports: boolean;
+          email: string;
+          first_name: string;
+          guardian_id: string;
+          guardian_is_active: boolean;
+          guardian_updated_at: string;
+          is_primary: boolean;
+          last_name: string;
+          middle_name: string;
+          phone: string;
+          relationship: string;
+          relationship_id: string;
+          relationship_updated_at: string;
+        }[];
+      };
+      link_guardian_to_student: {
+        Args: {
+          primary_guardian?: boolean;
+          relationship: string;
+          report_access_eligible?: boolean;
+          target_guardian_id: string;
+          target_student_id: string;
+        };
+        Returns: {
+          relationship_id: string;
+          updated_at: string;
+        }[];
+      };
+      list_students: {
+        Args: {
+          filter_academic_year_id?: string;
+          filter_class_section_id?: string;
+          filter_enrollment_status?: Database["public"]["Enums"]["enrollment_status"];
+          filter_grade_level_id?: string;
+          filter_student_status?: Database["public"]["Enums"]["student_status"];
+          page_number?: number;
+          page_size?: number;
+          search_text?: string;
+        };
+        Returns: {
+          academic_year_id: string;
+          academic_year_name: string;
+          active_class_count: number;
+          admission_number: string;
+          class_capacity: number;
+          class_is_active: boolean;
+          class_name: string;
+          class_number: string;
+          class_section_id: string;
+          enrollment_id: string;
+          enrollment_status: Database["public"]["Enums"]["enrollment_status"];
+          first_name: string;
+          grade_level_id: string;
+          grade_name: string;
+          last_name: string;
+          middle_name: string;
+          photo_storage_path: string;
+          placement_is_current: boolean;
+          student_id: string;
+          student_status: Database["public"]["Enums"]["student_status"];
+          total_count: number;
+          updated_at: string;
+        }[];
+      };
+      move_student_class: {
+        Args: {
+          capacity_override?: boolean;
+          capacity_override_reason?: string;
+          class_number: string;
+          expected_updated_at: string;
+          target_class_section_id: string;
+          target_enrollment_id: string;
+        };
+        Returns: {
+          enrollment_id: string;
+          status: Database["public"]["Enums"]["enrollment_status"];
+          updated_at: string;
+        }[];
       };
       open_term: {
         Args: { expected_updated_at: string; target_term_id: string };
@@ -2647,6 +2879,17 @@ export type Database = {
         Args: { target_membership_id: string };
         Returns: string;
       };
+      set_student_photo_path: {
+        Args: {
+          expected_updated_at: string;
+          photo_storage_path: string;
+          target_student_id: string;
+        };
+        Returns: {
+          student_id: string;
+          updated_at: string;
+        }[];
+      };
       set_subject_active: {
         Args: {
           expected_updated_at: string;
@@ -2658,6 +2901,14 @@ export type Database = {
           entity_status: string;
           updated_at: string;
         }[];
+      };
+      unlink_guardian_from_student: {
+        Args: {
+          expected_updated_at: string;
+          reason: string;
+          target_relationship_id: string;
+        };
+        Returns: undefined;
       };
       update_academic_year: {
         Args: {
@@ -2715,6 +2966,67 @@ export type Database = {
         Returns: {
           entity_id: string;
           entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      update_guardian: {
+        Args: {
+          email: string;
+          expected_updated_at: string;
+          first_name: string;
+          last_name: string;
+          middle_name: string;
+          phone: string;
+          target_guardian_id: string;
+          target_is_active: boolean;
+        };
+        Returns: {
+          guardian_id: string;
+          is_active: boolean;
+          updated_at: string;
+        }[];
+      };
+      update_student_enrollment: {
+        Args: {
+          class_number: string;
+          enrolled_on: string;
+          expected_updated_at: string;
+          target_enrollment_id: string;
+        };
+        Returns: {
+          enrollment_id: string;
+          status: Database["public"]["Enums"]["enrollment_status"];
+          updated_at: string;
+        }[];
+      };
+      update_student_guardian_relationship: {
+        Args: {
+          expected_updated_at: string;
+          primary_guardian: boolean;
+          relationship: string;
+          report_access_eligible: boolean;
+          target_relationship_id: string;
+        };
+        Returns: {
+          relationship_id: string;
+          updated_at: string;
+        }[];
+      };
+      update_student_profile: {
+        Args: {
+          admission_date: string;
+          admission_number: string;
+          date_of_birth: string;
+          expected_updated_at: string;
+          first_name: string;
+          gender: string;
+          last_name: string;
+          middle_name: string;
+          target_student_id: string;
+        };
+        Returns: {
+          student_id: string;
+          student_status: Database["public"]["Enums"]["student_status"];
           updated_at: string;
         }[];
       };

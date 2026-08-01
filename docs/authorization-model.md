@@ -116,3 +116,25 @@ session-selected membership boundary and require
 View-only roles retain school-scoped `ACADEMIC_CONFIGURATION_VIEW`. Later
 stages remain responsible for student and assignment CRUD, marks workflows,
 calculations, reports/PDFs, parent access, analytics, and promotion decisions.
+
+## Stage 7 student authorization
+
+Stage 7 now implements student CRUD as narrow workflows, not broad table
+privileges. `STUDENTS_MANAGE` gates every mutation. `STUDENTS_VIEW_ALL` returns
+selected-school learners and permits the guarded guardian projection.
+`STUDENTS_VIEW_ASSIGNED` returns only current learners in classes visible to
+the selected membership's live class/subject assignments and never returns
+guardian identity or contact fields.
+
+Both Server Actions and PostgreSQL independently re-evaluate authority. A
+multi-school profile cannot union permissions: changing the selected session
+membership immediately changes the only school and role set considered.
+Revoked roles and unavailable assignments fail on the next request.
+
+Historical placement filters do not broaden authorization. A selected-school
+viewer with `STUDENTS_VIEW_ALL` may search completed, withdrawn, transferred,
+active or repeating placements and receives the latest matching placement per
+student. A caller relying on `STUDENTS_VIEW_ASSIGNED` must still have a live
+assignment to the learner's single current class; historical placement filters
+cannot reveal former learners, and the available class choices are limited to
+live assigned classes. Guardian contacts remain absent from all directory rows.

@@ -8,7 +8,7 @@ The product must remain configurable for different schools. School identity, sub
 
 ## Current status
 
-**Stage 6: academic configuration management is implemented for review.** The repository
+**Stage 7: student, guardian and enrolment management is implemented for review.** The repository
 contains the Stage 3 database foundation plus cookie-based Supabase Auth,
 server-authoritative staff membership checks, invitation and recovery flows,
 active-school selection, authentication audit events, and local-only Auth test
@@ -25,11 +25,18 @@ signed user-bound proof, PKCE recovery and invitations require purpose-specific
 signed state bound to the authoritative Auth email, and invitation activation
 is atomic.
 
-Academic table writes remain deny-by-default. Stage 6 adds narrow,
+Academic table writes remain deny-by-default. Stages 6 and 7 add narrow,
 audited and concurrency-protected configuration RPCs while retaining reviewed,
 school- and assignment-scoped reads. Marks transitions,
-calculations, report generation, storage, analytics, promotion processing, and
+calculations, report generation, report publication, analytics, promotion processing, and
 parent verification have not been implemented.
+
+Stage 7 adds `/dashboard/students`, admission and profile workflows, guarded
+student and enrolment lifecycle changes, primary-guardian management, private
+student photographs, server-side search/filtering/pagination, selected-school
+isolation, optimistic concurrency, and atomic audit events. Guardian contacts
+remain unavailable to assignment-only teachers, and report-access eligibility
+creates no parent credential or session.
 
 ## Planned technology stack
 
@@ -222,8 +229,9 @@ scheme references require an active scheme, while existing sheets retain an
 unchanged retired-scheme reference for later workflow transitions. Referenced
 schemes and all active or retired versioned configuration are immutable, and
 component or grading-band display order is the saved field-array order. No-op
-lifecycle requests fail without creating audits. Stage 7 workflows and all
-remote Supabase changes remain out of scope.
+lifecycle requests fail without creating audits. Stage 8 teacher-assignment
+management, Stage 15 parent access, and all remote Supabase changes remain out
+of scope.
 
 ## Project documentation
 
@@ -233,6 +241,8 @@ remote Supabase changes remain out of scope.
 - [Authorization model](docs/authorization-model.md)
 - [Authorization testing](docs/authorization-testing.md)
 - [Academic configuration](docs/academic-configuration.md)
+- [Student management](docs/student-management.md)
+- [Student management testing](docs/student-management-testing.md)
 - [Academic configuration testing](docs/academic-configuration-testing.md)
 - [Academic workflow](docs/academic-workflow.md)
 - [Database design](docs/database-design.md)
@@ -244,3 +254,14 @@ remote Supabase changes remain out of scope.
 - [Development roadmap](docs/development-roadmap.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
+
+### Stage 7 consistency correction
+
+Migration 17 serializes class-capacity decisions with a destination-row lock
+and enforces one current (`ACTIVE` or `REPEATING`) enrolment per student across
+all years. Closing or completing an academic-year enrolment does not change the
+student lifecycle; reactivation is an explicit audited student-status action.
+Schoolwide directory filters can return labelled historical placements, while
+assigned-only teachers remain limited to live assignment scope. Primary
+guardian replacement is serialized and audited, and photo paths can be linked
+only after the private Storage object exists. Stage 8 is not included.

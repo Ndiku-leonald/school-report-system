@@ -66,3 +66,10 @@ and must never be imported by client code.
 ## Pull-request expectations
 
 A pull request should explain its purpose, affected workflows, verification performed, database or environment changes, security implications, and any follow-up work. Screenshots or test evidence should use synthetic data only.
+
+For student-management changes, run `npm run test:students` and
+`npm run test:e2e:students` in addition to every retained suite. Preserve the
+guardian-contact privacy boundary, selected-school isolation, direct-write
+denial, photo-bucket privacy, concurrency tokens and exact audit behavior.
+Never use parent credential/session tables as part of Stage 7. Temporary local
+port mappings and Playwright output must be restored or removed before staging.

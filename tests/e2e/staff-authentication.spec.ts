@@ -7,6 +7,7 @@ import { join } from "node:path";
 import type { Database } from "../../src/types/database.generated";
 
 const enabled = process.env.AUTH_E2E === "1";
+const mailpitUrl = process.env.LOCAL_MAILPIT_URL ?? "http://127.0.0.1:54324";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const schoolId = "10000000-0000-4000-8000-000000000001";
@@ -317,9 +318,7 @@ test.describe.serial("staff authentication", () => {
 
     await expect
       .poll(async () => {
-        const response = await request.get(
-          "http://127.0.0.1:54324/api/v1/messages",
-        );
+        const response = await request.get(`${mailpitUrl}/api/v1/messages`);
         const body = (await response.json()) as {
           messages: {
             ID: string;
@@ -332,9 +331,7 @@ test.describe.serial("staff authentication", () => {
       })
       .toBeTruthy();
 
-    const messagesResponse = await request.get(
-      "http://127.0.0.1:54324/api/v1/messages",
-    );
+    const messagesResponse = await request.get(`${mailpitUrl}/api/v1/messages`);
     const messages = (await messagesResponse.json()) as {
       messages: {
         ID: string;
@@ -347,7 +344,7 @@ test.describe.serial("staff authentication", () => {
     expect(invitationMessage?.ID).toBeTruthy();
 
     const messageResponse = await request.get(
-      `http://127.0.0.1:54324/api/v1/message/${invitationMessage!.ID}`,
+      `${mailpitUrl}/api/v1/message/${invitationMessage!.ID}`,
     );
     const message = (await messageResponse.json()) as { Text: string };
     const invitationLink = message.Text.match(
@@ -485,9 +482,7 @@ test.describe.serial("staff authentication", () => {
 
     await expect
       .poll(async () => {
-        const response = await request.get(
-          "http://127.0.0.1:54324/api/v1/messages",
-        );
+        const response = await request.get(`${mailpitUrl}/api/v1/messages`);
         const body = (await response.json()) as {
           messages: {
             ID: string;
@@ -500,9 +495,7 @@ test.describe.serial("staff authentication", () => {
       })
       .toBeTruthy();
 
-    const messagesResponse = await request.get(
-      "http://127.0.0.1:54324/api/v1/messages",
-    );
+    const messagesResponse = await request.get(`${mailpitUrl}/api/v1/messages`);
     const messages = (await messagesResponse.json()) as {
       messages: {
         ID: string;
@@ -514,7 +507,7 @@ test.describe.serial("staff authentication", () => {
     );
     expect(recoveryMessage?.ID).toBeTruthy();
     const messageResponse = await request.get(
-      `http://127.0.0.1:54324/api/v1/message/${recoveryMessage!.ID}`,
+      `${mailpitUrl}/api/v1/message/${recoveryMessage!.ID}`,
     );
     const message = (await messageResponse.json()) as { Text: string };
     const recoveryLink = message.Text.match(/\(\s*(https?:\/\/\S+)\s*\)/)?.[1];

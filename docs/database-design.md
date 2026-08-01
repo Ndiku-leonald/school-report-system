@@ -195,3 +195,27 @@ an existing sheet may retain that unchanged reference and receive later trusted
 workflow updates. Complete scope validation still runs on every update, and the
 retired scheme and its components remain immutable so existing marks preserve
 their exact interpretation.
+
+## Stage 7 learner-management model
+
+Migration 16 retains the Stage 3 student, guardian, relationship and enrolment
+tables. It adds normalized school admission uniqueness, current class-number
+uniqueness, search/supporting indexes and normalization triggers. Student,
+guardian and enrolment rows reject physical deletion. History is represented by
+status, exit dates, preserved placements and append-only audit events.
+
+Mutation functions separate profile edits, student status, enrolment creation,
+safe enrolment edits, class movement, enrolment status, guardian identity,
+relationships and photo metadata. `updated_at` is the optimistic-concurrency
+token. A private Storage bucket keeps image objects outside PostgreSQL, while
+`students.photo_storage_path` stores only the scoped object key. Parent
+credential and session structures remain unchanged.
+
+Migration 17 adds `enrollment_one_current_per_student_idx`, a preflight that
+refuses inconsistent existing data, and lifecycle triggers that align current
+enrolments with active students and validate exit dates. The capacity helper is
+`VOLATILE`: it locks the destination `class_sections` row with `FOR UPDATE`,
+recounts current placements and holds the lock within the caller transaction.
+Student lifecycle and enrolment lifecycle remain separate aggregates. The
+directory function returns `placement_is_current` and `class_is_active` so a
+latest historical match is never presented as the current placement.

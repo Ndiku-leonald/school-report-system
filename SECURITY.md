@@ -144,3 +144,27 @@ modified for this work.
 Do not open a public issue containing vulnerability details, personal data, credentials, or exploit material. Use the repository's private GitHub vulnerability-reporting or Security Advisory channel when available. If no private channel is enabled, contact the repository owner through an established private channel and disclose only the minimum information needed to coordinate a secure report.
 
 Include the affected component, impact, reproduction conditions using synthetic data, and suggested remediation if known. Do not access, alter, or retain real student data while investigating.
+
+## Stage 7 student-data boundary
+
+Migration 16 keeps direct browser writes denied and exposes narrow,
+fixed-search-path RPCs that derive the actor and school from the selected JWT
+session membership. Student, guardian and enrolment mutations require live
+`STUDENTS_MANAGE`, optimistic concurrency and transactional append-only audits.
+Assignment-only teachers receive no guardian IDs, contacts or access flags.
+
+Student photographs use the private `student-photos` bucket, authenticated RLS,
+school/student path scope, a 5 MiB limit, approved image MIME types and
+application signature checks. The database stores no public URL. No service
+role is used by application reads or mutations. Student/guardian/enrolment
+physical deletion is prohibited, parent credential/session tables are
+unchanged, and no remote Supabase project was linked or modified.
+
+Migration 17 adds database-enforced lifecycle consistency. A partial unique
+index permits only one current enrolment per student; triggers reject current
+placements for non-active students and invalid exit dates. Capacity checks lock
+the destination class before recounting. Historical filters are schoolwide
+only, primary-guardian replacement locks the student and relationships and
+audits the demoted relationship, and photo metadata RPCs verify the exact
+private object in `storage.objects`. These controls do not grant browser table
+writes or activate any Stage 8 workflow.

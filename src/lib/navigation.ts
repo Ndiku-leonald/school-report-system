@@ -24,9 +24,9 @@ export const dashboardNavigation: NavigationItem[] = [
   },
   {
     label: "Students",
+    href: "/dashboard/students",
     icon: GraduationCap,
     permissions: ["STUDENTS_VIEW_ALL", "STUDENTS_VIEW_ASSIGNED"],
-    unavailable: true,
   },
   {
     label: "Staff",
@@ -85,6 +85,12 @@ export const dashboardNavigation: NavigationItem[] = [
 ];
 
 export const teacherNavigation: NavigationItem[] = [
+  {
+    label: "Students",
+    href: "/dashboard/students",
+    icon: GraduationCap,
+    permissions: ["STUDENTS_VIEW_ALL", "STUDENTS_VIEW_ASSIGNED"],
+  },
   {
     label: "Academic setup",
     href: "/dashboard/academic",
