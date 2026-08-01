@@ -539,10 +539,13 @@ test.describe.serial("student management", () => {
     await login(page, "registrar");
     await page.goto("/dashboard/students/new");
     const admission = page.getByLabel("Admission number");
-    await admission.focus();
-    await expect(admission).toBeFocused();
-    await page.keyboard.press("Tab");
-    await expect(page.getByLabel("Gender")).toBeFocused();
+    await expect(admission).toBeEditable();
+    await expect
+      .poll(async () => {
+        await admission.press("Tab");
+        return page.evaluate(() => document.activeElement?.id);
+      })
+      .toBe("student-gender");
     for (const label of [
       "Admission number",
       "First name",
