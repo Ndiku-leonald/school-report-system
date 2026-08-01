@@ -159,3 +159,12 @@ application signature checks. The database stores no public URL. No service
 role is used by application reads or mutations. Student/guardian/enrolment
 physical deletion is prohibited, parent credential/session tables are
 unchanged, and no remote Supabase project was linked or modified.
+
+Migration 17 adds database-enforced lifecycle consistency. A partial unique
+index permits only one current enrolment per student; triggers reject current
+placements for non-active students and invalid exit dates. Capacity checks lock
+the destination class before recounting. Historical filters are schoolwide
+only, primary-guardian replacement locks the student and relationships and
+audits the demoted relationship, and photo metadata RPCs verify the exact
+private object in `storage.objects`. These controls do not grant browser table
+writes or activate any Stage 8 workflow.

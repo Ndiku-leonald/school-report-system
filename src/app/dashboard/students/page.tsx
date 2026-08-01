@@ -60,7 +60,7 @@ export default async function StudentsPage({
       />
       <Card className="p-4 sm:p-5">
         <form
-          className="grid gap-3 lg:grid-cols-[minmax(14rem,1.6fr)_repeat(4,minmax(9rem,1fr))_auto]"
+          className="grid gap-3 lg:grid-cols-[minmax(14rem,1.6fr)_repeat(5,minmax(9rem,1fr))_auto_auto]"
           role="search"
         >
           <div className="relative">
@@ -130,6 +130,26 @@ export default async function StudentsPage({
             {data.classes.map((section) => (
               <option key={section.id} value={section.id}>
                 {section.name}
+                {section.is_active ? "" : " (inactive)"}
+              </option>
+            ))}
+          </select>
+          <select
+            name="enrollment"
+            defaultValue={filters.enrollment ?? ""}
+            className={selectClass}
+            aria-label="Enrolment status"
+          >
+            <option value="">All enrolment statuses</option>
+            {[
+              "ACTIVE",
+              "REPEATING",
+              "TRANSFERRED",
+              "WITHDRAWN",
+              "COMPLETED",
+            ].map((value) => (
+              <option key={value} value={value}>
+                {value}
               </option>
             ))}
           </select>
@@ -139,6 +159,12 @@ export default async function StudentsPage({
           >
             Apply
           </button>
+          <Link
+            className={buttonStyles({ variant: "ghost" })}
+            href="/dashboard/students"
+          >
+            Clear filters
+          </Link>
         </form>
       </Card>
       {data.students.length ? (
@@ -149,7 +175,7 @@ export default async function StudentsPage({
                 <tr>
                   <th className="px-5 py-3 font-semibold">Student</th>
                   <th className="px-5 py-3 font-semibold">Admission no.</th>
-                  <th className="px-5 py-3 font-semibold">Current class</th>
+                  <th className="px-5 py-3 font-semibold">Placement</th>
                   <th className="px-5 py-3 font-semibold">Class no.</th>
                   <th className="px-5 py-3 font-semibold">Status</th>
                 </tr>
@@ -173,9 +199,21 @@ export default async function StudentsPage({
                       {student.admission_number}
                     </td>
                     <td className="px-5 py-4">
-                      {student.grade_name && student.class_name
-                        ? `${student.grade_name} · ${student.class_name}`
-                        : "Not enrolled"}
+                      {student.grade_name && student.class_name ? (
+                        <span>
+                          {student.grade_name} · {student.class_name}
+                          <span className="text-muted-foreground mt-1 block text-xs">
+                            {student.placement_is_current
+                              ? "Current placement"
+                              : "Matching historical placement"}
+                            {!student.class_is_active
+                              ? " · Inactive class"
+                              : ""}
+                          </span>
+                        </span>
+                      ) : (
+                        "Not enrolled"
+                      )}
                     </td>
                     <td className="px-5 py-4">{student.class_number ?? "—"}</td>
                     <td className="px-5 py-4">
@@ -215,6 +253,14 @@ export default async function StudentsPage({
                     : "Not currently enrolled"}
                   {student.class_number ? ` · No. ${student.class_number}` : ""}
                 </p>
+                {student.class_name ? (
+                  <p className="text-muted-foreground mt-1 text-xs">
+                    {student.placement_is_current
+                      ? "Current placement"
+                      : "Matching historical placement"}
+                    {!student.class_is_active ? " · Inactive class" : ""}
+                  </p>
+                ) : null}
               </Link>
             ))}
           </div>

@@ -38,50 +38,96 @@ export async function getStudentReferenceData() {
     "STUDENTS_VIEW_ASSIGNED",
   ]);
   const supabase = await createServerSupabaseClient();
-  const [years, grades, classes] = await Promise.all([
-    supabase
-      .from("academic_years")
-      .select("id,name,status,starts_on,ends_on")
-      .eq("school_id", context.activeSchoolId)
-      .order("starts_on", { ascending: false }),
-    supabase
-      .from("grade_levels")
-      .select("id,name,code")
-      .eq("school_id", context.activeSchoolId)
-      .eq("is_active", true)
-      .order("sort_order"),
-    supabase
-      .from("class_sections")
-      .select(
-        "id,name,class_code,capacity,is_active,academic_year_id,grade_level_id, enrollments(status)",
-      )
-      .eq("is_active", true)
-      .order("name"),
-  ]);
-  if (years.error || grades.error || classes.error) {
+  const canViewSchoolwide = context.permissions.has("STUDENTS_VIEW_ALL");
+  const today = new Date().toISOString().slice(0, 10);
+  let gradesQuery = supabase
+    .from("grade_levels")
+    .select("id,name,code,is_active")
+    .eq("school_id", context.activeSchoolId)
+    .order("sort_order");
+  let classesQuery = supabase
+    .from("class_sections")
+    .select(
+      "id,name,class_code,capacity,is_active,academic_year_id,grade_level_id, enrollments(status)",
+    )
+    .order("name");
+  if (!canViewSchoolwide) {
+    gradesQuery = gradesQuery.eq("is_active", true);
+    classesQuery = classesQuery.eq("is_active", true);
+  }
+  const [years, grades, classes, terms, classAssignments, subjectAssignments] =
+    await Promise.all([
+      supabase
+        .from("academic_years")
+        .select("id,name,status,starts_on,ends_on")
+        .eq("school_id", context.activeSchoolId)
+        .order("starts_on", { ascending: false }),
+      gradesQuery,
+      classesQuery,
+      supabase
+        .from("terms")
+        .select("id")
+        .lte("starts_on", today)
+        .gte("ends_on", today),
+      supabase
+        .from("class_teacher_assignments")
+        .select("class_section_id,term_id")
+        .eq("staff_membership_id", context.activeMembershipId)
+        .eq("is_active", true)
+        .lte("starts_on", today)
+        .or(`ends_on.is.null,ends_on.gte.${today}`),
+      supabase
+        .from("teaching_assignments")
+        .select("class_section_id,term_id")
+        .eq("staff_membership_id", context.activeMembershipId)
+        .eq("is_active", true)
+        .lte("starts_on", today)
+        .or(`ends_on.is.null,ends_on.gte.${today}`),
+    ]);
+  if (
+    years.error ||
+    grades.error ||
+    classes.error ||
+    terms.error ||
+    classAssignments.error ||
+    subjectAssignments.error
+  ) {
     console.error("Student reference data query failed.", {
       resources: [
         years.error?.code,
         grades.error?.code,
         classes.error?.code,
+        terms.error?.code,
+        classAssignments.error?.code,
+        subjectAssignments.error?.code,
       ].filter(Boolean),
     });
     throw new Error("Student reference data could not be loaded.");
   }
+  const liveTermIds = new Set((terms.data ?? []).map((term) => term.id));
+  const assignedClassIds = new Set(
+    [...(classAssignments.data ?? []), ...(subjectAssignments.data ?? [])]
+      .filter((assignment) => liveTermIds.has(assignment.term_id))
+      .map((assignment) => assignment.class_section_id),
+  );
   return {
     canManage: context.permissions.has("STUDENTS_MANAGE"),
     canOverrideCapacity: context.activeRoles.some(
       (role) => role === "SCHOOL_ADMIN" || role === "SUPER_ADMIN",
     ),
-    canViewGuardians: context.permissions.has("STUDENTS_VIEW_ALL"),
+    canViewGuardians: canViewSchoolwide,
     years: years.data ?? [],
     grades: grades.data ?? [],
-    classes: (classes.data ?? []).map((section) => ({
-      ...section,
-      activeCount: section.enrollments.filter(
-        (item) => item.status === "ACTIVE" || item.status === "REPEATING",
-      ).length,
-    })),
+    classes: (classes.data ?? [])
+      .filter(
+        (section) => canViewSchoolwide || assignedClassIds.has(section.id),
+      )
+      .map((section) => ({
+        ...section,
+        activeCount: section.enrollments.filter(
+          (item) => item.status === "ACTIVE" || item.status === "REPEATING",
+        ).length,
+      })),
   };
 }
 

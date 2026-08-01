@@ -94,3 +94,23 @@ photo content.
 The implementation is local-only. Migration 16 creates a bucket only in the
 database to which the migration is intentionally applied. No hosted Supabase
 project was linked or modified during Stage 7 development.
+
+## Current placement and lifecycle rules
+
+Migration 17 makes current placement singular across the whole school history:
+a student can have at most one `ACTIVE` or `REPEATING` enrolment, and that
+enrolment can belong only to an `ACTIVE` student. Close the current enrolment
+before opening a later-year placement. Completing, withdrawing or transferring
+one enrolment closes that academic-year record only; it does not complete,
+withdraw or transfer the student. Whole-student changes use the student
+lifecycle workflow, which atomically closes any current placement. An inactive
+student must be explicitly reactivated with a date and reason before a new
+enrolment can be created.
+
+Capacity decisions lock the destination class row and recount while the lock is
+held through commit or rollback. Schoolwide filters search historical
+placements and label matches as current or historical; assigned-only teachers
+remain restricted to learners in live assigned classes. Primary replacement
+locks all relationships for the student and records the former-primary
+demotion. Photo linking validates both path ownership and exact private object
+existence. Stage 8 academic-data entry remains out of scope.

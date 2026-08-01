@@ -7,6 +7,7 @@ import type { Database } from "../../src/types/database.generated";
 
 const enabled = process.env.STUDENT_E2E === "1";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const databaseUrl = process.env.SUPABASE_LOCAL_DB_URL ?? "";
 const password = "synthetic-student-browser-password";
@@ -85,6 +86,27 @@ async function login(page: Page, key: string) {
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL((location) => location.pathname !== "/staff-login");
+}
+
+async function signedInClient(key: string) {
+  const identity = identities.get(key)!;
+  const client = createClient<Database>(url, anonKey, {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+  });
+  const loginResult = await client.auth.signInWithPassword({
+    email: identity.email,
+    password,
+  });
+  if (loginResult.error) throw loginResult.error;
+  const selected = await client.rpc("set_my_active_membership", {
+    target_membership_id: identity.membershipId,
+  });
+  if (selected.error) throw selected.error;
+  return client;
 }
 
 async function chooseSchool(page: Page, name: string) {
@@ -337,23 +359,78 @@ test.describe.serial("student management", () => {
     ).toBeVisible();
   });
 
-  test("10. registrar creates a later-year enrolment", async ({ page }) => {
-    await database.query(
-      `update public.enrollments set status='COMPLETED',exited_on='2026-12-31' where student_id=$1 and status in ('ACTIVE','REPEATING')`,
-      [studentId],
-    );
+  test("10. registrar completes one enrolment and creates the later-year enrolment through the product flow", async ({
+    page,
+  }) => {
     await login(page, "registrar");
     await page.goto(`/dashboard/students/${studentId}/enrollment`);
+    await page.getByLabel("New status").selectOption("COMPLETED");
+    await page.getByLabel("Exit date for terminal status").fill("2026-12-31");
+    await page
+      .getByLabel("Reason for terminal status")
+      .fill("Academic year completed");
+    await page.getByRole("button", { name: "Update enrolment status" }).click();
+    await expect(
+      page.getByRole("status").filter({ hasText: "Enrolment status updated" }),
+    ).toBeVisible();
+    const afterCompletion = await database.query<{
+      student_status: string;
+      student_status_audits: string;
+    }>(
+      `select student.status student_status,
+        (select count(*) from public.audit_logs
+         where entity_id=student.id and action='STUDENT_STATUS_CHANGED')::text student_status_audits
+       from public.students student where student.id=$1`,
+      [studentId],
+    );
+    expect(afterCompletion.rows[0]).toEqual({
+      student_status: "ACTIVE",
+      student_status_audits: "0",
+    });
     await page.getByLabel("Academic year").selectOption(laterYearId);
     await page.getByLabel("Class", { exact: true }).selectOption(laterClassId);
     await page.getByLabel("Enrolled on").fill("2027-01-05");
     await page.getByRole("button", { name: "Create enrolment" }).click();
     await expect(page.getByRole("status")).toContainText("Enrolment created");
+    await page.goto(`/dashboard/students/${studentId}`);
+    await expect(
+      page.getByText(/2027 Browser.*Primary One.*P1 2027/),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/2026 Browser.*Primary One.*P1 North/),
+    ).toBeVisible();
+    const placements = await database.query<{ current_count: string }>(
+      `select count(*) filter (where status in ('ACTIVE','REPEATING'))::text current_count
+       from public.enrollments where student_id=$1`,
+      [studentId],
+    );
+    expect(placements.rows[0]!.current_count).toBe("1");
+  });
+
+  test("10b. directory filters show the completed historical placement", async ({
+    page,
+  }) => {
+    await login(page, "registrar");
+    await page.goto("/dashboard/students");
+    await page.getByLabel("Academic year").selectOption(yearId);
+    await page.getByLabel("Class section").selectOption(classId);
+    await page.getByLabel("Enrolment status").selectOption("COMPLETED");
+    await page.getByRole("button", { name: "Apply" }).click();
+    await expect(
+      page.getByRole("link", { name: /Lovelace, Augusta Ada/ }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Matching historical placement").first(),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Clear filters" }),
+    ).toBeVisible();
   });
 
   test("11. capacity warning is visible", async ({ page }) => {
     await login(page, "registrar");
     await page.goto("/dashboard/students/new");
+    await page.getByLabel("Admission number").fill(`CAP-WARNING-${nonce}`);
     await page.getByLabel("Academic year").selectOption(yearId);
     await page.getByLabel("Class", { exact: true }).selectOption(fullClassId);
     await expect(page.getByRole("status")).toContainText("at capacity");
@@ -432,6 +509,19 @@ test.describe.serial("student management", () => {
     await expect(page.getByText("Unassigned Browser Learner")).toHaveCount(0);
   });
 
+  test("16b. assigned teachers cannot discover historical unassigned students", async ({
+    page,
+  }) => {
+    await login(page, "class");
+    await page.goto("/dashboard/students");
+    await page.getByLabel("Enrolment status").selectOption("COMPLETED");
+    await page.getByRole("button", { name: "Apply" }).click();
+    await expect(page.getByText(/Augusta Ada.*Lovelace/)).toHaveCount(0);
+    await expect(
+      page.getByText("No students match these filters"),
+    ).toBeVisible();
+  });
+
   test("17. assigned teachers do not see guardian contacts", async ({
     page,
   }) => {
@@ -483,6 +573,28 @@ test.describe.serial("student management", () => {
     );
   });
 
+  test("20b. inactive students require explicit reactivation before enrolment", async ({
+    page,
+  }) => {
+    await login(page, "registrar");
+    await page.goto(`/dashboard/students/${assignedStudentId}/enrollment`);
+    await expect(page.getByText("Student reactivation required")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Create enrolment" }),
+    ).toHaveCount(0);
+    await page.goto(`/dashboard/students/${assignedStudentId}`);
+    await page.getByLabel("New status").selectOption("ACTIVE");
+    await page.getByLabel("Reason").fill("Approved return to active study");
+    await page.getByRole("button", { name: "Confirm status change" }).click();
+    await expect(page.getByRole("status")).toContainText(
+      "Student status updated",
+    );
+    await page.goto(`/dashboard/students/${assignedStudentId}/enrollment`);
+    await expect(
+      page.getByRole("button", { name: "Create enrolment" }),
+    ).toBeVisible();
+  });
+
   test("21. stale profile edits display a conflict", async ({ page }) => {
     await login(page, "registrar");
     await page.goto(`/dashboard/students/${studentId}/edit`);
@@ -523,11 +635,28 @@ test.describe.serial("student management", () => {
     ).toContainText("no larger than 5 MB");
   });
 
+  test("23b. photo metadata cannot link a nonexistent private object", async () => {
+    const client = await signedInClient("registrar");
+    const detail = await client.rpc("get_student_details", {
+      target_student_id: studentId,
+    });
+    const result = await client.rpc("set_student_photo_path", {
+      target_student_id: studentId,
+      expected_updated_at: detail.data![0]!.updated_at,
+      photo_storage_path: `${schoolId}/${studentId}/${randomUUID()}.jpg`,
+    });
+    expect(result.error?.message).toContain("STUDENT_PHOTO_OBJECT_NOT_FOUND");
+  });
+
   test("24. mobile student list and forms remain usable", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
     await login(page, "registrar");
     await page.goto("/dashboard/students");
     await expect(page.getByRole("heading", { name: "Students" })).toBeVisible();
+    await expect(page.getByLabel("Enrolment status")).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Clear filters" }),
+    ).toBeVisible();
     await page.getByRole("link", { name: "Admit student" }).click();
     await expect(page.getByLabel("Admission number")).toBeVisible();
     await expect(page.locator("body")).not.toHaveCSS("overflow-x", "scroll");

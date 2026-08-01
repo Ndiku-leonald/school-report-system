@@ -2691,6 +2691,7 @@ export type Database = {
           active_class_count: number;
           admission_number: string;
           class_capacity: number;
+          class_is_active: boolean;
           class_name: string;
           class_number: string;
           class_section_id: string;
@@ -2702,6 +2703,7 @@ export type Database = {
           last_name: string;
           middle_name: string;
           photo_storage_path: string;
+          placement_is_current: boolean;
           student_id: string;
           student_status: Database["public"]["Enums"]["student_status"];
           total_count: number;

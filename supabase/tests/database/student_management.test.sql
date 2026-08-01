@@ -1,6 +1,6 @@
 begin;
 
-select extensions.plan(60);
+select extensions.plan(79);
 
 select extensions.ok(not has_table_privilege('authenticated', 'public.students', 'INSERT,UPDATE,DELETE'), '1. direct student writes remain denied');
 select extensions.ok(not has_table_privilege('authenticated', 'public.guardians', 'INSERT,UPDATE,DELETE'), '2. direct guardian writes remain denied');
@@ -90,6 +90,119 @@ select extensions.ok(not has_function_privilege('anon', 'public.get_student_guar
 select extensions.ok(has_function_privilege('authenticated', 'public.list_students(text,student_status,uuid,uuid,uuid,enrollment_status,integer,integer)', 'EXECUTE'), '58. authenticated callers can reach guarded student lists');
 select extensions.ok(not has_function_privilege('anon', 'public.list_students(text,student_status,uuid,uuid,uuid,enrollment_status,integer,integer)', 'EXECUTE'), '59. anonymous student lists are denied');
 select extensions.is((select class_number from public.enrollments where id = 'f7600000-0000-4000-8000-000000000001'), '7', '60. class numbers are canonically trimmed');
+
+select extensions.is(
+  (select provolatile from pg_proc where oid = 'internal.assert_class_capacity(uuid,uuid,boolean,text,uuid)'::regprocedure),
+  'v'::"char",
+  '61. the class-capacity helper is volatile'
+);
+select extensions.ok(
+  pg_get_functiondef('internal.assert_class_capacity(uuid,uuid,boolean,text,uuid)'::regprocedure) ~* 'for update',
+  '62. the class-capacity helper locks the destination class row'
+);
+select extensions.ok(
+  exists (select 1 from pg_indexes where indexname = 'enrollment_one_current_per_student_idx'),
+  '63. one current enrolment per student has a global partial unique index'
+);
+select extensions.ok(
+  exists (select 1 from pg_trigger where tgname = 'students_enrollment_consistency_stage7' and not tgisinternal),
+  '64. student lifecycle consistency has a defensive trigger'
+);
+
+insert into public.academic_years (id, school_id, name, starts_on, ends_on, status)
+values ('f7100000-0000-4000-8000-000000000002', 'f7000000-0000-4000-8000-000000000001', 'Synthetic 2027', '2027-01-01', '2027-12-31', 'DRAFT');
+insert into public.class_sections (id, academic_year_id, grade_level_id, name, class_code, capacity)
+values ('f7300000-0000-4000-8000-000000000002', 'f7100000-0000-4000-8000-000000000002', 'f7200000-0000-4000-8000-000000000001', 'P1 Later', 'P1-L', 30);
+
+select extensions.throws_ok(
+  $$insert into public.enrollments (student_id,academic_year_id,class_section_id,status,enrolled_on)
+    values ('f7400000-0000-4000-8000-000000000001','f7100000-0000-4000-8000-000000000002','f7300000-0000-4000-8000-000000000002','ACTIVE','2027-01-10')$$,
+  '23505', null,
+  '65. a second current enrolment in another academic year is rejected'
+);
+
+insert into public.students (id, school_id, admission_number, first_name, last_name, admission_date, status)
+values ('f7400000-0000-4000-8000-000000000003', 'f7000000-0000-4000-8000-000000000001', 'STG-003', 'Inactive', 'Learner', '2026-01-03', 'INACTIVE');
+select extensions.throws_ok(
+  $$insert into public.enrollments (student_id,academic_year_id,class_section_id,status,enrolled_on)
+    values ('f7400000-0000-4000-8000-000000000003','f7100000-0000-4000-8000-000000000001','f7300000-0000-4000-8000-000000000001','ACTIVE','2026-01-03')$$,
+  '23514', 'CURRENT_ENROLLMENT_REQUIRES_ACTIVE_STUDENT',
+  '66. active or repeating enrolment requires an active student'
+);
+select extensions.throws_ok(
+  $$update public.students set status='INACTIVE' where id='f7400000-0000-4000-8000-000000000001'$$,
+  '23514', 'NON_ACTIVE_STUDENT_HAS_CURRENT_ENROLLMENT',
+  '67. a non-active student cannot retain a current enrolment'
+);
+select extensions.throws_ok(
+  $$update public.enrollments set exited_on='2026-06-01' where id='f7600000-0000-4000-8000-000000000001'$$,
+  '23514', 'ENROLLMENT_EXIT_INVALID',
+  '68. a current enrolment requires a null exit date'
+);
+select extensions.throws_ok(
+  $$insert into public.enrollments (student_id,academic_year_id,class_section_id,status,enrolled_on)
+    values ('f7400000-0000-4000-8000-000000000002','f7100000-0000-4000-8000-000000000001','f7300000-0000-4000-8000-000000000001','COMPLETED','2026-01-03')$$,
+  '23514', 'ENROLLMENT_EXIT_REQUIRED',
+  '69. a terminal enrolment requires an exit date'
+);
+select extensions.throws_ok(
+  $$insert into public.enrollments (student_id,academic_year_id,class_section_id,status,enrolled_on,exited_on)
+    values ('f7400000-0000-4000-8000-000000000002','f7100000-0000-4000-8000-000000000001','f7300000-0000-4000-8000-000000000001','WITHDRAWN','2026-02-03','2026-02-02')$$,
+  '23514', 'ENROLLMENT_EXIT_BEFORE_START',
+  '70. a terminal enrolment exit cannot precede its start'
+);
+select extensions.ok(
+  pg_get_functiondef('public.change_enrollment_status(uuid,timestamp with time zone,enrollment_status,date,text)'::regprocedure)
+    !~* 'update public\.students',
+  '71. enrolment lifecycle changes do not update student lifecycle state'
+);
+select extensions.ok(
+  pg_get_functiondef('public.change_student_status(uuid,timestamp with time zone,student_status,date,text)'::regprocedure)
+    ~* 'update public\.enrollments',
+  '72. student lifecycle changes close the current enrolment atomically'
+);
+select extensions.ok(
+  pg_get_functiondef('public.create_student_enrollment(uuid,uuid,uuid,text,enrollment_status,date,boolean,text)'::regprocedure)
+    ~* 'student\.status <> ''ACTIVE'''
+  and pg_get_functiondef('public.create_student_enrollment(uuid,uuid,uuid,text,enrollment_status,date,boolean,text)'::regprocedure)
+    !~* 'set status = ''ACTIVE''',
+  '73. enrolment creation requires active status and never silently reactivates'
+);
+select extensions.ok(
+  pg_get_function_result('public.list_students(text,student_status,uuid,uuid,uuid,enrollment_status,integer,integer)'::regprocedure)
+    like '%placement_is_current boolean%',
+  '74. directory rows identify current versus matching historical placement'
+);
+select extensions.ok(
+  pg_get_function_result('public.list_students(text,student_status,uuid,uuid,uuid,enrollment_status,integer,integer)'::regprocedure)
+    like '%class_is_active boolean%',
+  '75. directory rows identify inactive historical classes'
+);
+select extensions.ok(
+  pg_get_functiondef('public.set_student_photo_path(uuid,timestamp with time zone,text)'::regprocedure)
+    ~* 'storage\.objects',
+  '76. photo metadata linking verifies Storage object existence'
+);
+select extensions.ok(
+  pg_get_functiondef('public.update_student_guardian_relationship(uuid,timestamp with time zone,text,boolean,boolean)'::regprocedure)
+    ~* 'STUDENT_GUARDIAN_PRIMARY_REMOVED',
+  '77. replacing a primary guardian records the former-primary demotion'
+);
+update public.class_sections set capacity = 1 where id = 'f7300000-0000-4000-8000-000000000001';
+select extensions.throws_ok(
+  $$select internal.assert_class_capacity('f7990000-0000-4000-8000-000000000001','f7300000-0000-4000-8000-000000000001',false,null,null)$$,
+  '23514', 'CLASS_CAPACITY_REACHED',
+  '78. ordinary capacity enforcement rejects a full destination'
+);
+drop index public.enrollment_one_current_per_student_idx;
+insert into public.enrollments (student_id,academic_year_id,class_section_id,status,enrolled_on)
+values ('f7400000-0000-4000-8000-000000000001','f7100000-0000-4000-8000-000000000002','f7300000-0000-4000-8000-000000000002','ACTIVE','2027-01-10');
+select extensions.throws_ok(
+  $$select internal.assert_current_enrollment_preflight()$$,
+  '23514',
+  'CURRENT_ENROLLMENT_PREFLIGHT_FAILED: a student has more than one ACTIVE or REPEATING enrolment',
+  '79. migration preflight rejects inconsistent existing current enrolments without rewriting them'
+);
 
 select * from extensions.finish();
 rollback;

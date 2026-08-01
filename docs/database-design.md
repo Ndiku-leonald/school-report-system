@@ -210,3 +210,12 @@ relationships and photo metadata. `updated_at` is the optimistic-concurrency
 token. A private Storage bucket keeps image objects outside PostgreSQL, while
 `students.photo_storage_path` stores only the scoped object key. Parent
 credential and session structures remain unchanged.
+
+Migration 17 adds `enrollment_one_current_per_student_idx`, a preflight that
+refuses inconsistent existing data, and lifecycle triggers that align current
+enrolments with active students and validate exit dates. The capacity helper is
+`VOLATILE`: it locks the destination `class_sections` row with `FOR UPDATE`,
+recounts current placements and holds the lock within the caller transaction.
+Student lifecycle and enrolment lifecycle remain separate aggregates. The
+directory function returns `placement_is_current` and `class_is_active` so a
+latest historical match is never presented as the current placement.

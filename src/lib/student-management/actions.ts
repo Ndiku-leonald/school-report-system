@@ -75,6 +75,12 @@ function mutationError(error: { code?: string; message: string }) {
     return failed(
       "This class is at capacity. A school administrator must provide an override reason.",
     );
+  if (error.message.includes("STUDENT_STATUS_NOT_ENROLLABLE"))
+    return failed(
+      "Reactivate this student through the lifecycle workflow before creating an enrolment.",
+    );
+  if (error.message.includes("STUDENT_PHOTO_OBJECT_NOT_FOUND"))
+    return failed("The uploaded private photo object could not be found.");
   if (error.message.includes("ENROLLMENT_HAS_ACADEMIC_DEPENDENCIES"))
     return failed(
       "This placement already has academic history and cannot be moved.",

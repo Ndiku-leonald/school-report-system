@@ -14,10 +14,13 @@ const nonce = Date.now();
 const schoolId = randomUUID();
 const otherSchoolId = randomUUID();
 const yearId = randomUUID();
+const laterYearId = randomUUID();
 const otherYearId = randomUUID();
 const gradeId = randomUUID();
 const otherGradeId = randomUUID();
 const classId = randomUUID();
+const laterClassId = randomUUID();
+const unassignedClassId = randomUUID();
 const fullClassId = randomUUID();
 const otherClassId = randomUUID();
 const termId = randomUUID();
@@ -97,6 +100,31 @@ async function signedIn(key: string) {
   return client;
 }
 
+async function createFixtureStudent(label: string) {
+  const id = randomUUID();
+  const result = await database.query<{ id: string; updated_at: string }>(
+    `insert into public.students (id,school_id,admission_number,first_name,last_name,admission_date)
+     values ($1,$2,$3,$4,'Learner','2026-02-01') returning id,updated_at::text`,
+    [id, schoolId, `${label}-${nonce}-${id.slice(0, 6)}`, label],
+  );
+  return result.rows[0]!;
+}
+
+async function createFixtureClass(
+  label: string,
+  capacity: number | null,
+  targetYearId = yearId,
+) {
+  const id = randomUUID();
+  await database.query(
+    `insert into public.class_sections
+      (id,academic_year_id,grade_level_id,name,class_code,capacity)
+     values ($1,$2,$3,$4,$5,$6)`,
+    [id, targetYearId, gradeId, label, `${label}-${id.slice(0, 4)}`, capacity],
+  );
+  return id;
+}
+
 describe.sequential("local student-management security and workflows", () => {
   beforeAll(async () => {
     await database.connect();
@@ -112,20 +140,31 @@ describe.sequential("local student-management security and workflows", () => {
       ],
     );
     await database.query(
-      `insert into public.academic_years (id,school_id,name,starts_on,ends_on,status) values ($1,$2,'2026 Synthetic','2026-01-01','2026-12-31','ACTIVE'),($3,$4,'2026 Other','2026-01-01','2026-12-31','ACTIVE')`,
-      [yearId, schoolId, otherYearId, otherSchoolId],
+      `insert into public.academic_years (id,school_id,name,starts_on,ends_on,status)
+       values ($1,$2,'2026 Synthetic','2026-01-01','2026-12-31','ACTIVE'),
+              ($3,$2,'2027 Synthetic','2027-01-01','2027-12-31','DRAFT'),
+              ($4,$5,'2026 Other','2026-01-01','2026-12-31','ACTIVE')`,
+      [yearId, schoolId, laterYearId, otherYearId, otherSchoolId],
     );
     await database.query(
       `insert into public.grade_levels (id,school_id,code,name,sort_order) values ($1,$2,'P1','Primary One',1),($3,$4,'P1','Other Primary One',1)`,
       [gradeId, schoolId, otherGradeId, otherSchoolId],
     );
     await database.query(
-      `insert into public.class_sections (id,academic_year_id,grade_level_id,name,class_code,capacity) values ($1,$2,$3,'P1 North','P1-N',10),($4,$2,$3,'P1 Full','P1-F',1),($5,$6,$7,'Other P1','OP1',10)`,
+      `insert into public.class_sections (id,academic_year_id,grade_level_id,name,class_code,capacity)
+       values ($1,$2,$3,'P1 North','P1-N',10),
+              ($4,$2,$3,'P1 Full','P1-F',1),
+              ($5,$6,$3,'P1 Later','P1-L',10),
+              ($7,$2,$3,'P1 Unassigned','P1-U',10),
+              ($8,$9,$10,'Other P1','OP1',10)`,
       [
         classId,
         yearId,
         gradeId,
         fullClassId,
+        laterClassId,
+        laterYearId,
+        unassignedClassId,
         otherClassId,
         otherYearId,
         otherGradeId,
@@ -351,6 +390,148 @@ describe.sequential("local student-management security and workflows", () => {
     enrollmentUpdatedAt = moved.data![0]!.updated_at;
   });
 
+  it("serializes two simultaneous final-seat enrolments", async () => {
+    const destinationId = await createFixtureClass("Final Seat", 1);
+    const studentA = await createFixtureStudent("ConcurrentA");
+    const studentB = await createFixtureStudent("ConcurrentB");
+    const [sessionA, sessionB] = await Promise.all([
+      signedIn("registrar"),
+      signedIn("registrar"),
+    ]);
+
+    const [requestA, requestB] = await Promise.all([
+      sessionA.rpc("create_student_enrollment", {
+        target_student_id: studentA.id,
+        target_academic_year_id: yearId,
+        target_class_section_id: destinationId,
+        class_number: "1",
+        enrollment_status: "ACTIVE",
+        enrolled_on: "2026-03-01",
+        capacity_override: false,
+        capacity_override_reason: "",
+      }),
+      sessionB.rpc("create_student_enrollment", {
+        target_student_id: studentB.id,
+        target_academic_year_id: yearId,
+        target_class_section_id: destinationId,
+        class_number: "2",
+        enrollment_status: "ACTIVE",
+        enrolled_on: "2026-03-01",
+        capacity_override: false,
+        capacity_override_reason: "",
+      }),
+    ]);
+
+    const results = [requestA, requestB];
+    expect(results.filter((result) => !result.error)).toHaveLength(1);
+    expect(
+      results.filter((result) =>
+        result.error?.message.includes("CLASS_CAPACITY_REACHED"),
+      ),
+    ).toHaveLength(1);
+    const final = await database.query<{ count: string }>(
+      `select count(*) from public.enrollments
+       where class_section_id=$1 and status in ('ACTIVE','REPEATING')`,
+      [destinationId],
+    );
+    expect(final.rows[0]!.count).toBe("1");
+    const failedStudentId = requestA.error ? studentA.id : studentB.id;
+    const failed = await database.query<{
+      enrollments: string;
+      audits: string;
+    }>(
+      `select
+        (select count(*) from public.enrollments where student_id=$1)::text enrollments,
+        (select count(*) from public.audit_logs
+          where action='ENROLLMENT_CREATED' and new_values->>'student_id'=$1::text)::text audits`,
+      [failedStudentId],
+    );
+    expect(failed.rows[0]).toEqual({ enrollments: "0", audits: "0" });
+  });
+
+  it("serializes concurrent class moves to the final place", async () => {
+    const sourceId = await createFixtureClass("Move Source", null);
+    const destinationId = await createFixtureClass("Move Final", 1);
+    const studentA = await createFixtureStudent("MoveA");
+    const studentB = await createFixtureStudent("MoveB");
+    const inserted = await database.query<{ id: string; updated_at: string }>(
+      `insert into public.enrollments
+        (student_id,academic_year_id,class_section_id,status,enrolled_on)
+       values ($1,$3,$4,'ACTIVE','2026-03-01'),($2,$3,$4,'ACTIVE','2026-03-01')
+       returning id,updated_at::text`,
+      [studentA.id, studentB.id, yearId, sourceId],
+    );
+    const [sessionA, sessionB] = await Promise.all([
+      signedIn("registrar"),
+      signedIn("registrar"),
+    ]);
+    const results = await Promise.all([
+      sessionA.rpc("move_student_class", {
+        target_enrollment_id: inserted.rows[0]!.id,
+        expected_updated_at: inserted.rows[0]!.updated_at,
+        target_class_section_id: destinationId,
+        class_number: "1",
+        capacity_override: false,
+        capacity_override_reason: "",
+      }),
+      sessionB.rpc("move_student_class", {
+        target_enrollment_id: inserted.rows[1]!.id,
+        expected_updated_at: inserted.rows[1]!.updated_at,
+        target_class_section_id: destinationId,
+        class_number: "2",
+        capacity_override: false,
+        capacity_override_reason: "",
+      }),
+    ]);
+    expect(results.filter((result) => !result.error)).toHaveLength(1);
+    expect(
+      results.filter((result) =>
+        result.error?.message.includes("CLASS_CAPACITY_REACHED"),
+      ),
+    ).toHaveLength(1);
+    const final = await database.query<{ count: string }>(
+      `select count(*) from public.enrollments
+       where class_section_id=$1 and status in ('ACTIVE','REPEATING')`,
+      [destinationId],
+    );
+    expect(final.rows[0]!.count).toBe("1");
+  });
+
+  it("releases the serialized class lock after rollback", async () => {
+    const destinationId = await createFixtureClass("Rollback Seat", 1);
+    const student = await createFixtureStudent("Rollback");
+    const session = await signedIn("registrar");
+    const blocker = new Client({ connectionString: databaseUrl });
+    await blocker.connect();
+    await blocker.query("begin");
+    await blocker.query(
+      "select id from public.class_sections where id=$1 for update",
+      [destinationId],
+    );
+    let settled = false;
+    const pending = session
+      .rpc("create_student_enrollment", {
+        target_student_id: student.id,
+        target_academic_year_id: yearId,
+        target_class_section_id: destinationId,
+        class_number: "1",
+        enrollment_status: "ACTIVE",
+        enrolled_on: "2026-03-01",
+        capacity_override: false,
+        capacity_override_reason: "",
+      })
+      .then((result) => {
+        settled = true;
+        return result;
+      });
+    await new Promise((resolve) => setTimeout(resolve, 200));
+    expect(settled).toBe(false);
+    await blocker.query("rollback");
+    const result = await pending;
+    await blocker.end();
+    expect(result.error).toBeNull();
+  });
+
   it("creates guardians and replaces the primary relationship atomically", async () => {
     const first = await registrar.rpc("create_and_link_guardian", {
       target_student_id: admittedStudentId,
@@ -388,6 +569,72 @@ describe.sequential("local student-management security and workflows", () => {
         (guardian) => guardian.relationship_id === firstRelationshipId,
       )?.is_primary,
     ).toBe(false);
+    const demotion = await database.query<{ count: string }>(
+      `select count(*) from public.audit_logs
+       where action='STUDENT_GUARDIAN_PRIMARY_REMOVED' and entity_id=$1`,
+      [firstRelationshipId],
+    );
+    expect(demotion.rows[0]!.count).toBe("1");
+  });
+
+  it("serializes concurrent primary-guardian replacements and audits demotions", async () => {
+    const student = await createFixtureStudent("GuardianRace");
+    for (const [firstName, primary] of [
+      ["Initial", true],
+      ["CandidateOne", false],
+      ["CandidateTwo", false],
+    ] as const) {
+      const result = await registrar.rpc("create_and_link_guardian", {
+        target_student_id: student.id,
+        first_name: firstName,
+        middle_name: "",
+        last_name: "Guardian",
+        phone: "",
+        email: `${firstName.toLowerCase()}.${nonce}@example.invalid`,
+        relationship: "Guardian",
+        primary_guardian: primary,
+        report_access_eligible: false,
+      });
+      expect(result.error).toBeNull();
+    }
+    const before = await registrar.rpc("get_student_guardians", {
+      target_student_id: student.id,
+    });
+    const candidates = before.data!.filter((guardian) => !guardian.is_primary);
+    const [sessionA, sessionB] = await Promise.all([
+      signedIn("registrar"),
+      signedIn("registrar"),
+    ]);
+    const results = await Promise.all([
+      sessionA.rpc("update_student_guardian_relationship", {
+        target_relationship_id: candidates[0]!.relationship_id,
+        expected_updated_at: candidates[0]!.relationship_updated_at,
+        relationship: candidates[0]!.relationship,
+        primary_guardian: true,
+        report_access_eligible: false,
+      }),
+      sessionB.rpc("update_student_guardian_relationship", {
+        target_relationship_id: candidates[1]!.relationship_id,
+        expected_updated_at: candidates[1]!.relationship_updated_at,
+        relationship: candidates[1]!.relationship,
+        primary_guardian: true,
+        report_access_eligible: false,
+      }),
+    ]);
+    expect(results.every((result) => !result.error)).toBe(true);
+    const final = await registrar.rpc("get_student_guardians", {
+      target_student_id: student.id,
+    });
+    expect(final.data?.filter((guardian) => guardian.is_primary)).toHaveLength(
+      1,
+    );
+    const audits = await database.query<{ count: string }>(
+      `select count(*) from public.audit_logs audit
+       join public.student_guardians link on link.id=audit.entity_id
+       where link.student_id=$1 and audit.action='STUDENT_GUARDIAN_PRIMARY_REMOVED'`,
+      [student.id],
+    );
+    expect(Number(audits.rows[0]!.count)).toBeGreaterThanOrEqual(2);
   });
 
   it("assigned teachers see only assigned students and no guardian contacts", async () => {
@@ -425,6 +672,38 @@ describe.sequential("local student-management security and workflows", () => {
       .from("student-photos")
       .upload(ownPath, bytes, { contentType: "image/jpeg" });
     expect(own.error).toBeNull();
+    const detail = await schoolAdmin.rpc("get_student_details", {
+      target_student_id: assignedStudentId,
+    });
+    const linked = await schoolAdmin.rpc("set_student_photo_path", {
+      target_student_id: assignedStudentId,
+      expected_updated_at: detail.data![0]!.updated_at,
+      photo_storage_path: ownPath,
+    });
+    expect(linked.error).toBeNull();
+    const auditBeforeFailures = await database.query<{ count: string }>(
+      `select count(*) from public.audit_logs
+       where entity_id=$1 and action='STUDENT_PHOTO_CHANGED'`,
+      [assignedStudentId],
+    );
+    const missing = await schoolAdmin.rpc("set_student_photo_path", {
+      target_student_id: assignedStudentId,
+      expected_updated_at: linked.data![0]!.updated_at,
+      photo_storage_path: `${schoolId}/${assignedStudentId}/${randomUUID()}.jpg`,
+    });
+    expect(missing.error?.message).toContain("STUDENT_PHOTO_OBJECT_NOT_FOUND");
+    const otherStudent = await createFixtureStudent("PhotoOther");
+    const otherPath = `${schoolId}/${otherStudent.id}/${randomUUID()}.jpg`;
+    const otherUpload = await schoolAdmin.storage
+      .from("student-photos")
+      .upload(otherPath, bytes, { contentType: "image/jpeg" });
+    expect(otherUpload.error).toBeNull();
+    const crossStudent = await schoolAdmin.rpc("set_student_photo_path", {
+      target_student_id: assignedStudentId,
+      expected_updated_at: linked.data![0]!.updated_at,
+      photo_storage_path: otherPath,
+    });
+    expect(crossStudent.error?.message).toContain("STUDENT_PHOTO_PATH_INVALID");
     const forged = await schoolAdmin.storage
       .from("student-photos")
       .upload(
@@ -433,6 +712,20 @@ describe.sequential("local student-management security and workflows", () => {
         { contentType: "image/jpeg" },
       );
     expect(forged.error).not.toBeNull();
+    const crossSchool = await schoolAdmin.rpc("set_student_photo_path", {
+      target_student_id: assignedStudentId,
+      expected_updated_at: linked.data![0]!.updated_at,
+      photo_storage_path: `${otherSchoolId}/${assignedStudentId}/${randomUUID()}.jpg`,
+    });
+    expect(crossSchool.error?.message).toContain("STUDENT_PHOTO_PATH_INVALID");
+    const auditAfterFailures = await database.query<{ count: string }>(
+      `select count(*) from public.audit_logs
+       where entity_id=$1 and action='STUDENT_PHOTO_CHANGED'`,
+      [assignedStudentId],
+    );
+    expect(auditAfterFailures.rows[0]!.count).toBe(
+      auditBeforeFailures.rows[0]!.count,
+    );
   });
 
   it("direct browser writes remain denied", async () => {
@@ -444,6 +737,195 @@ describe.sequential("local student-management security and workflows", () => {
       admission_date: "2026-02-01",
     });
     expect(direct.error).not.toBeNull();
+  });
+
+  it("completes an enrolment without completing the student and creates a genuine later-year enrolment", async () => {
+    const student = await createFixtureStudent("LaterYear");
+    const initial = await registrar.rpc("create_student_enrollment", {
+      target_student_id: student.id,
+      target_academic_year_id: yearId,
+      target_class_section_id: classId,
+      class_number: "31",
+      enrollment_status: "ACTIVE",
+      enrolled_on: "2026-02-01",
+      capacity_override: false,
+      capacity_override_reason: "",
+    });
+    expect(initial.error).toBeNull();
+    const completed = await registrar.rpc("change_enrollment_status", {
+      target_enrollment_id: initial.data![0]!.enrollment_id,
+      expected_updated_at: initial.data![0]!.updated_at,
+      target_status: "COMPLETED",
+      exited_on: "2026-12-31",
+      reason: "Academic year completed",
+    });
+    expect(completed.error).toBeNull();
+    const afterCompletion = await database.query<{
+      student_status: string;
+      enrollment_status: string;
+      student_audits: string;
+    }>(
+      `select student.status student_status,enrollment.status enrollment_status,
+        (select count(*) from public.audit_logs
+         where entity_id=student.id and action='STUDENT_STATUS_CHANGED')::text student_audits
+       from public.students student
+       join public.enrollments enrollment on enrollment.student_id=student.id
+       where student.id=$1`,
+      [student.id],
+    );
+    expect(afterCompletion.rows[0]).toEqual({
+      student_status: "ACTIVE",
+      enrollment_status: "COMPLETED",
+      student_audits: "0",
+    });
+
+    const later = await registrar.rpc("create_student_enrollment", {
+      target_student_id: student.id,
+      target_academic_year_id: laterYearId,
+      target_class_section_id: laterClassId,
+      class_number: "7",
+      enrollment_status: "ACTIVE",
+      enrolled_on: "2027-01-15",
+      capacity_override: false,
+      capacity_override_reason: "",
+    });
+    expect(later.error).toBeNull();
+    const history = await registrar.rpc("get_student_enrollment_history", {
+      target_student_id: student.id,
+    });
+    expect(history.data?.map((row) => row.status)).toEqual([
+      "ACTIVE",
+      "COMPLETED",
+    ]);
+    expect(
+      history.data?.filter((row) =>
+        ["ACTIVE", "REPEATING"].includes(row.status),
+      ),
+    ).toHaveLength(1);
+
+    const unfiltered = await registrar.rpc("list_students", {
+      search_text: "LaterYear",
+      page_number: 1,
+      page_size: 10,
+    });
+    const current = unfiltered.data?.find(
+      (row) => row.student_id === student.id,
+    );
+    expect(current?.academic_year_id).toBe(laterYearId);
+    expect(current?.placement_is_current).toBe(true);
+    for (const filter of [
+      { filter_academic_year_id: yearId },
+      { filter_class_section_id: classId },
+      { filter_enrollment_status: "COMPLETED" as const },
+    ]) {
+      const result = await registrar.rpc("list_students", {
+        ...filter,
+        page_number: 1,
+        page_size: 100,
+      });
+      const historical = result.data?.find(
+        (row) => row.student_id === student.id,
+      );
+      expect(historical?.enrollment_status).toBe("COMPLETED");
+      expect(historical?.placement_is_current).toBe(false);
+    }
+
+    await expect(
+      database.query(
+        `insert into public.enrollments
+          (student_id,academic_year_id,class_section_id,status,enrolled_on)
+         values ($1,$2,$3,'REPEATING','2026-03-01')`,
+        [student.id, yearId, classId],
+      ),
+    ).rejects.toMatchObject({ code: "23505" });
+  });
+
+  it("requires explicit inactive-student reactivation before enrolment", async () => {
+    const student = await createFixtureStudent("Reactivate");
+    const inactive = await registrar.rpc("change_student_status", {
+      target_student_id: student.id,
+      expected_updated_at: student.updated_at,
+      target_status: "INACTIVE",
+      effective_date: "2026-04-01",
+      reason: "Temporary approved inactivity",
+    });
+    expect(inactive.error).toBeNull();
+    const denied = await registrar.rpc("create_student_enrollment", {
+      target_student_id: student.id,
+      target_academic_year_id: yearId,
+      target_class_section_id: classId,
+      class_number: "41",
+      enrollment_status: "ACTIVE",
+      enrolled_on: "2026-04-02",
+      capacity_override: false,
+      capacity_override_reason: "",
+    });
+    expect(denied.error?.message).toContain("STUDENT_STATUS_NOT_ENROLLABLE");
+    const reactivated = await registrar.rpc("change_student_status", {
+      target_student_id: student.id,
+      expected_updated_at: inactive.data![0]!.updated_at,
+      target_status: "ACTIVE",
+      effective_date: "2026-04-03",
+      reason: "Approved return to active study",
+    });
+    expect(reactivated.error).toBeNull();
+    const created = await registrar.rpc("create_student_enrollment", {
+      target_student_id: student.id,
+      target_academic_year_id: yearId,
+      target_class_section_id: classId,
+      class_number: "41",
+      enrollment_status: "ACTIVE",
+      enrolled_on: "2026-04-03",
+      capacity_override: false,
+      capacity_override_reason: "",
+    });
+    expect(created.error).toBeNull();
+    const audits = await database.query<{ count: string }>(
+      `select count(*) from public.audit_logs
+       where entity_id=$1 and action='STUDENT_STATUS_CHANGED'`,
+      [student.id],
+    );
+    expect(audits.rows[0]!.count).toBe("2");
+  });
+
+  it("filters withdrawn historical placements without exposing them to assigned-only teachers", async () => {
+    const student = await createFixtureStudent("HistoricalPrivacy");
+    const historical = await database.query<{ id: string }>(
+      `insert into public.enrollments
+        (student_id,academic_year_id,class_section_id,status,enrolled_on,exited_on)
+       values ($1,$2,$3,'WITHDRAWN','2026-02-01','2026-05-01') returning id`,
+      [student.id, yearId, classId],
+    );
+    await database.query(
+      `insert into public.enrollments
+        (student_id,academic_year_id,class_section_id,status,enrolled_on)
+       values ($1,$2,$3,'ACTIVE','2026-05-02')`,
+      [student.id, yearId, unassignedClassId],
+    );
+    const schoolwide = await registrar.rpc("list_students", {
+      filter_enrollment_status: "WITHDRAWN",
+      filter_class_section_id: classId,
+      page_number: 1,
+      page_size: 100,
+    });
+    expect(
+      schoolwide.data?.find((row) => row.student_id === student.id),
+    ).toMatchObject({
+      enrollment_id: historical.rows[0]!.id,
+      placement_is_current: false,
+    });
+    for (const key of ["class", "subject"] as const) {
+      const assigned = await signedIn(key);
+      const result = await assigned.rpc("list_students", {
+        filter_class_section_id: classId,
+        filter_enrollment_status: "WITHDRAWN",
+        page_number: 1,
+        page_size: 100,
+      });
+      expect(result.data?.some((row) => row.student_id === student.id)).toBe(
+        false,
+      );
+    }
   });
 
   it("student terminal status closes the current enrolment consistently", async () => {

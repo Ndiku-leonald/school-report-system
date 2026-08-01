@@ -366,6 +366,12 @@ export function EnrollmentManager({
             </Button>
           </form>
         </>
+      ) : student.status !== "ACTIVE" ? (
+        <Alert title="Student reactivation required" variant="warning">
+          This student must be explicitly reactivated through the lifecycle
+          workflow, with an effective date and reason, before a new enrolment
+          can be created.
+        </Alert>
       ) : (
         <form
           className="grid gap-4"

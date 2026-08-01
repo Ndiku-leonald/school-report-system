@@ -70,3 +70,11 @@ npm run test:e2e:students
 Always stop the local stack after validation. Temporary Windows port workarounds
 must be restored before staging; no local Docker state, browser output, secrets
 or port configuration belongs in a commit.
+
+The Stage 7 correction adds true concurrent signed-client cases for the final
+class seat, competing class moves and primary-guardian replacement. It also
+tests rollback lock release, administrator-only overrides, the global current
+enrolment invariant, explicit reactivation, genuine later-year RPC/UI flows,
+historical filters and assigned-teacher privacy, and real-versus-missing Storage
+objects. The browser later-year test closes the prior enrolment through the
+product workflow; it does not update it through a fixture shortcut.

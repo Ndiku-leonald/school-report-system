@@ -317,3 +317,12 @@ Complete production hardening, operational readiness, deployment, and user or ad
 - Backup, restore, retention, monitoring, alerting, incident response, and rollback procedures are tested.
 - Preview and production data and credentials are separated; production deployment uses reviewed configuration.
 - Accessibility, performance, browser support, operational runbooks, user guidance, and known limitations are documented.
+
+## Stage 7 correction status
+
+Stage 7 migration 17 hardens student management without advancing the roadmap.
+It serializes capacity and primary-guardian replacement, enforces one current
+enrolment, separates enrolment closure from student lifecycle, requires
+explicit reactivation, supports privacy-safe historical directory filters and
+verifies private photo-object existence. Stage 8 has not started, and the work
+used only the local Supabase stack; no remote project was linked or modified.

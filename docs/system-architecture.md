@@ -252,3 +252,12 @@ normalization and audit atomicity are enforced below the UI. Storage RLS parses
 the school/student object path and reuses the same live selected-session
 permissions. Stage 8 assignments and Stage 15 parent access are not created by
 this architecture.
+
+Migration 17 treats the class row as the serialization point for capacity and
+the student row as the serialization point for lifecycle and primary-guardian
+workflows. A global partial index makes the current placement singular. The
+directory defaults to that placement, but schoolwide placement filters select
+the latest matching historical enrolment and return an explicit historical
+label. The Server Action retains photo upload/link/old-object cleanup ordering;
+the database now refuses a path until the exact private object exists. These
+are Stage 7 hardening changes and do not introduce Stage 8 marks or attendance.

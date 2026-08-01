@@ -254,3 +254,14 @@ of scope.
 - [Development roadmap](docs/development-roadmap.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
+
+### Stage 7 consistency correction
+
+Migration 17 serializes class-capacity decisions with a destination-row lock
+and enforces one current (`ACTIVE` or `REPEATING`) enrolment per student across
+all years. Closing or completing an academic-year enrolment does not change the
+student lifecycle; reactivation is an explicit audited student-status action.
+Schoolwide directory filters can return labelled historical placements, while
+assigned-only teachers remain limited to live assignment scope. Primary
+guardian replacement is serialized and audited, and photo paths can be linked
+only after the private Storage object exists. Stage 8 is not included.

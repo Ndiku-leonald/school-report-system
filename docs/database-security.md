@@ -158,3 +158,12 @@ object policies require the private bucket, a valid school/student key and live
 view or manage authority. Signed URLs are short-lived and never persisted or
 audited. `student_access_credentials` and `parent_access_sessions` remain
 denied and untouched.
+
+Migration 17 keeps all SECURITY DEFINER entry points on fixed search paths and
+preserves authenticated-only grants. Destination-row locks close the capacity
+race, and student/relationship locks serialize lifecycle and primary-guardian
+changes. Historical directory selection is available only to
+`STUDENTS_VIEW_ALL`; `STUDENTS_VIEW_ASSIGNED` is rechecked against a live class
+assignment even when historical filters are supplied. Photo linking reads
+`storage.objects` only to verify the scoped private key exists and never writes
+Storage metadata or persists a signed URL.
