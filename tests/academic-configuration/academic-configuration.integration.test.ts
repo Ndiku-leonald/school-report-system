@@ -471,6 +471,133 @@ describe.sequential("local academic configuration workflows", () => {
     expect(entity(retired.data).entity_status).toBe("RETIRED");
   });
 
+  it("preserves existing mark-sheet workflow continuity after scheme retirement", async () => {
+    const activated = await registrar.rpc("activate_assessment_scheme", {
+      target_scheme_id: state.assessmentVersion.entity_id,
+      expected_updated_at: state.assessmentVersion.updated_at,
+    });
+    expect(activated.error).toBeNull();
+    state.assessmentVersion = entity(activated.data);
+
+    const assignment = await database.query<{ id: string }>(
+      `select id
+       from public.teaching_assignments
+       where term_id = $1
+         and class_section_id = $2
+         and subject_id = $3
+         and staff_membership_id = $4`,
+      [
+        state.term.entity_id,
+        state.section.entity_id,
+        state.subjectOne.entity_id,
+        identities.get("subject")!.membershipId,
+      ],
+    );
+    expect(assignment.rows).toHaveLength(1);
+
+    const schemeDefinitionBefore = await database.query(
+      `select term_id, grade_level_id, subject_id, name, version,
+              effective_from, created_by
+       from public.assessment_schemes
+       where id = $1`,
+      [state.assessmentVersion.entity_id],
+    );
+    const componentsBefore = await database.query(
+      `select id, assessment_scheme_id, name, component_code, maximum_score,
+              weight_percentage, sort_order, is_required, created_at, updated_at
+       from public.assessment_components
+       where assessment_scheme_id = $1
+       order by sort_order`,
+      [state.assessmentVersion.entity_id],
+    );
+
+    const sheetId = randomUUID();
+    await expect(
+      database.query(
+        `insert into public.mark_sheets
+           (id, term_id, class_section_id, subject_id,
+            assessment_scheme_id, teaching_assignment_id)
+         values ($1, $2, $3, $4, $5, $6)`,
+        [
+          sheetId,
+          state.term.entity_id,
+          state.section.entity_id,
+          state.subjectOne.entity_id,
+          state.assessmentVersion.entity_id,
+          assignment.rows[0]!.id,
+        ],
+      ),
+    ).resolves.toMatchObject({ rowCount: 1 });
+
+    const retired = await registrar.rpc("retire_assessment_scheme", {
+      target_scheme_id: state.assessmentVersion.entity_id,
+      expected_updated_at: state.assessmentVersion.updated_at,
+    });
+    expect(retired.error).toBeNull();
+    state.assessmentVersion = entity(retired.data);
+
+    await expect(
+      database.query(
+        `insert into public.mark_sheets
+           (term_id, class_section_id, subject_id, assessment_scheme_id,
+            teaching_assignment_id, version)
+         values ($1, $2, $3, $4, $5, 2)`,
+        [
+          state.term.entity_id,
+          state.section.entity_id,
+          state.subjectOne.entity_id,
+          state.assessmentVersion.entity_id,
+          assignment.rows[0]!.id,
+        ],
+      ),
+    ).rejects.toMatchObject({
+      code: "23514",
+      message: "A mark sheet must reference an active assessment scheme.",
+    });
+
+    await expect(
+      database.query(
+        `update public.mark_sheets
+         set workflow_status = 'SUBMITTED',
+             submitted_by = $2,
+             submitted_at = now(),
+             version = version + 1
+         where id = $1`,
+        [sheetId, identities.get("subject")!.membershipId],
+      ),
+    ).resolves.toMatchObject({ rowCount: 1 });
+
+    await expect(
+      database.query(
+        `update public.mark_sheets
+         set assessment_scheme_id = $2
+         where id = $1`,
+        [sheetId, state.assessment.entity_id],
+      ),
+    ).rejects.toMatchObject({
+      code: "23514",
+      message: "A mark sheet must reference an active assessment scheme.",
+    });
+
+    const schemeDefinitionAfter = await database.query(
+      `select term_id, grade_level_id, subject_id, name, version,
+              effective_from, created_by
+       from public.assessment_schemes
+       where id = $1`,
+      [state.assessmentVersion.entity_id],
+    );
+    const componentsAfter = await database.query(
+      `select id, assessment_scheme_id, name, component_code, maximum_score,
+              weight_percentage, sort_order, is_required, created_at, updated_at
+       from public.assessment_components
+       where assessment_scheme_id = $1
+       order by sort_order`,
+      [state.assessmentVersion.entity_id],
+    );
+    expect(schemeDefinitionAfter.rows).toEqual(schemeDefinitionBefore.rows);
+    expect(componentsAfter.rows).toEqual(componentsBefore.rows);
+  });
+
   it("edits, activates, versions, and retires grading scales", async () => {
     const created = await registrar.rpc("save_grading_scale_draft", {
       target_scale_id: null as unknown as string,

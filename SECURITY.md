@@ -129,11 +129,15 @@ completed.
 
 Database-specific controls and limitations are documented in [docs/database-security.md](docs/database-security.md).
 
-Migration 14 treats historical configuration as an integrity boundary even for
-privileged direct writes. Mark sheets can select only active, compatible
-assessment schemes; referenced schemes cannot be redefined; and active or
+Migrations 14 and 15 treat historical configuration as an integrity boundary
+even for privileged direct writes. New mark sheets and changed scheme
+references can select only active, compatible assessment schemes. Retirement
+blocks future selection but does not block trusted workflow updates to an
+existing sheet with an unchanged retired-scheme reference. Referenced and
+retired scheme definitions and components cannot be redefined, and active or
 retired grading, ranking, and promotion records cannot be altered or deleted.
-No remote Supabase project was modified for this work.
+Direct browser table writes remain denied. No remote Supabase project was
+modified for this work.
 
 ## Reporting a vulnerability
 

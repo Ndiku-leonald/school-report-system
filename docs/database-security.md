@@ -132,6 +132,13 @@ scope, dependency, and concurrency transactions produce no success audit.
 Migration 14 keeps helper functions in the private `internal` schema with fixed
 search paths and revokes helper execution from browser roles. Lifecycle and
 dependency triggers apply to privileged writes as well as RPC calls. They block
-historical redefinition, draft/retired scheme use by mark sheets, and false
-no-op lifecycle audits; direct browser table writes and service-role exposure
-remain prohibited.
+historical redefinition, new draft/retired scheme selection by mark sheets, and
+false no-op lifecycle audits; direct browser table writes and service-role
+exposure remain prohibited.
+
+Migration 15 preserves those privileges and immutability controls while allowing
+trusted workflow updates to an existing sheet whose unchanged scheme later
+retired. Inserts and changed scheme references still require `ACTIVE`; every
+update still checks term, year, class, grade, subject, teaching assignment, and
+scheme agreement. The replacement trigger function retains a fixed search path
+and is not executable by `public`, `anon`, or `authenticated`.

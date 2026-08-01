@@ -133,6 +133,12 @@ records edit in place; active or retired records create a separate draft
 version. Assessment components, grading bands, and rule options use structured
 accessible controls rather than administrator-authored JSON.
 
+Only `ACTIVE` assessment schemes can be selected for new mark sheets or replace
+the scheme on an existing sheet. Retirement removes a scheme from future
+selection without invalidating sheets that already reference it: those sheets
+retain their historical scheme and remain updateable by later trusted workflow
+operations. Retired scheme definitions and components remain immutable.
+
 Every browser mutation uses the normal signed-in anonymous-key client, live
 permission checks, optimistic concurrency, database validation, forced RLS, and
 transactional audit events. Head and subject teachers retain read-only access.
@@ -211,11 +217,13 @@ Routes currently available:
 
 Security requirements and vulnerability-reporting guidance are defined in [SECURITY.md](SECURITY.md).
 
-Stage 6 configuration history is database-enforced: mark sheets require active
-assessment schemes; referenced schemes and all active or retired versioned
-configuration are immutable; and component or grading-band display order is the
-saved field-array order. No-op lifecycle requests fail without creating audits.
-Stage 7 workflows and all remote Supabase changes remain out of scope.
+Stage 6 configuration history is database-enforced: new or changed mark-sheet
+scheme references require an active scheme, while existing sheets retain an
+unchanged retired-scheme reference for later workflow transitions. Referenced
+schemes and all active or retired versioned configuration are immutable, and
+component or grading-band display order is the saved field-array order. No-op
+lifecycle requests fail without creating audits. Stage 7 workflows and all
+remote Supabase changes remain out of scope.
 
 ## Project documentation
 

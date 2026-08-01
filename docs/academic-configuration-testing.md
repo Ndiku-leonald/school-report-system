@@ -2,13 +2,15 @@
 
 Stage 6 uses three local-only layers:
 
-1. `npm run db:test` includes the original 40-assertion Stage 6 contract and a
-   40-assertion corrective workflow suite, alongside all earlier database suites
-   (302 assertions total).
+1. `npm run db:test` includes the original Stage 6 contracts, corrective
+   workflow and immutability suites, and the migration-15 retired-scheme
+   continuity regression (341 assertions total).
 2. `npm run test:academic-config` provisions synthetic `.invalid` identities and
-   runs 18 focused workflows through signed-in anonymous-key clients.
+   runs 20 focused workflows through signed-in anonymous-key clients and a
+   controlled local database connection for intentionally browser-denied fixture
+   and mark-sheet setup.
 3. `npm run test:e2e:academic-config` verifies accessible registrar and read-only
-   teacher browser experiences across 24 Chromium scenarios, including mobile
+   teacher browser experiences across 26 Chromium scenarios, including mobile
    and keyboard interactions. The dedicated runner always enables this suite,
    so CI cannot silently skip it.
 
@@ -44,9 +46,11 @@ CI rebuilds the database solely from ordered migrations and seed data, regenerat
 database types, and fails if the committed types differ. Never run `db reset`
 against a remote project.
 
-Migration 14 adds a seventh pgTAP file covering active-scheme mark-sheet
-validation, referenced-scheme protection, direct privileged mutation attempts,
-grading/rule lifecycle immutability, promotion-rule selection, and no-op audit
-suppression. The database suite now has 324 assertions. The signed-in suite has
-19 workflows, and the dedicated Chromium suite has 26 scenarios, including
-save-and-reload persistence of component and band arrow ordering.
+Migration 14 adds historical-immutability coverage. Migration 15 adds a focused
+eighth pgTAP file proving active-only selection, unchanged retired-scheme
+workflow continuity, continued full-scope validation, definition/component/mark
+history, forced RLS, and direct browser-write denial. The database suite now has
+341 assertions. The signed-in suite has 20 workflows, including a controlled
+active-to-retired mark-sheet lifecycle test, and the dedicated Chromium suite
+has 26 scenarios, including save-and-reload persistence of component and band
+arrow ordering.

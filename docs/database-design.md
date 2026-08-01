@@ -179,10 +179,19 @@ grades, rankings, aggregates, promotion recommendations, or promotion decisions;
 those remain Stage 7 and later concerns.
 
 Migration 14 adds trigger-enforced historical immutability. `mark_sheets`
-require an active assessment scheme within the existing term, grade, subject,
-class, and teaching-assignment scope. A referenced assessment scheme cannot be
-re-scoped, re-versioned, re-dated, or have components changed. Active and
-retired grading scales/bands, ranking rules, and promotion rules are similarly
-immutable; draft records remain the only editable versions. Promotion-decision
-inserts validate the selected active rule without invalidating historic decisions
-after later retirement.
+require a compatible assessment scheme within the existing term, academic year,
+grade, subject, class, and teaching-assignment scope. A referenced assessment
+scheme cannot be re-scoped, re-versioned, re-dated, renamed, reassigned to a new
+creator, deleted, or have components changed. Active and retired grading
+scales/bands, ranking rules, and promotion rules are similarly immutable; draft
+records remain the only editable versions. Promotion-decision inserts validate
+the selected active rule without invalidating historic decisions after later
+retirement.
+
+Migration 15 separates assessment selection from historical workflow
+continuity. `ACTIVE` is required on mark-sheet insertion and whenever
+`assessment_scheme_id` changes. A `RETIRED` scheme cannot be newly selected, but
+an existing sheet may retain that unchanged reference and receive later trusted
+workflow updates. Complete scope validation still runs on every update, and the
+retired scheme and its components remain immutable so existing marks preserve
+their exact interpretation.

@@ -29,6 +29,10 @@ replace database enforcement.
 - Academic years: `DRAFT → ACTIVE → CLOSED → ARCHIVED`.
 - Terms: Stage 6 supports `DRAFT → OPEN`; later workflow states are out of scope.
 - Assessment schemes: `DRAFT → ACTIVE → RETIRED`.
+- `ACTIVE` assessment schemes are available for new mark sheets. `RETIRED`
+  schemes are not selectable for new or changed scheme references, but sheets
+  that already use one retain it and remain available to later trusted workflow
+  transitions.
 - Grading scales, ranking rules, and promotion rules use draft, active, and
   retired lifecycle state derived from `is_active` and `retired_at`.
 - Active historical schemes, scales, and rules are never edited in place. Saving
@@ -110,13 +114,19 @@ migrations, or reset remote data.
 
 ## Historical immutability
 
-Migration 14 requires every mark sheet to reference an active, compatible
-assessment scheme. Once a scheme has a mark-sheet or mark dependency, its
-scope, version, effective date, and components cannot change; retirement
-preserves its historical interpretation. Database triggers also protect active
-and retired grading scales and bands, ranking rules, and promotion rules from
-redefinition or deletion. Promotion decisions may select only an active rule at
-selection time, while later retirement leaves the recorded decision valid.
+Migration 14 establishes compatible mark-sheet scope and immutable assessment
+history. Migration 15 requires an active, compatible scheme when a mark sheet is
+inserted or its scheme reference changes. An update that keeps the existing
+scheme ID may continue after that scheme retires, including later workflow,
+actor, timestamp, version, and `updated_at` changes; the trigger still validates
+term, academic year, class, grade, subject, assignment, and scheme scope on every
+update. Once a scheme has a mark-sheet or mark dependency, its identity, name,
+creator, scope, version, effective date, and components cannot change.
+Retirement therefore prevents new selection while preserving the exact historic
+definition. Database triggers also protect active and retired grading scales and
+bands, ranking rules, and promotion rules from redefinition or deletion.
+Promotion decisions may select only an active rule at selection time, while
+later retirement leaves the recorded decision valid.
 
 Component and grading-band array position is the authoritative display order:
 the server derives sequential `sort_order` values on every save. Coverage checks
