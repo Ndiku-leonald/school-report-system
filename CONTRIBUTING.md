@@ -77,3 +77,11 @@ port mappings and Playwright output must be restored or removed before staging.
 # Stage 8 validation
 
 Changes affecting teacher assignments must add or update pgTAP, signed-in local integration, and dedicated Playwright coverage. Run `npm run test:teacher-assignments` and `npm run test:e2e:teacher-assignments` against local Supabase, regenerate database types, restore temporary port changes, and never link or modify a remote Supabase project.
+
+## Stage 9 validation
+
+Changes affecting marks entry must preserve DRAFT-only semantics, exact current
+subject assignments, selected-membership isolation, implicit missing cells,
+row-version conflicts, atomic batches and contact-free read contracts. Run
+`npm run test:marks-entry` and `npm run test:e2e:marks-entry` plus pgTAP and all
+retained suites. Do not add Stage 10 transitions or Stage 11 calculations.

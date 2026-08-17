@@ -2685,6 +2685,33 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      get_mark_entry_grid: {
+        Args: { target_mark_sheet_id: string };
+        Returns: {
+          components: Json;
+          mark_entries: Json;
+          mark_sheet_id: string;
+          roster: Json;
+        }[];
+      };
+      get_mark_sheet: {
+        Args: { target_mark_sheet_id: string };
+        Returns: {
+          academic_year_name: string;
+          assessment_scheme_name: string;
+          class_name: string;
+          editable: boolean;
+          grade_name: string;
+          mark_sheet_id: string;
+          sheet_version: number;
+          subject_name: string;
+          teaching_assignment_id: string;
+          term_name: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+          updated_at: string;
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
+        }[];
+      };
       get_my_active_membership: { Args: never; Returns: string };
       get_my_effective_permissions: {
         Args: { target_membership_id: string };
@@ -2704,6 +2731,16 @@ export type Database = {
           starts_on: string;
           subject_name: string;
           term_name: string;
+        }[];
+      };
+      get_or_create_draft_mark_sheet: {
+        Args: { target_teaching_assignment_id: string };
+        Returns: {
+          created: boolean;
+          mark_sheet_id: string;
+          sheet_updated_at: string;
+          sheet_version: number;
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
         }[];
       };
       get_student_details: {
@@ -2874,6 +2911,42 @@ export type Database = {
           employee_number: string;
           membership_status: Database["public"]["Enums"]["membership_status"];
           staff_membership_id: string;
+        }[];
+      };
+      list_mark_sheets: {
+        Args: never;
+        Returns: {
+          academic_year_name: string;
+          assessment_scheme_name: string;
+          class_name: string;
+          employee_number: string;
+          entered_cells: number;
+          expected_cells: number;
+          grade_name: string;
+          mark_sheet_id: string;
+          sheet_version: number;
+          subject_name: string;
+          teacher_name: string;
+          term_name: string;
+          updated_at: string;
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
+        }[];
+      };
+      list_my_mark_sheets: {
+        Args: never;
+        Returns: {
+          academic_year_name: string;
+          class_name: string;
+          editable: boolean;
+          grade_name: string;
+          mark_sheet_id: string;
+          sheet_version: number;
+          subject_name: string;
+          teaching_assignment_id: string;
+          term_name: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+          updated_at: string;
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
         }[];
       };
       list_students: {
@@ -3049,6 +3122,36 @@ export type Database = {
         Returns: {
           entity_id: string;
           entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      save_mark_entries: {
+        Args: { entries: Json; target_mark_sheet_id: string };
+        Returns: {
+          assessment_component_id: string;
+          enrollment_id: string;
+          row_version: number;
+          updated_at: string;
+        }[];
+      };
+      save_mark_entry: {
+        Args: {
+          entered_attendance_status: Database["public"]["Enums"]["assessment_attendance_status"];
+          entered_score: number;
+          entered_teacher_remark: string;
+          expected_row_version: number;
+          target_assessment_component_id: string;
+          target_enrollment_id: string;
+          target_mark_sheet_id: string;
+        };
+        Returns: {
+          assessment_component_id: string;
+          attendance_status: Database["public"]["Enums"]["assessment_attendance_status"];
+          enrollment_id: string;
+          mark_id: string;
+          row_version: number;
+          score: number;
+          teacher_remark: string;
           updated_at: string;
         }[];
       };

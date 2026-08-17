@@ -265,3 +265,13 @@ are Stage 7 hardening changes and do not introduce Stage 8 marks or attendance.
 # Stage 8 assignment layer
 
 The Stage 8 server-only module validates Server Action input with Zod and calls generated, typed database RPCs. Management routes use server-side filters and guards; the teacher workspace is read only. PostgreSQL remains authoritative for school scope, role eligibility, date constraints, overlap exclusion, primary serialization, optimistic concurrency, dependency protection, RLS, and audit logging.
+
+# Stage 9 marks-entry slice
+
+Server Components call narrow read RPCs and pass contact-free grid data to a
+client editor. The editor keeps dirty cells locally and sends one explicit
+Server Action batch. The action validates with Zod and uses the signed-in
+anonymous-key client; PostgreSQL repeats authorization and commits all cells or
+none. The teacher route is assignment-scoped and the dashboard route is a
+schoolwide read-only operational overview. No service-role client is present in
+application code.

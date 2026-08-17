@@ -171,3 +171,13 @@ Storage metadata or persists a signed URL.
 # Assignment data security
 
 Both assignment tables use forced RLS and deny authenticated insert, update, and delete privileges. Fixed-search-path definer RPCs derive the actor from the selected session membership and expose narrow typed results. Eligible-teacher directories omit contacts and Auth identifiers. Audit events are transactional and contain only assignment scope, dates, state, and an operational reason.
+
+# Stage 9 marks security
+
+Forced RLS remains enabled on `mark_sheets` and `marks`, while ordinary
+authenticated roles have no direct INSERT, UPDATE or DELETE. Fixed-search-path
+definer RPCs enforce selected school, exact assignment, DRAFT workflow,
+`MARKS_ENTRY` term state, scheme/component binding, enrolment overlap and
+maximum scores. Identity and deletion triggers also protect privileged direct
+writes. Audit rows contain identifiers, versions and changed-field metadata,
+not contacts, credentials or whole classroom payloads.

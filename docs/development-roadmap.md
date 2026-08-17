@@ -212,6 +212,12 @@ Implement class-teacher and subject-teacher assignments by academic period, clas
 
 Implement assignment-scoped draft marks entry with validation, completeness feedback, and safe batch operations.
 
+**Implemented boundary:** migration 19 and the teacher marks workspace provide
+selected-membership, exact-assignment DRAFT entry in `MARKS_ENTRY` terms. The
+implementation binds an active 100% assessment scheme, keeps missing cells
+implicit, validates authoritative rosters/components and uses atomic
+row-version saves. Submission and calculations remain later stages.
+
 **Acceptance criteria**
 
 - Teachers can edit only eligible draft marks in their assignments.
@@ -329,4 +335,4 @@ used only the local Supabase stack; no remote project was linked or modified.
 
 # Stage 8 — teacher assignments
 
-Stage 8 adds secure subject and class-teacher lifecycle management, overlap protection, atomic primary replacement, selected-membership visibility, audit events, and dedicated local validation. Stage 9 has not started; marks entry and submission remain out of scope.
+Stage 8 adds secure subject and class-teacher lifecycle management, overlap protection, atomic primary replacement, selected-membership visibility, audit events, and dedicated local validation. Stage 9 now adds DRAFT-only marks entry; submission remains Stage 10 and calculations remain Stage 11.

@@ -48,9 +48,9 @@ export const dashboardNavigation: NavigationItem[] = [
   },
   {
     label: "Marks",
+    href: "/dashboard/marks",
     icon: ListChecks,
-    permissions: ["MARKS_VIEW_ALL", "MARKS_VIEW_ASSIGNED"],
-    unavailable: true,
+    permissions: ["MARKS_VIEW_ALL"],
   },
   {
     label: "Approvals",
@@ -117,9 +117,9 @@ export const teacherNavigation: NavigationItem[] = [
   },
   {
     label: "Marks",
+    href: "/teacher/marks",
     icon: ListChecks,
-    permissions: ["MARKS_VIEW_ALL", "MARKS_VIEW_ASSIGNED"],
-    unavailable: true,
+    permissions: ["MARKS_VIEW_ASSIGNED", "MARKS_ENTER"],
   },
   {
     label: "Submissions",
