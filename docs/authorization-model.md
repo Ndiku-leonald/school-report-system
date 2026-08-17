@@ -138,3 +138,7 @@ student. A caller relying on `STUDENTS_VIEW_ASSIGNED` must still have a live
 assignment to the learner's single current class; historical placement filters
 cannot reveal former learners, and the available class choices are limited to
 live assigned classes. Guardian contacts remain absent from all directory rows.
+
+# Assignment-driven scope
+
+Assignment authorization is always derived from the single membership selected for the verified Auth session. `ASSIGNMENTS_VIEW_ALL` reads the selected school; `ASSIGNMENTS_VIEW_OWN` reads only the selected membership. Current student scope additionally requires a live matching teacher role, active membership and school, `is_active`, and inclusive effective dates. Switching schools, revoking a role, suspending a membership, or ending a period changes access on the next request.

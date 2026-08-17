@@ -261,3 +261,7 @@ the latest matching historical enrolment and return an explicit historical
 label. The Server Action retains photo upload/link/old-object cleanup ordering;
 the database now refuses a path until the exact private object exists. These
 are Stage 7 hardening changes and do not introduce Stage 8 marks or attendance.
+
+# Stage 8 assignment layer
+
+The Stage 8 server-only module validates Server Action input with Zod and calls generated, typed database RPCs. Management routes use server-side filters and guards; the teacher workspace is read only. PostgreSQL remains authoritative for school scope, role eligibility, date constraints, overlap exclusion, primary serialization, optimistic concurrency, dependency protection, RLS, and audit logging.

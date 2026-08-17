@@ -219,3 +219,7 @@ recounts current placements and holds the lock within the caller transaction.
 Student lifecycle and enrolment lifecycle remain separate aggregates. The
 directory function returns `placement_is_current` and `class_is_active` so a
 latest historical match is never presented as the current placement.
+
+# Effective-dated teacher assignments
+
+Stage 8 preserves `teaching_assignments` and `class_teacher_assignments`. GiST exclusion constraints prevent subject-scope period overlap and primary class-teacher period overlap. Historical identity is immutable, deletes are blocked, date narrowing checks downstream academic dependencies, and class-row locking serializes primary replacement.

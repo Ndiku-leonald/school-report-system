@@ -168,3 +168,7 @@ only, primary-guardian replacement locks the student and relationships and
 audits the demoted relationship, and photo metadata RPCs verify the exact
 private object in `storage.objects`. These controls do not grant browser table
 writes or activate any Stage 8 workflow.
+
+# Teacher-assignment boundary
+
+Teacher-assignment writes are RPC-only and require `ASSIGNMENTS_MANAGE` from the authoritative session-selected membership. Forced RLS prevents cross-school and cross-membership reads; direct browser writes are revoked. Matching live teacher roles, effective dates, membership status, and school state are checked on every authoritative request. Eligible-teacher results and audit events exclude contacts and authentication material.

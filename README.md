@@ -265,3 +265,7 @@ Schoolwide directory filters can return labelled historical placements, while
 assigned-only teachers remain limited to live assignment scope. Primary
 guardian replacement is serialized and audited, and photo paths can be linked
 only after the private Storage object exists. Stage 8 is not included.
+
+# Stage 8 teacher assignments
+
+Secure teacher-assignment management is available under `/dashboard/assignments`, with a read-only selected-membership view at `/teacher/assignments`. See [Teacher assignments](docs/teacher-assignments.md) and [testing](docs/teacher-assignments-testing.md). Stage 8 uses local Supabase RPCs, forced RLS, effective dates, overlap constraints, atomic primary replacement, optimistic concurrency, and transactional audit events. Marks entry remains a Stage 9 concern.

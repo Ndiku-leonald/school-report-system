@@ -73,3 +73,7 @@ guardian-contact privacy boundary, selected-school isolation, direct-write
 denial, photo-bucket privacy, concurrency tokens and exact audit behavior.
 Never use parent credential/session tables as part of Stage 7. Temporary local
 port mappings and Playwright output must be restored or removed before staging.
+
+# Stage 8 validation
+
+Changes affecting teacher assignments must add or update pgTAP, signed-in local integration, and dedicated Playwright coverage. Run `npm run test:teacher-assignments` and `npm run test:e2e:teacher-assignments` against local Supabase, regenerate database types, restore temporary port changes, and never link or modify a remote Supabase project.

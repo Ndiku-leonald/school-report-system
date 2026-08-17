@@ -41,6 +41,12 @@ export const dashboardNavigation: NavigationItem[] = [
     permissions: ["ACADEMIC_CONFIGURATION_VIEW"],
   },
   {
+    label: "Teacher assignments",
+    href: "/dashboard/assignments",
+    icon: Users,
+    permissions: ["ASSIGNMENTS_VIEW_ALL", "ASSIGNMENTS_MANAGE"],
+  },
+  {
     label: "Marks",
     icon: ListChecks,
     permissions: ["MARKS_VIEW_ALL", "MARKS_VIEW_ASSIGNED"],
@@ -104,16 +110,10 @@ export const teacherNavigation: NavigationItem[] = [
     permissions: ["TEACHER_WORKSPACE_VIEW"],
   },
   {
-    label: "Assigned classes",
-    icon: Shapes,
-    permissions: ["ASSIGNMENTS_VIEW_ALL", "ASSIGNMENTS_VIEW_OWN"],
-    unavailable: true,
-  },
-  {
-    label: "Assigned subjects",
+    label: "My assignments",
+    href: "/teacher/assignments",
     icon: BookOpen,
-    permissions: ["ASSIGNMENTS_VIEW_ALL", "ASSIGNMENTS_VIEW_OWN"],
-    unavailable: true,
+    permissions: ["ASSIGNMENTS_VIEW_OWN"],
   },
   {
     label: "Marks",

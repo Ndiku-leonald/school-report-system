@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState, useSyncExternalStore, useTransition } from "react";
 import { useForm } from "react-hook-form";
 
 import { Alert } from "@/components/ui/alert";
@@ -15,7 +15,14 @@ type LoginFields = {
   password: string;
 };
 
+const subscribeToHydration = () => () => {};
+
 export function LoginForm({ next }: { next?: string }) {
+  const isHydrated = useSyncExternalStore(
+    subscribeToHydration,
+    () => true,
+    () => false,
+  );
   const [state, dispatch] = useActionState(
     signInAction,
     initialAuthActionState,
@@ -36,7 +43,7 @@ export function LoginForm({ next }: { next?: string }) {
   });
 
   return (
-    <form className="space-y-5" onSubmit={submit} noValidate>
+    <form className="space-y-5" method="post" onSubmit={submit} noValidate>
       <div className="grid gap-2">
         <Label htmlFor="email">Email address</Label>
         <Input
@@ -73,6 +80,7 @@ export function LoginForm({ next }: { next?: string }) {
       <Button
         className="w-full"
         type="submit"
+        disabled={!isHydrated}
         loading={isPending}
         loadingLabel="Signing in"
       >
