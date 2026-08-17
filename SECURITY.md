@@ -172,3 +172,13 @@ writes or activate any Stage 8 workflow.
 # Teacher-assignment boundary
 
 Teacher-assignment writes are RPC-only and require `ASSIGNMENTS_MANAGE` from the authoritative session-selected membership. Forced RLS prevents cross-school and cross-membership reads; direct browser writes are revoked. Matching live teacher roles, effective dates, membership status, and school state are checked on every authoritative request. Eligible-teacher results and audit events exclude contacts and authentication material.
+
+## Marks-entry boundary
+
+Marks writes are RPC-only and require both live `MARKS_ENTER` and the exact
+current `SUBJECT_TEACHER` assignment on the selected membership. DRAFT sheets
+are editable only in `MARKS_ENTRY`; cell scope, maximum score, attendance
+semantics and row versions are enforced in PostgreSQL. Batch saves are one
+transaction, direct authenticated table writes are revoked, identities are
+immutable, and grid output excludes guardian and staff contacts. Never use a
+service-role client in the application marks flow.

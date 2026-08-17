@@ -372,11 +372,13 @@ test.describe.serial("teacher assignments", () => {
     await expect(page.locator("body")).not.toContainText("@example.invalid");
     await expect(page.locator("body")).not.toContainText("Phone");
   });
-  test("20. Stage 9 marks entry is not active", async ({ page }) => {
+  test("20. Stage 10 submission is not active", async ({ page }) => {
     await login(page, "subject");
     await page.goto("/teacher");
-    await expect(page.getByText("Marks entry is not active")).toBeVisible();
-    await expect(page.getByRole("link", { name: /enter marks/i })).toHaveCount(
+    await expect(
+      page.getByText("Workflow submission is not active"),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: /submit marks/i })).toHaveCount(
       0,
     );
   });

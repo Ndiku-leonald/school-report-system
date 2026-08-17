@@ -243,6 +243,8 @@ of scope.
 - [Academic configuration](docs/academic-configuration.md)
 - [Student management](docs/student-management.md)
 - [Student management testing](docs/student-management-testing.md)
+- [Marks entry](docs/marks-entry.md)
+- [Marks entry testing](docs/marks-entry-testing.md)
 - [Academic configuration testing](docs/academic-configuration-testing.md)
 - [Academic workflow](docs/academic-workflow.md)
 - [Database design](docs/database-design.md)
@@ -268,4 +270,13 @@ only after the private Storage object exists. Stage 8 is not included.
 
 # Stage 8 teacher assignments
 
-Secure teacher-assignment management is available under `/dashboard/assignments`, with a read-only selected-membership view at `/teacher/assignments`. See [Teacher assignments](docs/teacher-assignments.md) and [testing](docs/teacher-assignments-testing.md). Stage 8 uses local Supabase RPCs, forced RLS, effective dates, overlap constraints, atomic primary replacement, optimistic concurrency, and transactional audit events. Marks entry remains a Stage 9 concern.
+Secure teacher-assignment management is available under `/dashboard/assignments`, with a read-only selected-membership view at `/teacher/assignments`. See [Teacher assignments](docs/teacher-assignments.md) and [testing](docs/teacher-assignments-testing.md). Stage 8 uses local Supabase RPCs, forced RLS, effective dates, overlap constraints, atomic primary replacement, optimistic concurrency, and transactional audit events; it deliberately stops before marks entry.
+
+## Stage 9 secure marks entry
+
+Current subject teachers can open and edit version-1 DRAFT sheets under
+`/teacher/marks` only while the term is in `MARKS_ENTRY`. The database derives
+school, class, subject, scheme, components and roster from the selected session
+membership and teaching assignment. Schoolwide viewers have a read-only
+`/dashboard/marks` overview. See [Marks entry](docs/marks-entry.md). Stage 10
+workflow transitions and Stage 11 calculations are intentionally absent.

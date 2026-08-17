@@ -23,6 +23,7 @@ export default async function DashboardLayout({
     "STUDENTS_VIEW_ASSIGNED",
     "ASSIGNMENTS_VIEW_ALL",
     "ASSIGNMENTS_MANAGE",
+    "MARKS_VIEW_ALL",
   ]);
   const staffName = context.staff.profile
     ? `${context.staff.profile.first_name} ${context.staff.profile.last_name}`

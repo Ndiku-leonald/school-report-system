@@ -92,6 +92,9 @@ jobs:
       - name: Run local teacher-assignment integration tests
         run: npm run test:teacher-assignments
 
+      - name: Run local marks-entry integration tests
+        run: npm run test:marks-entry
+
       - name: Verify generated database types
         run: |
           npm run db:types
@@ -115,6 +118,9 @@ jobs:
 
       - name: Run local teacher-assignment browser tests
         run: npm run test:e2e:teacher-assignments
+
+      - name: Run local marks-entry browser tests
+        run: npm run test:e2e:marks-entry
 
       - name: Stop local Supabase
         if: always()

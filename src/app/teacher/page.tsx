@@ -25,7 +25,8 @@ const workspaceAreas = [
   },
   {
     title: "Marks awaiting completion",
-    description: "Draft marks work will be added in the marks-entry stage.",
+    description:
+      "Open current subject assignments and save DRAFT component marks.",
     icon: ListChecks,
   },
   {
@@ -41,7 +42,7 @@ export default function TeacherPage() {
       <PageHeader
         eyebrow="Authenticated workspace"
         title="Teacher workspace"
-        description="A focused area for assigned classes and subjects. Marks preparation remains unavailable until Stage 9."
+        description="A focused area for assigned classes, subjects and secure DRAFT marks entry."
         actions={
           <Link className={buttonStyles()} href="/teacher/assignments">
             View my assignments
@@ -72,8 +73,8 @@ export default function TeacherPage() {
 
       <EmptyState
         icon={ClipboardCheck}
-        title="Marks entry is not active"
-        description="Teacher assignments are available now. Marks preparation and submission will be introduced in Stage 9."
+        title="Workflow submission is not active"
+        description="DRAFT marks entry is available now. Submission, review, approval and locking remain reserved for Stage 10."
       />
     </div>
   );

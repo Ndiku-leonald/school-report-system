@@ -157,3 +157,12 @@ RPCs, RLS and Storage policies remain the enforcement layers.
 # Assignment permissions
 
 `SUPER_ADMIN`, `SCHOOL_ADMIN`, and `ACADEMIC_REGISTRAR` receive `ASSIGNMENTS_MANAGE` through the existing matrix. `HEAD_TEACHER` has schoolwide read-only `ASSIGNMENTS_VIEW_ALL`. `CLASS_TEACHER` and `SUBJECT_TEACHER` use `ASSIGNMENTS_VIEW_OWN`. A manager assigned to teaching must also hold the matching live teacher role on the same selected membership.
+
+## Marks-entry permissions
+
+`MARKS_VIEW_ALL` grants selected-school read-only visibility.
+`MARKS_VIEW_ASSIGNED` limits reads to the current selected membership's exact
+subject assignment. `MARKS_ENTER` is necessary but never sufficient for a
+mutation: the same membership must also hold a live `SUBJECT_TEACHER` role and
+the current exact teaching assignment. Permission sets are never unioned across
+memberships.

@@ -223,3 +223,12 @@ latest historical match is never presented as the current placement.
 # Effective-dated teacher assignments
 
 Stage 8 preserves `teaching_assignments` and `class_teacher_assignments`. GiST exclusion constraints prevent subject-scope period overlap and primary class-teacher period overlap. Historical identity is immutable, deletes are blocked, date narrowing checks downstream academic dependencies, and class-row locking serializes primary replacement.
+
+# Stage 9 mark-sheet and mark-row design
+
+`mark_sheets` holds immutable academic and scheme identity for one workflow
+revision. Stage 9 creates only version 1 in `DRAFT` and never changes identity,
+revision or workflow through its APIs. `marks` stores one optional entered cell per sheet, component and
+enrolment; missing combinations remain implicit. Mutable cell fields are score,
+attendance, teacher remark and update metadata. `row_version` is the cell
+concurrency token and increments once per successful update.
