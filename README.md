@@ -8,7 +8,7 @@ The product must remain configurable for different schools. School identity, sub
 
 ## Current status
 
-**Stage 7: student, guardian and enrolment management is implemented for review.** The repository
+**Stage 10: secure marks workflow is implemented for review.** The repository
 contains the Stage 3 database foundation plus cookie-based Supabase Auth,
 server-authoritative staff membership checks, invitation and recovery flows,
 active-school selection, authentication audit events, and local-only Auth test
@@ -25,11 +25,11 @@ signed user-bound proof, PKCE recovery and invitations require purpose-specific
 signed state bound to the authoritative Auth email, and invitation activation
 is atomic.
 
-Academic table writes remain deny-by-default. Stages 6 and 7 add narrow,
-audited and concurrency-protected configuration RPCs while retaining reviewed,
-school- and assignment-scoped reads. Marks transitions,
-calculations, report generation, report publication, analytics, promotion processing, and
-parent verification have not been implemented.
+Academic table writes remain deny-by-default. Stage 10 adds narrow, audited,
+concurrency-protected submission, review, return, resubmission, approval,
+locking, term-phase, and correction-revision RPCs. Calculations, report
+generation/publication, analytics, promotion processing, and parent
+verification have not been implemented.
 
 Stage 7 adds `/dashboard/students`, admission and profile workflows, guarded
 student and enrolment lifecycle changes, primary-guardian management, private
@@ -162,11 +162,13 @@ npm test
 npm run test:auth
 npm run test:authorization
 npm run test:academic-config
+npm run test:marks-workflow
 npm run build
 npm run test:e2e
 npm run test:e2e:auth
 npm run test:e2e:authorization
 npm run test:e2e:academic-config
+npm run test:e2e:marks-workflow
 ```
 
 Use `npx playwright install chromium` once if the local Playwright browser is not installed.

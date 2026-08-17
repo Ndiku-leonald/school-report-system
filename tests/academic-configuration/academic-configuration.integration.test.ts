@@ -555,16 +555,26 @@ describe.sequential("local academic configuration workflows", () => {
       message: "A mark sheet must reference an active assessment scheme.",
     });
 
-    await expect(
-      database.query(
-        `update public.mark_sheets
-         set workflow_status = 'SUBMITTED',
-             submitted_by = $2,
-             submitted_at = now()
-         where id = $1`,
-        [sheetId, identities.get("subject")!.membershipId],
-      ),
-    ).resolves.toMatchObject({ rowCount: 1 });
+    await database.query("begin");
+    try {
+      await database.query(
+        "select set_config('app.marks_workflow_transition','allowed',true)",
+      );
+      await expect(
+        database.query(
+          `update public.mark_sheets
+           set workflow_status = 'SUBMITTED',
+               submitted_by = $2,
+               submitted_at = now()
+           where id = $1`,
+          [sheetId, identities.get("subject")!.membershipId],
+        ),
+      ).resolves.toMatchObject({ rowCount: 1 });
+      await database.query("commit");
+    } catch (error) {
+      await database.query("rollback");
+      throw error;
+    }
 
     await expect(
       database.query(

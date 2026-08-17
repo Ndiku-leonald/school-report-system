@@ -503,6 +503,7 @@ values (
 
 select extensions.throws_ok(
   $$
+    select set_config('app.marks_workflow_transition', 'allowed', true);
     update public.mark_sheets
     set submitted_by = '71000000-0000-4000-8000-000000000002'
     where id = '77000000-0000-4000-8000-000000000001'
@@ -512,6 +513,7 @@ select extensions.throws_ok(
 
 select extensions.throws_ok(
   $$
+    select set_config('app.marks_workflow_transition', 'allowed', true);
     update public.mark_sheets
     set reviewed_by = '71000000-0000-4000-8000-000000000002'
     where id = '77000000-0000-4000-8000-000000000001'
@@ -521,6 +523,7 @@ select extensions.throws_ok(
 
 select extensions.throws_ok(
   $$
+    select set_config('app.marks_workflow_transition', 'allowed', true);
     update public.mark_sheets
     set approved_by = '71000000-0000-4000-8000-000000000002'
     where id = '77000000-0000-4000-8000-000000000001'
@@ -530,6 +533,7 @@ select extensions.throws_ok(
 
 select extensions.throws_ok(
   $$
+    select set_config('app.marks_workflow_transition', 'allowed', true);
     update public.mark_sheets
     set locked_by = '71000000-0000-4000-8000-000000000002'
     where id = '77000000-0000-4000-8000-000000000001'
@@ -539,6 +543,7 @@ select extensions.throws_ok(
 
 select extensions.throws_ok(
   $$
+    select set_config('app.marks_workflow_transition', 'allowed', true);
     update public.mark_sheets
     set returned_by = '71000000-0000-4000-8000-000000000002'
     where id = '77000000-0000-4000-8000-000000000001'
@@ -548,6 +553,7 @@ select extensions.throws_ok(
 
 select extensions.lives_ok(
   $$
+    select set_config('app.marks_workflow_transition', 'allowed', true);
     update public.mark_sheets
     set
       submitted_by = '71000000-0000-4000-8000-000000000001',
@@ -559,6 +565,11 @@ select extensions.lives_ok(
   $$,
   'same-school mark-sheet actors remain valid'
 );
+
+select set_config('app.term_marks_workflow_transition', 'allowed', true);
+update public.terms
+set status = 'MARKS_ENTRY'
+where id = '21000000-0000-4000-8000-000000000001';
 
 select extensions.throws_ok(
   $$

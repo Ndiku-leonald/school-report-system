@@ -29,9 +29,9 @@ select extensions.ok(pg_get_functiondef('public.get_or_create_draft_mark_sheet(u
 select extensions.ok(pg_get_functiondef('public.get_or_create_draft_mark_sheet(uuid)'::regprocedure) ~* 'selected_assignment.subject_id','25. subject comes from assignment');
 select extensions.ok(pg_get_functiondef('public.get_or_create_draft_mark_sheet(uuid)'::regprocedure) ~* 'selected_term.status <> ''MARKS_ENTRY''','26. only MARKS_ENTRY is editable');
 select extensions.ok(
-  pg_get_functiondef('internal.assert_editable_mark_sheet(uuid,uuid,uuid)'::regprocedure) ~* 'workflow_status <> ''DRAFT'''
+  pg_get_functiondef('internal.assert_editable_mark_sheet(uuid,uuid,uuid)'::regprocedure) ~* 'selected_sheet.workflow_status = ''DRAFT'''
   and regexp_count(lower(pg_get_functiondef('internal.assert_editable_mark_sheet(uuid,uuid,uuid)'::regprocedure)), 'for update') >= 3,
-  '27. save locks assignment, term, and DRAFT sheet authority rows'
+  '27. save locks assignment, term, and editable sheet authority rows'
 );
 select extensions.ok(pg_get_functiondef('public.get_or_create_draft_mark_sheet(uuid)'::regprocedure) ~* 'scheme.status = ''ACTIVE''','28. new sheet requires active scheme');
 select extensions.ok(pg_get_functiondef('public.get_or_create_draft_mark_sheet(uuid)'::regprocedure) ~* 'weight_total <> 100','29. scheme weight must total 100');
@@ -60,7 +60,7 @@ select extensions.ok(pg_get_functiondef('public.save_mark_entries(uuid,jsonb)'::
 select extensions.ok(pg_get_functiondef('public.save_mark_entries(uuid,jsonb)'::regprocedure) ~* 'MARK_ENTRY_BATCH_SAVED','49. successful batch audited compactly');
 select extensions.ok(pg_get_functiondef('internal.normalize_teacher_remark(text)'::regprocedure) ~* 'length\(normalized\) > 500' and pg_get_functiondef('internal.normalize_teacher_remark(text)'::regprocedure) ~* '\[:cntrl:\]','50. remarks normalized and bounded');
 select extensions.ok(pg_get_function_result('public.get_mark_entry_grid(uuid)'::regprocedure) !~* 'guardian|phone|email|contact','51. grid contract omits contacts');
-select extensions.ok(to_regprocedure('public.submit_mark_sheet(uuid)') is null and to_regprocedure('public.approve_mark_sheet(uuid)') is null and to_regprocedure('public.lock_mark_sheet(uuid)') is null,'52. Stage 10 transitions are not exposed');
+select extensions.ok(to_regprocedure('public.submit_mark_sheet(uuid,timestamp with time zone)') is not null and to_regprocedure('public.approve_mark_sheet(uuid,timestamp with time zone)') is not null and to_regprocedure('public.lock_mark_sheet(uuid,timestamp with time zone)') is not null,'52. Stage 10 optimistic workflow transitions are exposed');
 
 select extensions.has_function('internal','lock_and_require_marks_write_authority',array[]::text[],'53. internal marks-write authority-lock helper exists');
 select extensions.is(
@@ -86,26 +86,26 @@ select extensions.ok(
 select extensions.ok(not has_function_privilege('anon','internal.lock_and_require_marks_write_authority()','EXECUTE'),'57. anon cannot execute the authority-lock helper');
 select extensions.ok(not has_function_privilege('authenticated','internal.lock_and_require_marks_write_authority()','EXECUTE'),'58. authenticated cannot execute the authority-lock helper directly');
 select extensions.ok(
-  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'staff_session_active_memberships'
-  and pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'selection.session_id = current_session_id'
-  and pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'for update',
+  pg_get_functiondef('internal.lock_and_require_marks_workflow_authority(public.app_permission)'::regprocedure) ~* 'staff_session_active_memberships'
+  and pg_get_functiondef('internal.lock_and_require_marks_workflow_authority(public.app_permission)'::regprocedure) ~* 'selection.session_id = current_session_id'
+  and pg_get_functiondef('internal.lock_and_require_marks_workflow_authority(public.app_permission)'::regprocedure) ~* 'for update',
   '59. current Auth session selection is locked and revalidated'
 );
 select extensions.ok(
-  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'membership.id = selected_selection.membership_id',
+  pg_get_functiondef('internal.lock_and_require_marks_workflow_authority(public.app_permission)'::regprocedure) ~* 'membership.id = selected_selection.membership_id',
   '60. locked membership comes only from the selected session row'
 );
 select extensions.ok(
-  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'selected_membership.status <> ''ACTIVE''',
+  pg_get_functiondef('internal.lock_and_require_marks_workflow_authority(public.app_permission)'::regprocedure) ~* 'selected_membership.status <> ''ACTIVE''',
   '61. membership ACTIVE state is revalidated after locking'
 );
 select extensions.ok(
-  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'not selected_school.is_active',
+  pg_get_functiondef('internal.lock_and_require_marks_workflow_authority(public.app_permission)'::regprocedure) ~* 'not selected_school.is_active',
   '62. selected school active state is revalidated after locking'
 );
 select extensions.ok(
-  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'granted_at <= now\(\)'
-  and pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'revoked_at is null',
+  pg_get_functiondef('internal.lock_and_require_marks_workflow_authority(public.app_permission)'::regprocedure) ~* 'granted_at <= now\(\)'
+  and pg_get_functiondef('internal.lock_and_require_marks_workflow_authority(public.app_permission)'::regprocedure) ~* 'revoked_at is null',
   '63. only live role grants contribute authority'
 );
 select extensions.ok(
@@ -117,11 +117,11 @@ select extensions.ok(
   '65. effective MARKS_ENTER permission is revalidated'
 );
 select extensions.ok(
-  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'order by role_assignment.id',
+  pg_get_functiondef('internal.lock_and_require_marks_workflow_authority(public.app_permission)'::regprocedure) ~* 'order by role_assignment.id',
   '66. role authority rows use deterministic UUID lock order'
 );
 select extensions.ok(
-  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'order by mapping.id',
+  pg_get_functiondef('internal.lock_and_require_marks_workflow_authority(public.app_permission)'::regprocedure) ~* 'order by mapping.id',
   '67. permission authority rows use deterministic UUID lock order'
 );
 select extensions.ok(
@@ -129,12 +129,12 @@ select extensions.ok(
   '68. assignment, term and mark-sheet authority remain locked for saves'
 );
 select extensions.ok(
-  pg_get_functiondef('internal.assert_editable_mark_sheet(uuid,uuid,uuid)'::regprocedure) ~* 'selected_term.status <> ''MARKS_ENTRY''',
+  pg_get_functiondef('internal.assert_editable_mark_sheet(uuid,uuid,uuid)'::regprocedure) ~* 'selected_term.status = ''MARKS_ENTRY''',
   '69. locked term state remains part of final save authority'
 );
 select extensions.ok(
-  pg_get_functiondef('internal.assert_editable_mark_sheet(uuid,uuid,uuid)'::regprocedure) ~* 'workflow_status <> ''DRAFT''',
-  '70. locked DRAFT sheet state remains part of final save authority'
+  pg_get_functiondef('internal.assert_editable_mark_sheet(uuid,uuid,uuid)'::regprocedure) ~* 'selected_sheet.workflow_status = ''DRAFT''',
+  '70. locked editable sheet state remains part of final save authority'
 );
 select extensions.ok(
   pg_get_functiondef('internal.protect_mark_sheet_identity()'::regprocedure) ~* 'old.version is distinct from new.version',
@@ -212,9 +212,10 @@ select extensions.is((select sheet.subject_id from public.mark_sheets sheet wher
 select extensions.is((select sheet.assessment_scheme_id from public.mark_sheets sheet where sheet.id='20b00000-0000-4000-8000-000000000001'),(select snapshot.assessment_scheme_id from mark_sheet_revision_snapshot snapshot),'78. original mark-sheet scheme is unchanged');
 select extensions.is((select sheet.teaching_assignment_id from public.mark_sheets sheet where sheet.id='20b00000-0000-4000-8000-000000000001'),(select snapshot.teaching_assignment_id from mark_sheet_revision_snapshot snapshot),'79. original mark-sheet assignment is unchanged');
 select extensions.is((select sheet.created_at from public.mark_sheets sheet where sheet.id='20b00000-0000-4000-8000-000000000001'),(select snapshot.created_at from mark_sheet_revision_snapshot snapshot),'80. original mark-sheet creation identity is unchanged');
-select extensions.lives_ok(
+select extensions.throws_ok(
   $$ update public.mark_sheets set workflow_status='SUBMITTED' where id='20b00000-0000-4000-8000-000000000001' $$,
-  '81. workflow status remains changeable outside the identity trigger'
+  '55000','MARK_SHEET_WORKFLOW_DIRECT_MUTATION_FORBIDDEN',
+  '81. workflow status changes require controlled RPCs'
 );
 
 select * from extensions.finish();

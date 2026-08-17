@@ -181,3 +181,13 @@ definer RPCs enforce selected school, exact assignment, DRAFT workflow,
 maximum scores. Identity and deletion triggers also protect privileged direct
 writes. Audit rows contain identifiers, versions and changed-field metadata,
 not contacts, credentials or whole classroom payloads.
+
+# Stage 10 workflow security
+
+Migration 21 adds transaction-held workflow authority, optimistic transitions,
+submitter separation, frozen mark triggers, deterministic readiness locks,
+immutable correction lineage, and downstream guards before a locked term can
+reopen. A correction may reuse only its exact locked source scheme; arbitrary
+retired schemes remain invalid. Enrollment roster identity is also frozen for
+submitted sheets and `REVIEW`/`LOCKED` terms, so an authorized student manager
+cannot alter the completion or report scope behind a protected revision.

@@ -54,9 +54,9 @@ export const dashboardNavigation: NavigationItem[] = [
   },
   {
     label: "Approvals",
+    href: "/dashboard/marks/review",
     icon: ClipboardCheck,
     permissions: ["MARKS_REVIEW", "MARKS_APPROVE"],
-    unavailable: true,
   },
   {
     label: "Reports",
@@ -123,8 +123,8 @@ export const teacherNavigation: NavigationItem[] = [
   },
   {
     label: "Submissions",
+    href: "/teacher/marks",
     icon: ClipboardCheck,
     permissions: ["MARKS_SUBMIT"],
-    unavailable: true,
   },
 ];

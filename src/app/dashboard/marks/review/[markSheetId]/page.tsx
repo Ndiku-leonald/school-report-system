@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { getMarkSheetEditor } from "@/lib/marks-entry/data";
 import { getMarkSheetWorkflow } from "@/lib/marks-workflow/data";
 
-export default async function MarkSheetPage({
+export default async function MarksReviewDetailPage({
   params,
 }: {
   params: Promise<{ markSheetId: string }>;
@@ -21,15 +21,20 @@ export default async function MarkSheetPage({
       <PageHeader
         eyebrow={`${details.academic_year_name} · ${details.term_name}`}
         title={`${details.grade_name} · ${details.class_name} · ${details.subject_name}`}
-        description={`${details.assessment_scheme_name} · revision ${details.sheet_version}. Complete every required cell before submission.`}
+        description={`${details.assessment_scheme_name} · revision ${details.sheet_version}. Values are read-only outside an authorized correction state.`}
         actions={
-          <Badge variant={details.editable ? "success" : "info"}>
+          <Badge
+            variant={details.workflow_status === "LOCKED" ? "success" : "info"}
+          >
             {details.workflow_status.replaceAll("_", " ")}
           </Badge>
         }
       />
       <WorkflowSummary detail={workflow.detail} history={workflow.history} />
-      <WorkflowActions detail={workflow.detail} />
+      <WorkflowActions
+        correctionHrefBase="/dashboard/marks/review"
+        detail={workflow.detail}
+      />
       <MarksGrid
         components={grid.components}
         editable={details.editable}

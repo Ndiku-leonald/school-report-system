@@ -280,7 +280,7 @@ describe.sequential("local school-scoped authorization integration", () => {
             term_number: 1,
             starts_on: "2026-05-25",
             ends_on: "2026-08-28",
-            status: "OPEN",
+            status: "MARKS_ENTRY",
           },
           {
             id: termB,
@@ -289,7 +289,7 @@ describe.sequential("local school-scoped authorization integration", () => {
             term_number: 1,
             starts_on: "2026-05-25",
             ends_on: "2026-08-28",
-            status: "OPEN",
+            status: "MARKS_ENTRY",
           },
         ])
       ).error,
