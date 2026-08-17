@@ -15,6 +15,7 @@ const nonce = Date.now();
 const ids = Object.fromEntries(
   [
     "school",
+    "otherSchool",
     "year",
     "term",
     "grade",
@@ -75,18 +76,28 @@ async function provision(
   people.set(key, { email, userId: created.data.user.id, membershipId });
 }
 
-async function login(page: Page, key: string) {
+async function login(
+  page: Page,
+  key: string,
+  selectedSchool = `Marks Browser School ${nonce}`,
+) {
   await page.context().clearCookies();
   await page.goto("/staff-login");
   await page.getByLabel("Email address").fill(people.get(key)!.email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL((location) => location.pathname !== "/staff-login");
+  if (new URL(page.url()).pathname === "/select-school") {
+    await page.getByText(selectedSchool, { exact: true }).click();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.waitForURL((location) => location.pathname !== "/select-school");
+  }
 }
 
 async function openEditor(page: Page) {
   await login(page, "teacher");
   await page.goto(`/teacher/marks/${markSheetId}`);
+  await page.waitForLoadState("networkidle");
 }
 
 test.describe.serial("marks entry", () => {
@@ -94,12 +105,16 @@ test.describe.serial("marks entry", () => {
   test.beforeAll(async () => {
     await database.connect();
     await database.query(
-      "insert into public.schools (id,name,slug,school_code) values ($1,$2,$3,$4)",
+      "insert into public.schools (id,name,slug,school_code) values ($1,$2,$3,$4),($5,$6,$7,$8)",
       [
         ids.school,
         `Marks Browser School ${nonce}`,
         `marks-browser-${nonce}`,
         `MB-${nonce}`,
+        ids.otherSchool,
+        `Other Marks School ${nonce}`,
+        `other-marks-browser-${nonce}`,
+        `OMB-${nonce}`,
       ],
     );
     for (const [key, role] of [
@@ -110,6 +125,21 @@ test.describe.serial("marks entry", () => {
       ["viewer", "HEAD_TEACHER"],
     ] as const)
       await provision(key, role);
+    const teacher = people.get("teacher")!;
+    const otherMembershipId = randomUUID();
+    await database.query(
+      "insert into public.school_staff_memberships (id,school_id,profile_id,employee_number,status) values ($1,$2,$3,$4,'ACTIVE')",
+      [
+        otherMembershipId,
+        ids.otherSchool,
+        teacher.userId,
+        `BROWSER-teacher-other-${nonce}`,
+      ],
+    );
+    await database.query(
+      "insert into public.staff_role_assignments (membership_id,role,granted_at) values ($1,'SUBJECT_TEACHER',now()-interval '1 day')",
+      [otherMembershipId],
+    );
     await database.query(
       "insert into public.academic_years (id,school_id,name,starts_on,ends_on,status) values ($1,$2,'Browser current window',current_date-180,current_date+180,'ACTIVE')",
       [ids.year, ids.school],
@@ -353,9 +383,14 @@ test.describe.serial("marks entry", () => {
   test("17. selected-school workspace never shows unrelated school data", async ({
     page,
   }) => {
-    await login(page, "teacher");
+    await login(page, "teacher", `Other Marks School ${nonce}`);
     await page.goto("/teacher/marks");
-    await expect(page.getByText(/Other Marks School/)).toHaveCount(0);
+    await expect(
+      page.getByText("No current subject assignments"),
+    ).toBeVisible();
+    await expect(page.getByText("English", { exact: true })).toHaveCount(0);
+    await page.goto(`/teacher/marks/${markSheetId}`);
+    await expect(page.getByText(/not found/i)).toBeVisible();
   });
   test("18. future assignment has no editable sheet", async ({ page }) => {
     await login(page, "future");
@@ -396,8 +431,10 @@ test.describe.serial("marks entry", () => {
     await openEditor(page);
     const score = page.getByLabel("Ada Browser Learner Coursework score");
     await score.focus();
-    await score.press("Control+A");
-    await score.pressSequentially("47");
+    await page.keyboard.press("Control+A");
+    await page.keyboard.press("Backspace");
+    await expect(score).toHaveValue("");
+    await page.keyboard.type("47");
     await expect(score).toHaveValue("47");
   });
   test("23. cell focus order is score then attendance", async ({ page }) => {

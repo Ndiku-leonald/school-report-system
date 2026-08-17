@@ -278,5 +278,7 @@ Current subject teachers can open and edit version-1 DRAFT sheets under
 `/teacher/marks` only while the term is in `MARKS_ENTRY`. The database derives
 school, class, subject, scheme, components and roster from the selected session
 membership and teaching assignment. Schoolwide viewers have a read-only
-`/dashboard/marks` overview. See [Marks entry](docs/marks-entry.md). Stage 10
-workflow transitions and Stage 11 calculations are intentionally absent.
+`/dashboard/marks` overview. Sheet revision identity is immutable, and marks
+mutations hold the selected authority, assignment, term and DRAFT-sheet state
+through each write. See [Marks entry](docs/marks-entry.md). Stage 10 workflow
+transitions and Stage 11 calculations are intentionally absent.

@@ -1,6 +1,6 @@
 begin;
 
-select extensions.plan(52);
+select extensions.plan(81);
 
 select extensions.has_function('public','get_or_create_draft_mark_sheet',array['uuid'],'1. draft initialization RPC exists');
 select extensions.has_function('public','save_mark_entry',array['uuid','uuid','uuid','integer','numeric','assessment_attendance_status','text'],'2. single-cell RPC exists');
@@ -20,7 +20,7 @@ select extensions.ok(not has_table_privilege('authenticated','public.mark_sheets
 select extensions.ok(not has_table_privilege('authenticated','public.marks','INSERT,UPDATE,DELETE'),'16. authenticated direct mark writes denied');
 select extensions.ok(pg_get_functiondef('internal.current_marks_actor()'::regprocedure) ~* 'staff_session_active_memberships','17. actor uses selected session membership');
 select extensions.ok(pg_get_functiondef('internal.current_marks_actor()'::regprocedure) ~* 'granted_at <= now\(\)' and pg_get_functiondef('internal.current_marks_actor()'::regprocedure) ~* 'revoked_at is null','18. actor uses live grants');
-select extensions.ok(pg_get_functiondef('internal.require_marks_entry_actor()'::regprocedure) ~* 'MARKS_ENTER','19. mutation actor requires MARKS_ENTER');
+select extensions.ok(pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'MARKS_ENTER','19. mutation actor requires MARKS_ENTER');
 select extensions.ok(pg_get_functiondef('internal.membership_has_live_subject_teacher_role(uuid)'::regprocedure) ~* 'SUBJECT_TEACHER','20. teacher role is exact');
 select extensions.ok(pg_get_functiondef('internal.membership_has_current_subject_assignment(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'assignment.id = target_assignment_id','21. assignment ID is authoritative');
 select extensions.ok(pg_get_functiondef('internal.membership_has_current_subject_assignment(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'current_date between assignment.starts_on','22. future and ended assignments rejected');
@@ -61,6 +61,161 @@ select extensions.ok(pg_get_functiondef('public.save_mark_entries(uuid,jsonb)'::
 select extensions.ok(pg_get_functiondef('internal.normalize_teacher_remark(text)'::regprocedure) ~* 'length\(normalized\) > 500' and pg_get_functiondef('internal.normalize_teacher_remark(text)'::regprocedure) ~* '\[:cntrl:\]','50. remarks normalized and bounded');
 select extensions.ok(pg_get_function_result('public.get_mark_entry_grid(uuid)'::regprocedure) !~* 'guardian|phone|email|contact','51. grid contract omits contacts');
 select extensions.ok(to_regprocedure('public.submit_mark_sheet(uuid)') is null and to_regprocedure('public.approve_mark_sheet(uuid)') is null and to_regprocedure('public.lock_mark_sheet(uuid)') is null,'52. Stage 10 transitions are not exposed');
+
+select extensions.has_function('internal','lock_and_require_marks_write_authority',array[]::text[],'53. internal marks-write authority-lock helper exists');
+select extensions.is(
+  (select proconfig[1] from pg_proc where oid='internal.lock_and_require_marks_write_authority()'::regprocedure),
+  'search_path=pg_catalog, public, internal',
+  '54. authority-lock helper has a fixed search path'
+);
+select extensions.ok(
+  (select prosecdef from pg_proc where oid='internal.lock_and_require_marks_write_authority()'::regprocedure),
+  '55. authority-lock helper uses definer rights for protected authority rows'
+);
+select extensions.ok(
+  not exists(
+    select 1
+    from pg_proc function_row
+    cross join lateral aclexplode(coalesce(function_row.proacl,acldefault('f',function_row.proowner))) privilege
+    where function_row.oid='internal.lock_and_require_marks_write_authority()'::regprocedure
+      and privilege.grantee=0
+      and privilege.privilege_type='EXECUTE'
+  ),
+  '56. PUBLIC cannot execute the authority-lock helper'
+);
+select extensions.ok(not has_function_privilege('anon','internal.lock_and_require_marks_write_authority()','EXECUTE'),'57. anon cannot execute the authority-lock helper');
+select extensions.ok(not has_function_privilege('authenticated','internal.lock_and_require_marks_write_authority()','EXECUTE'),'58. authenticated cannot execute the authority-lock helper directly');
+select extensions.ok(
+  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'staff_session_active_memberships'
+  and pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'selection.session_id = current_session_id'
+  and pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'for update',
+  '59. current Auth session selection is locked and revalidated'
+);
+select extensions.ok(
+  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'membership.id = selected_selection.membership_id',
+  '60. locked membership comes only from the selected session row'
+);
+select extensions.ok(
+  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'selected_membership.status <> ''ACTIVE''',
+  '61. membership ACTIVE state is revalidated after locking'
+);
+select extensions.ok(
+  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'not selected_school.is_active',
+  '62. selected school active state is revalidated after locking'
+);
+select extensions.ok(
+  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'granted_at <= now\(\)'
+  and pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'revoked_at is null',
+  '63. only live role grants contribute authority'
+);
+select extensions.ok(
+  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'SUBJECT_TEACHER',
+  '64. live SUBJECT_TEACHER authority is revalidated'
+);
+select extensions.ok(
+  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'MARKS_ENTER',
+  '65. effective MARKS_ENTER permission is revalidated'
+);
+select extensions.ok(
+  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'order by role_assignment.id',
+  '66. role authority rows use deterministic UUID lock order'
+);
+select extensions.ok(
+  pg_get_functiondef('internal.lock_and_require_marks_write_authority()'::regprocedure) ~* 'order by mapping.id',
+  '67. permission authority rows use deterministic UUID lock order'
+);
+select extensions.ok(
+  regexp_count(lower(pg_get_functiondef('internal.assert_editable_mark_sheet(uuid,uuid,uuid)'::regprocedure)), 'for update') >= 3,
+  '68. assignment, term and mark-sheet authority remain locked for saves'
+);
+select extensions.ok(
+  pg_get_functiondef('internal.assert_editable_mark_sheet(uuid,uuid,uuid)'::regprocedure) ~* 'selected_term.status <> ''MARKS_ENTRY''',
+  '69. locked term state remains part of final save authority'
+);
+select extensions.ok(
+  pg_get_functiondef('internal.assert_editable_mark_sheet(uuid,uuid,uuid)'::regprocedure) ~* 'workflow_status <> ''DRAFT''',
+  '70. locked DRAFT sheet state remains part of final save authority'
+);
+select extensions.ok(
+  pg_get_functiondef('internal.protect_mark_sheet_identity()'::regprocedure) ~* 'old.version is distinct from new.version',
+  '71. mark-sheet version is structurally part of immutable revision identity'
+);
+
+insert into public.schools (id,name,slug,school_code)
+values ('20000000-0000-4000-8000-000000000001','Revision Runtime School','revision-runtime-school','REV-RUNTIME');
+insert into auth.users (
+  id,aud,role,email,encrypted_password,email_confirmed_at,
+  raw_app_meta_data,raw_user_meta_data,created_at,updated_at
+) values (
+  '20100000-0000-4000-8000-000000000001','authenticated','authenticated',
+  'revision.runtime@example.invalid',extensions.crypt('synthetic-local-password',extensions.gen_salt('bf')),
+  now(),'{"provider":"email","providers":["email"]}','{}',now(),now()
+);
+insert into public.profiles (id,first_name,last_name)
+values ('20100000-0000-4000-8000-000000000001','Revision','Runtime');
+insert into public.school_staff_memberships (id,school_id,profile_id,employee_number,status)
+values ('20200000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','20100000-0000-4000-8000-000000000001','REV-STAFF','ACTIVE');
+insert into public.academic_years (id,school_id,name,starts_on,ends_on,status)
+values ('20300000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','Revision window',current_date-180,current_date+180,'ACTIVE');
+insert into public.terms (id,academic_year_id,name,term_number,starts_on,ends_on,status)
+values ('20400000-0000-4000-8000-000000000001','20300000-0000-4000-8000-000000000001','Revision term',1,current_date-180,current_date+180,'MARKS_ENTRY');
+insert into public.grade_levels (id,school_id,code,name,sort_order)
+values ('20500000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','REV','Revision Grade',1);
+insert into public.class_sections (id,academic_year_id,grade_level_id,name,class_code)
+values ('20600000-0000-4000-8000-000000000001','20300000-0000-4000-8000-000000000001','20500000-0000-4000-8000-000000000001','Revision Class','REV-C');
+insert into public.subjects (id,school_id,code,name,sort_order)
+values ('20700000-0000-4000-8000-000000000001','20000000-0000-4000-8000-000000000001','REV','Revision Subject',1);
+insert into public.grade_level_subjects (grade_level_id,subject_id,sort_order)
+values ('20500000-0000-4000-8000-000000000001','20700000-0000-4000-8000-000000000001',1);
+insert into public.teaching_assignments (
+  id,term_id,class_section_id,subject_id,staff_membership_id,starts_on
+) values (
+  '20800000-0000-4000-8000-000000000001','20400000-0000-4000-8000-000000000001',
+  '20600000-0000-4000-8000-000000000001','20700000-0000-4000-8000-000000000001',
+  '20200000-0000-4000-8000-000000000001',current_date-30
+);
+insert into public.assessment_schemes (
+  id,term_id,grade_level_id,subject_id,name,version,status,effective_from
+) values (
+  '20900000-0000-4000-8000-000000000001','20400000-0000-4000-8000-000000000001',
+  '20500000-0000-4000-8000-000000000001','20700000-0000-4000-8000-000000000001',
+  'Revision Scheme',1,'DRAFT',current_date-180
+);
+insert into public.assessment_components (
+  id,assessment_scheme_id,name,component_code,maximum_score,weight_percentage,sort_order
+) values (
+  '20a00000-0000-4000-8000-000000000001','20900000-0000-4000-8000-000000000001',
+  'Revision Component','REV',100,100,1
+);
+update public.assessment_schemes set status='ACTIVE'
+where id='20900000-0000-4000-8000-000000000001';
+insert into public.mark_sheets (
+  id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id,version
+) values (
+  '20b00000-0000-4000-8000-000000000001','20400000-0000-4000-8000-000000000001',
+  '20600000-0000-4000-8000-000000000001','20700000-0000-4000-8000-000000000001',
+  '20900000-0000-4000-8000-000000000001','20800000-0000-4000-8000-000000000001',1
+);
+create temporary table mark_sheet_revision_snapshot on commit drop as
+select * from public.mark_sheets where id='20b00000-0000-4000-8000-000000000001';
+
+select extensions.throws_ok(
+  $$ update public.mark_sheets set version=version+1 where id='20b00000-0000-4000-8000-000000000001' $$,
+  '55000','MARK_SHEET_IDENTITY_IMMUTABLE',
+  '72. privileged direct mark-sheet version change fails at runtime'
+);
+select extensions.is((select count(*)::integer from public.mark_sheets where id='20b00000-0000-4000-8000-000000000001'),1,'73. original mark-sheet row still exists');
+select extensions.is((select sheet.version from public.mark_sheets sheet where sheet.id='20b00000-0000-4000-8000-000000000001'),(select snapshot.version from mark_sheet_revision_snapshot snapshot),'74. original mark-sheet version is unchanged');
+select extensions.is((select sheet.term_id from public.mark_sheets sheet where sheet.id='20b00000-0000-4000-8000-000000000001'),(select snapshot.term_id from mark_sheet_revision_snapshot snapshot),'75. original mark-sheet term is unchanged');
+select extensions.is((select sheet.class_section_id from public.mark_sheets sheet where sheet.id='20b00000-0000-4000-8000-000000000001'),(select snapshot.class_section_id from mark_sheet_revision_snapshot snapshot),'76. original mark-sheet class is unchanged');
+select extensions.is((select sheet.subject_id from public.mark_sheets sheet where sheet.id='20b00000-0000-4000-8000-000000000001'),(select snapshot.subject_id from mark_sheet_revision_snapshot snapshot),'77. original mark-sheet subject is unchanged');
+select extensions.is((select sheet.assessment_scheme_id from public.mark_sheets sheet where sheet.id='20b00000-0000-4000-8000-000000000001'),(select snapshot.assessment_scheme_id from mark_sheet_revision_snapshot snapshot),'78. original mark-sheet scheme is unchanged');
+select extensions.is((select sheet.teaching_assignment_id from public.mark_sheets sheet where sheet.id='20b00000-0000-4000-8000-000000000001'),(select snapshot.teaching_assignment_id from mark_sheet_revision_snapshot snapshot),'79. original mark-sheet assignment is unchanged');
+select extensions.is((select sheet.created_at from public.mark_sheets sheet where sheet.id='20b00000-0000-4000-8000-000000000001'),(select snapshot.created_at from mark_sheet_revision_snapshot snapshot),'80. original mark-sheet creation identity is unchanged');
+select extensions.lives_ok(
+  $$ update public.mark_sheets set workflow_status='SUBMITTED' where id='20b00000-0000-4000-8000-000000000001' $$,
+  '81. workflow status remains changeable outside the identity trigger'
+);
 
 select * from extensions.finish();
 rollback;

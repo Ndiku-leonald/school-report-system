@@ -37,6 +37,8 @@ const ids = Object.fromEntries(
     "assignment",
     "futureAssignment",
     "endedAssignment",
+    "teacherOtherMembership",
+    "teacherOtherRole",
   ].map((key) => [key, randomUUID()]),
 ) as Record<string, string>;
 const database = new Client({ connectionString: databaseUrl });
@@ -128,6 +130,120 @@ function entry(
   };
 }
 
+async function openControlConnection(label: string) {
+  const client = new Client({ connectionString: databaseUrl });
+  await client.connect();
+  await client.query("select set_config('application_name',$1,false)", [
+    `marks-race-${label}-${nonce}`,
+  ]);
+  return client;
+}
+
+async function waitForBlockedBackend(options: {
+  applicationName?: string;
+  queryFragment?: string;
+}) {
+  const deadline = Date.now() + 10_000;
+  while (Date.now() < deadline) {
+    const result = await database.query<{ blocked: boolean }>(
+      `select exists (
+         select 1
+         from pg_catalog.pg_stat_activity
+         where wait_event_type = 'Lock'
+           and ($1::text is null or application_name = $1)
+           and ($2::text is null or query ilike '%' || $2 || '%')
+       ) as blocked`,
+      [options.applicationName ?? null, options.queryFragment ?? null],
+    );
+    if (result.rows[0].blocked) return;
+    await new Promise((resolve) => setTimeout(resolve, 20));
+  }
+  throw new Error(
+    `Timed out waiting for blocked backend ${JSON.stringify(options)}`,
+  );
+}
+
+async function cellSnapshot() {
+  const result = await database.query<{
+    score: string | null;
+    row_version: number;
+  }>(
+    `select score, row_version
+     from public.marks
+     where mark_sheet_id=$1
+       and assessment_component_id=$2
+       and enrollment_id=$3`,
+    [markSheetId, ids.componentA, ids.enrollment],
+  );
+  return {
+    score: result.rows[0].score === null ? null : Number(result.rows[0].score),
+    rowVersion: result.rows[0].row_version,
+  };
+}
+
+async function successAuditCount() {
+  const result = await database.query<{ count: number }>(
+    `select count(*)::int as count
+     from public.audit_logs
+     where entity_id=$1
+        or new_values->>'mark_sheet_id'=$1::text`,
+    [markSheetId],
+  );
+  return result.rows[0].count;
+}
+
+async function authorityChangeWins(options: {
+  label: string;
+  changeSql: string;
+  changeParams: unknown[];
+  restoreSql: string;
+  restoreParams: unknown[];
+  expectedCode: string;
+  restoreBypassTriggers?: boolean;
+}) {
+  const control = await openControlConnection(options.label);
+  let committed = false;
+  const beforeCell = await cellSnapshot();
+  const beforeAudits = await successAuditCount();
+  try {
+    await control.query("begin");
+    await control.query(options.changeSql, options.changeParams);
+    const save = Promise.resolve(
+      teacher.rpc(
+        "save_mark_entry",
+        entry({
+          expected_row_version: firstVersion,
+          entered_score: 43,
+        }),
+      ),
+    );
+    await waitForBlockedBackend({ queryFragment: "save_mark_entry" });
+    await control.query("commit");
+    committed = true;
+
+    const result = await save;
+    expect(result.error?.code).toBe(options.expectedCode);
+    expect(await cellSnapshot()).toEqual(beforeCell);
+    expect(await successAuditCount()).toBe(beforeAudits);
+  } finally {
+    if (!committed) await control.query("rollback");
+    await control.end();
+    if (options.restoreBypassTriggers) {
+      await database.query("begin");
+      try {
+        await database.query("set local session_replication_role=replica");
+        await database.query(options.restoreSql, options.restoreParams);
+        await database.query("commit");
+      } catch (error) {
+        await database.query("rollback");
+        throw error;
+      }
+    } else {
+      await database.query(options.restoreSql, options.restoreParams);
+    }
+  }
+}
+
 describe.sequential("secure marks entry", () => {
   beforeAll(async () => {
     await database.connect();
@@ -149,6 +265,20 @@ describe.sequential("secure marks entry", () => {
     const futureTeacherId = await addPerson("future", "SUBJECT_TEACHER");
     const endedTeacherId = await addPerson("ended", "SUBJECT_TEACHER");
     await addPerson("viewer", "HEAD_TEACHER");
+    const teacherPerson = people.get("teacher")!;
+    await database.query(
+      "insert into public.school_staff_memberships (id,school_id,profile_id,employee_number,status,joined_at) values ($1,$2,$3,$4,'ACTIVE','2026-01-01')",
+      [
+        ids.teacherOtherMembership,
+        ids.otherSchool,
+        teacherPerson.userId,
+        `MARK-teacher-other-${nonce}`,
+      ],
+    );
+    await database.query(
+      "insert into public.staff_role_assignments (id,membership_id,role,granted_at) values ($1,$2,'SUBJECT_TEACHER',now()-interval '1 day')",
+      [ids.teacherOtherRole, ids.teacherOtherMembership],
+    );
     await database.query(
       "insert into public.academic_years (id,school_id,name,starts_on,ends_on,status) values ($1,$2,'Current window',current_date-180,current_date+180,'ACTIVE'),($3,$4,'Other current window',current_date-180,current_date+180,'ACTIVE')",
       [ids.year, ids.school, ids.otherYear, ids.otherSchool],
@@ -501,6 +631,178 @@ describe.sequential("secure marks entry", () => {
       [person.membershipId],
     );
   });
+  it("a concurrent role revocation that wins first blocks the mark write", async () => {
+    const person = people.get("teacher")!;
+    await authorityChangeWins({
+      label: "role-wins",
+      changeSql:
+        "update public.staff_role_assignments set revoked_at=now() where id=$1",
+      changeParams: [person.roleId],
+      restoreSql:
+        "update public.staff_role_assignments set revoked_at=null where id=$1",
+      restoreParams: [person.roleId],
+      expectedCode: "42501",
+    });
+  });
+  it("a concurrent membership suspension that wins first blocks the mark write", async () => {
+    const person = people.get("teacher")!;
+    await authorityChangeWins({
+      label: "membership-wins",
+      changeSql:
+        "update public.school_staff_memberships set status='SUSPENDED' where id=$1",
+      changeParams: [person.membershipId],
+      restoreSql:
+        "update public.school_staff_memberships set status='ACTIVE' where id=$1",
+      restoreParams: [person.membershipId],
+      expectedCode: "42501",
+    });
+  });
+  it("a concurrent school deactivation that wins first blocks the mark write", async () => {
+    await authorityChangeWins({
+      label: "school-wins",
+      changeSql: "update public.schools set is_active=false where id=$1",
+      changeParams: [ids.school],
+      restoreSql: "update public.schools set is_active=true where id=$1",
+      restoreParams: [ids.school],
+      expectedCode: "42501",
+    });
+  });
+  it("a concurrent assignment end that wins first blocks the mark write", async () => {
+    await authorityChangeWins({
+      label: "assignment-wins",
+      changeSql:
+        "update public.teaching_assignments set ends_on=current_date,is_active=false where id=$1",
+      changeParams: [ids.assignment],
+      restoreSql:
+        "update public.teaching_assignments set ends_on=null,is_active=true where id=$1",
+      restoreParams: [ids.assignment],
+      expectedCode: "42501",
+      // Stage 8 intentionally forbids reactivating historical assignments. The
+      // superuser-only reset keeps this synthetic fixture reusable after the
+      // real, committed end-state race has been proved.
+      restoreBypassTriggers: true,
+    });
+  });
+  it("a concurrent term transition that wins first blocks the mark write", async () => {
+    await authorityChangeWins({
+      label: "term-wins",
+      changeSql: "update public.terms set status='OPEN' where id=$1",
+      changeParams: [ids.term],
+      restoreSql: "update public.terms set status='MARKS_ENTRY' where id=$1",
+      restoreParams: [ids.term],
+      expectedCode: "55000",
+    });
+  });
+  it("a concurrent sheet workflow transition that wins first blocks the mark write", async () => {
+    await authorityChangeWins({
+      label: "sheet-wins",
+      changeSql:
+        "update public.mark_sheets set workflow_status='SUBMITTED' where id=$1",
+      changeParams: [markSheetId],
+      restoreSql:
+        "update public.mark_sheets set workflow_status='DRAFT' where id=$1",
+      restoreParams: [markSheetId],
+      expectedCode: "55000",
+    });
+  });
+  it("a concurrent selected-membership switch that wins first blocks the old-school write", async () => {
+    const person = people.get("teacher")!;
+    const selection = await database.query<{ session_id: string }>(
+      "select session_id from internal.staff_session_active_memberships where profile_id=$1 and membership_id=$2",
+      [person.userId, person.membershipId],
+    );
+    await authorityChangeWins({
+      label: "selection-wins",
+      changeSql:
+        "update internal.staff_session_active_memberships set membership_id=$1,updated_at=now() where session_id=$2",
+      changeParams: [ids.teacherOtherMembership, selection.rows[0].session_id],
+      restoreSql:
+        "update internal.staff_session_active_memberships set membership_id=$1,updated_at=now() where session_id=$2",
+      restoreParams: [person.membershipId, selection.rows[0].session_id],
+      expectedCode: "42501",
+    });
+  });
+  it("a concurrent MARKS_ENTER mapping removal that wins first blocks the mark write", async () => {
+    const mapping = await database.query<{ id: string }>(
+      "select id from public.role_permissions where role='SUBJECT_TEACHER' and permission='MARKS_ENTER'",
+    );
+    await authorityChangeWins({
+      label: "permission-wins",
+      changeSql: "delete from public.role_permissions where id=$1",
+      changeParams: [mapping.rows[0].id],
+      restoreSql:
+        "insert into public.role_permissions (id,role,permission) values ($1,'SUBJECT_TEACHER','MARKS_ENTER') on conflict (role,permission) do nothing",
+      restoreParams: [mapping.rows[0].id],
+      expectedCode: "42501",
+    });
+  });
+  it("a mark write that owns authority first completes before suspension", async () => {
+    const person = people.get("teacher")!;
+    const blocker = await openControlConnection("mark-blocker");
+    const suspenderName = `marks-race-suspender-${nonce}`;
+    const suspender = new Client({ connectionString: databaseUrl });
+    await suspender.connect();
+    await suspender.query("select set_config('application_name',$1,false)", [
+      suspenderName,
+    ]);
+    const before = await cellSnapshot();
+    let blockerCommitted = false;
+    let suspensionCommitted = false;
+    try {
+      await blocker.query("begin");
+      await blocker.query(
+        "select id from public.marks where mark_sheet_id=$1 and assessment_component_id=$2 and enrollment_id=$3 for update",
+        [markSheetId, ids.componentA, ids.enrollment],
+      );
+      const save = Promise.resolve(
+        teacher.rpc(
+          "save_mark_entry",
+          entry({
+            expected_row_version: firstVersion,
+            entered_score: 43,
+          }),
+        ),
+      );
+      await waitForBlockedBackend({ queryFragment: "save_mark_entry" });
+
+      await suspender.query("begin");
+      const suspension = suspender.query(
+        "update public.school_staff_memberships set status='SUSPENDED' where id=$1",
+        [person.membershipId],
+      );
+      await waitForBlockedBackend({ applicationName: suspenderName });
+
+      await blocker.query("commit");
+      blockerCommitted = true;
+      const saved = await save;
+      expect(saved.error).toBeNull();
+      expect(saved.data![0].row_version).toBe(before.rowVersion + 1);
+      expect(saved.data![0].score).toBe(43);
+      firstVersion = saved.data![0].row_version;
+
+      await suspension;
+      await suspender.query("commit");
+      suspensionCommitted = true;
+      const subsequent = await teacher.rpc(
+        "save_mark_entry",
+        entry({ expected_row_version: firstVersion, entered_score: 44 }),
+      );
+      expect(subsequent.error?.code).toBe("42501");
+      expect(await cellSnapshot()).toEqual({
+        score: 43,
+        rowVersion: before.rowVersion + 1,
+      });
+    } finally {
+      if (!blockerCommitted) await blocker.query("rollback");
+      if (!suspensionCommitted) await suspender.query("rollback");
+      await blocker.end();
+      await suspender.end();
+      await database.query(
+        "update public.school_staff_memberships set status='ACTIVE' where id=$1",
+        [person.membershipId],
+      );
+    }
+  });
   it("schoolwide viewers can read but cannot edit", async () => {
     const list = await viewer.rpc("list_mark_sheets");
     expect(list.data?.some((x) => x.mark_sheet_id === markSheetId)).toBe(true);
@@ -574,7 +876,7 @@ describe.sequential("secure marks entry", () => {
       "select score,row_version from public.marks where mark_sheet_id=$1 and assessment_component_id=$2",
       [markSheetId, ids.componentA],
     );
-    expect(Number(check.rows[0].score)).toBe(42);
+    expect(Number(check.rows[0].score)).toBe(43);
     expect(check.rows[0].row_version).toBe(firstVersion);
   });
   it("failed mutations create no false success audit", async () => {

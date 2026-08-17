@@ -137,12 +137,12 @@ set status = 'RETIRED'
 where id = '15b00000-0000-4000-8000-000000000001';
 
 select extensions.lives_ok(
-  $$ update public.mark_sheets set version = version + 1 where id = '15d00000-0000-4000-8000-000000000001' $$,
-  '6. a sheet created under an active scheme remains updateable after retirement'
+  $$ update public.mark_sheets set workflow_status = 'SUBMITTED' where id = '15d00000-0000-4000-8000-000000000001' $$,
+  '6. a sheet created under an active scheme remains workflow-updateable after retirement'
 );
 
 select extensions.lives_ok(
-  $$ update public.mark_sheets set workflow_status = 'SUBMITTED' where id = '15d00000-0000-4000-8000-000000000001' $$,
+  $$ update public.mark_sheets set workflow_status = 'UNDER_REVIEW' where id = '15d00000-0000-4000-8000-000000000001' $$,
   '7. workflow status can change while the retired scheme reference is unchanged'
 );
 

@@ -14,6 +14,13 @@ subject. The school is derived from that assignment. Entry is allowed only
 when the term status is `MARKS_ENTRY` and today falls inside both the term and
 assignment inclusive date ranges. Every other term status is read-only.
 
+Mutations lock and revalidate the current session selection, membership,
+school, live role grants and permission mappings before taking the existing
+assignment, term and sheet locks. If a valid marks transaction owns those
+locks first it may finish before a concurrent authority change; if the
+authority change commits first, the marks request re-reads the new state and
+fails without changing a cell or writing a success audit.
+
 ## Sheet, scheme and roster
 
 Draft initialization locks the teaching assignment, returns an existing
@@ -39,8 +46,8 @@ Existing cells require the expected `row_version`; a mismatch raises PT409 and
 does not audit success. An update increments once. Batch payloads contain at
 most 500 unique cells, lock existing cells in deterministic order and roll
 back completely on any invalid or stale entry. Mark identity and sheet academic
-scope/scheme identity are immutable, Stage 9 never changes the sheet revision,
-and deletion is denied. The grid preserves dirty input on a
+scope/scheme identity and sheet `version` are immutable, Stage 9 never changes
+the sheet revision in place, and deletion is denied. The grid preserves dirty input on a
 conflict until the teacher explicitly reloads.
 
 ## Privacy and audit

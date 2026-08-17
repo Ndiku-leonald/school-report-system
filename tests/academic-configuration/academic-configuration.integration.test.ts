@@ -560,8 +560,7 @@ describe.sequential("local academic configuration workflows", () => {
         `update public.mark_sheets
          set workflow_status = 'SUBMITTED',
              submitted_by = $2,
-             submitted_at = now(),
-             version = version + 1
+             submitted_at = now()
          where id = $1`,
         [sheetId, identities.get("subject")!.membershipId],
       ),
