@@ -326,3 +326,7 @@ enrolment, separates enrolment closure from student lifecycle, requires
 explicit reactivation, supports privacy-safe historical directory filters and
 verifies private photo-object existence. Stage 8 has not started, and the work
 used only the local Supabase stack; no remote project was linked or modified.
+
+# Stage 8 — teacher assignments
+
+Stage 8 adds secure subject and class-teacher lifecycle management, overlap protection, atomic primary replacement, selected-membership visibility, audit events, and dedicated local validation. Stage 9 has not started; marks entry and submission remain out of scope.

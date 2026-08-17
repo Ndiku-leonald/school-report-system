@@ -89,6 +89,9 @@ jobs:
       - name: Run local student-management integration tests
         run: npm run test:students
 
+      - name: Run local teacher-assignment integration tests
+        run: npm run test:teacher-assignments
+
       - name: Verify generated database types
         run: |
           npm run db:types
@@ -109,6 +112,9 @@ jobs:
 
       - name: Run local student-management browser tests
         run: npm run test:e2e:students
+
+      - name: Run local teacher-assignment browser tests
+        run: npm run test:e2e:teacher-assignments
 
       - name: Stop local Supabase
         if: always()

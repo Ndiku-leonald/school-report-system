@@ -417,7 +417,7 @@ test.describe.serial("student management", () => {
     await page.getByLabel("Enrolment status").selectOption("COMPLETED");
     await page.getByRole("button", { name: "Apply" }).click();
     await expect(
-      page.getByRole("link", { name: /Lovelace, Augusta Ada/ }),
+      page.locator(`a[href="/dashboard/students/${studentId}"]`).first(),
     ).toBeVisible();
     await expect(
       page.getByText("Matching historical placement").first(),

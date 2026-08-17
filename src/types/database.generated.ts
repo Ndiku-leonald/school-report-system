@@ -2430,6 +2430,20 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      create_class_teacher_assignment: {
+        Args: {
+          assignment_ends_on: string;
+          assignment_is_primary: boolean;
+          assignment_starts_on: string;
+          target_class_section_id: string;
+          target_staff_membership_id: string;
+          target_term_id: string;
+        };
+        Returns: {
+          assignment_id: string;
+          updated_at: string;
+        }[];
+      };
       create_grade_level: {
         Args: {
           grade_code: string;
@@ -2550,6 +2564,20 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      create_teaching_assignment: {
+        Args: {
+          assignment_ends_on: string;
+          assignment_starts_on: string;
+          target_class_section_id: string;
+          target_staff_membership_id: string;
+          target_subject_id: string;
+          target_term_id: string;
+        };
+        Returns: {
+          assignment_id: string;
+          updated_at: string;
+        }[];
+      };
       create_term: {
         Args: {
           promotion_term?: boolean;
@@ -2589,6 +2617,30 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      end_class_teacher_assignment: {
+        Args: {
+          assignment_ends_on: string;
+          expected_updated_at: string;
+          reason: string;
+          target_assignment_id: string;
+        };
+        Returns: {
+          assignment_id: string;
+          updated_at: string;
+        }[];
+      };
+      end_teaching_assignment: {
+        Args: {
+          assignment_ends_on: string;
+          expected_updated_at: string;
+          reason: string;
+          target_assignment_id: string;
+        };
+        Returns: {
+          assignment_id: string;
+          updated_at: string;
+        }[];
+      };
       get_class_roster: {
         Args: {
           page_number?: number;
@@ -2606,10 +2658,53 @@ export type Database = {
           total_count: number;
         }[];
       };
+      get_class_teacher_assignment: {
+        Args: { target_assignment_id: string };
+        Returns: {
+          academic_year_id: string;
+          academic_year_name: string;
+          assignment_id: string;
+          class_name: string;
+          class_section_id: string;
+          employee_number: string;
+          ends_on: string;
+          grade_level_id: string;
+          grade_name: string;
+          is_active: boolean;
+          is_primary: boolean;
+          period_status: string;
+          staff_membership_id: string;
+          starts_on: string;
+          teacher_name: string;
+          teacher_role: Database["public"]["Enums"]["staff_role"];
+          term_ends_on: string;
+          term_id: string;
+          term_name: string;
+          term_starts_on: string;
+          total_count: number;
+          updated_at: string;
+        }[];
+      };
       get_my_active_membership: { Args: never; Returns: string };
       get_my_effective_permissions: {
         Args: { target_membership_id: string };
         Returns: Database["public"]["Enums"]["app_permission"][];
+      };
+      get_my_teacher_assignments: {
+        Args: never;
+        Returns: {
+          academic_year_name: string;
+          assignment_id: string;
+          assignment_type: string;
+          class_name: string;
+          ends_on: string;
+          grade_name: string;
+          is_primary: boolean;
+          period_status: string;
+          starts_on: string;
+          subject_name: string;
+          term_name: string;
+        }[];
       };
       get_student_details: {
         Args: { target_student_id: string };
@@ -2661,6 +2756,34 @@ export type Database = {
           relationship_updated_at: string;
         }[];
       };
+      get_teaching_assignment: {
+        Args: { target_assignment_id: string };
+        Returns: {
+          academic_year_id: string;
+          academic_year_name: string;
+          assignment_id: string;
+          class_name: string;
+          class_section_id: string;
+          employee_number: string;
+          ends_on: string;
+          grade_level_id: string;
+          grade_name: string;
+          is_active: boolean;
+          period_status: string;
+          staff_membership_id: string;
+          starts_on: string;
+          subject_id: string;
+          subject_name: string;
+          teacher_name: string;
+          teacher_role: Database["public"]["Enums"]["staff_role"];
+          term_ends_on: string;
+          term_id: string;
+          term_name: string;
+          term_starts_on: string;
+          total_count: number;
+          updated_at: string;
+        }[];
+      };
       link_guardian_to_student: {
         Args: {
           primary_guardian?: boolean;
@@ -2672,6 +2795,85 @@ export type Database = {
         Returns: {
           relationship_id: string;
           updated_at: string;
+        }[];
+      };
+      list_assignment_teachers: {
+        Args: never;
+        Returns: {
+          display_name: string;
+          employee_number: string;
+          staff_membership_id: string;
+        }[];
+      };
+      list_class_teacher_assignments: {
+        Args: {
+          filter_academic_year_id: string;
+          filter_class_section_id: string;
+          filter_grade_level_id: string;
+          filter_period: string;
+          filter_primary: boolean;
+          filter_staff_membership_id: string;
+          filter_term_id: string;
+          page_number: number;
+          page_size: number;
+        };
+        Returns: {
+          academic_year_id: string;
+          academic_year_name: string;
+          assignment_id: string;
+          class_name: string;
+          class_section_id: string;
+          employee_number: string;
+          ends_on: string;
+          grade_level_id: string;
+          grade_name: string;
+          is_active: boolean;
+          is_primary: boolean;
+          period_status: string;
+          staff_membership_id: string;
+          starts_on: string;
+          teacher_name: string;
+          teacher_role: Database["public"]["Enums"]["staff_role"];
+          term_ends_on: string;
+          term_id: string;
+          term_name: string;
+          term_starts_on: string;
+          total_count: number;
+          updated_at: string;
+        }[];
+      };
+      list_eligible_class_teachers: {
+        Args: {
+          assignment_ends_on: string;
+          assignment_is_primary: boolean;
+          assignment_starts_on: string;
+          target_class_section_id: string;
+          target_term_id: string;
+        };
+        Returns: {
+          currently_assigned: boolean;
+          display_name: string;
+          eligible_teacher_role: Database["public"]["Enums"]["staff_role"];
+          employee_number: string;
+          membership_status: Database["public"]["Enums"]["membership_status"];
+          staff_membership_id: string;
+        }[];
+      };
+      list_eligible_subject_teachers: {
+        Args: {
+          assignment_ends_on: string;
+          assignment_starts_on: string;
+          target_class_section_id: string;
+          target_subject_id: string;
+          target_term_id: string;
+        };
+        Returns: {
+          currently_assigned: boolean;
+          display_name: string;
+          eligible_teacher_role: Database["public"]["Enums"]["staff_role"];
+          employee_number: string;
+          membership_status: Database["public"]["Enums"]["membership_status"];
+          staff_membership_id: string;
         }[];
       };
       list_students: {
@@ -2706,6 +2908,44 @@ export type Database = {
           placement_is_current: boolean;
           student_id: string;
           student_status: Database["public"]["Enums"]["student_status"];
+          total_count: number;
+          updated_at: string;
+        }[];
+      };
+      list_teaching_assignments: {
+        Args: {
+          filter_academic_year_id: string;
+          filter_class_section_id: string;
+          filter_grade_level_id: string;
+          filter_period: string;
+          filter_staff_membership_id: string;
+          filter_subject_id: string;
+          filter_term_id: string;
+          page_number: number;
+          page_size: number;
+        };
+        Returns: {
+          academic_year_id: string;
+          academic_year_name: string;
+          assignment_id: string;
+          class_name: string;
+          class_section_id: string;
+          employee_number: string;
+          ends_on: string;
+          grade_level_id: string;
+          grade_name: string;
+          is_active: boolean;
+          period_status: string;
+          staff_membership_id: string;
+          starts_on: string;
+          subject_id: string;
+          subject_name: string;
+          teacher_name: string;
+          teacher_role: Database["public"]["Enums"]["staff_role"];
+          term_ends_on: string;
+          term_id: string;
+          term_name: string;
+          term_starts_on: string;
           total_count: number;
           updated_at: string;
         }[];
@@ -2755,6 +2995,20 @@ export type Database = {
           entity_id: string;
           entity_status: string;
           updated_at: string;
+        }[];
+      };
+      replace_primary_class_teacher: {
+        Args: {
+          reason: string;
+          replacement_starts_on: string;
+          target_class_section_id: string;
+          target_staff_membership_id: string;
+          target_term_id: string;
+        };
+        Returns: {
+          former_assignment_id: string;
+          replacement_assignment_id: string;
+          replacement_updated_at: string;
         }[];
       };
       retire_assessment_scheme: {
@@ -2940,6 +3194,18 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      update_class_teacher_assignment: {
+        Args: {
+          assignment_ends_on: string;
+          assignment_starts_on: string;
+          expected_updated_at: string;
+          target_assignment_id: string;
+        };
+        Returns: {
+          assignment_id: string;
+          updated_at: string;
+        }[];
+      };
       update_grade_level: {
         Args: {
           expected_updated_at: string;
@@ -3044,6 +3310,18 @@ export type Database = {
         Returns: {
           entity_id: string;
           entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      update_teaching_assignment: {
+        Args: {
+          assignment_ends_on: string;
+          assignment_starts_on: string;
+          expected_updated_at: string;
+          target_assignment_id: string;
+        };
+        Returns: {
+          assignment_id: string;
           updated_at: string;
         }[];
       };

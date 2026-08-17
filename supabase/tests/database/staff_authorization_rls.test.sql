@@ -598,8 +598,8 @@ select extensions.is(
 );
 select extensions.is(
   (select count(*) from public.teaching_assignments where id::text like 'a6200000-%'),
-  1::bigint,
-  'a subject teacher reads only their own teaching assignment'
+  2::bigint,
+  'a subject teacher reads only their own selected-membership assignment history'
 );
 select extensions.is(
   (select count(*) from public.mark_sheets where id::text like 'a6600000-%'),

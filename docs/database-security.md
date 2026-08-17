@@ -167,3 +167,7 @@ changes. Historical directory selection is available only to
 assignment even when historical filters are supplied. Photo linking reads
 `storage.objects` only to verify the scoped private key exists and never writes
 Storage metadata or persists a signed URL.
+
+# Assignment data security
+
+Both assignment tables use forced RLS and deny authenticated insert, update, and delete privileges. Fixed-search-path definer RPCs derive the actor from the selected session membership and expose narrow typed results. Eligible-teacher directories omit contacts and Auth identifiers. Audit events are transactional and contain only assignment scope, dates, state, and an operational reason.

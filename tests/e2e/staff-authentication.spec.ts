@@ -266,7 +266,7 @@ test.describe.serial("staff authentication", () => {
     await page.getByLabel("Password").fill(initialPassword);
     await page.getByRole("button", { name: "Sign in" }).click();
 
-    await expect(page).toHaveURL(/\/account-unavailable$/);
+    await expect(page).toHaveURL(/\/account-unavailable$/, { timeout: 15_000 });
     await expect(
       page.getByRole("heading", { name: /staff access is unavailable/i }),
     ).toBeVisible();

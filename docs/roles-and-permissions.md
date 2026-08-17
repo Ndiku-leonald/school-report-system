@@ -153,3 +153,7 @@ guardian contacts. A class-capacity override additionally requires a live
 `SCHOOL_ADMIN` or `SUPER_ADMIN` role; the permission alone is insufficient.
 Navigation follows these permissions for usability, while routes, Actions,
 RPCs, RLS and Storage policies remain the enforcement layers.
+
+# Assignment permissions
+
+`SUPER_ADMIN`, `SCHOOL_ADMIN`, and `ACADEMIC_REGISTRAR` receive `ASSIGNMENTS_MANAGE` through the existing matrix. `HEAD_TEACHER` has schoolwide read-only `ASSIGNMENTS_VIEW_ALL`. `CLASS_TEACHER` and `SUBJECT_TEACHER` use `ASSIGNMENTS_VIEW_OWN`. A manager assigned to teaching must also hold the matching live teacher role on the same selected membership.

@@ -1,8 +1,9 @@
 import { BookOpen, ClipboardCheck, ListChecks, Shapes } from "lucide-react";
+import Link from "next/link";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
-import { Badge } from "@/components/ui/badge";
+import { buttonStyles } from "@/components/ui/button";
 import {
   Card,
   CardDescription,
@@ -13,12 +14,13 @@ import {
 const workspaceAreas = [
   {
     title: "Assigned classes",
-    description: "Class assignments will appear after academic setup.",
+    description:
+      "Review current, upcoming and previous class responsibilities.",
     icon: Shapes,
   },
   {
     title: "Assigned subjects",
-    description: "Subject access will follow explicit teacher assignments.",
+    description: "Subject access follows effective-dated teacher assignments.",
     icon: BookOpen,
   },
   {
@@ -39,8 +41,12 @@ export default function TeacherPage() {
       <PageHeader
         eyebrow="Authenticated workspace"
         title="Teacher workspace"
-        description="A focused area for future class assignments, subject responsibilities, marks preparation, and submission tracking."
-        actions={<Badge variant="info">No assignments connected</Badge>}
+        description="A focused area for assigned classes and subjects. Marks preparation remains unavailable until Stage 9."
+        actions={
+          <Link className={buttonStyles()} href="/teacher/assignments">
+            View my assignments
+          </Link>
+        }
       />
 
       <section
@@ -66,8 +72,8 @@ export default function TeacherPage() {
 
       <EmptyState
         icon={ClipboardCheck}
-        title="Nothing requires attention yet"
-        description="Live assignments and mark-status information will appear only after authentication, permissions, academic configuration, and teacher assignments are implemented."
+        title="Marks entry is not active"
+        description="Teacher assignments are available now. Marks preparation and submission will be introduced in Stage 9."
       />
     </div>
   );
