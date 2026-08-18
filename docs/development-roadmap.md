@@ -341,4 +341,9 @@ Stage 8 adds secure subject and class-teacher lifecycle management, overlap prot
 
 Submission, review, return/resubmission, approval, sheet/term locking,
 readiness, timelines, and controlled correction revisions are implemented.
+The correction verification includes 173 Stage 10 database assertions, 20
+signed-in integration cases, and 39 browser scenarios. It covers selected-
+school isolation, exact bound-teacher authority, stale writes, all nine
+workflow race classes, roster freezing, correction lineage, stable revision
+navigation, browser console cleanliness, privacy, and the Stage 11 boundary.
 Stage 11 calculations remain unstarted.

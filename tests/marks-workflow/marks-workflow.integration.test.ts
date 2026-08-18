@@ -47,6 +47,7 @@ const people = new Map<
 >();
 let teacher: TypedClient;
 let reviewer: TypedClient;
+let approver: TypedClient;
 let outsider: TypedClient;
 let impostor: TypedClient;
 let sheetId = "";
@@ -156,6 +157,31 @@ async function resetSheetToDraft() {
   }
 }
 
+async function resetSheetToSubmitted() {
+  await db.query("begin");
+  try {
+    await db.query(
+      "select set_config('app.marks_workflow_transition','allowed',true)",
+    );
+    await db.query(
+      "update public.mark_sheets set workflow_status='SUBMITTED',submitted_by=$2,submitted_at=now(),reviewed_by=null,reviewed_at=null,returned_by=null,returned_at=null,return_reason=null,approved_by=null,approved_at=null,locked_by=null,locked_at=null where id=$1",
+      [sheetId, people.get("teacher")!.membershipId],
+    );
+    await db.query("commit");
+  } catch (error) {
+    await db.query("rollback");
+    throw error;
+  }
+}
+
+async function auditCount(action: string, targetSheetId = sheetId) {
+  const result = await db.query<{ count: number }>(
+    "select count(*)::int count from public.audit_logs where entity_id=$1 and action=$2",
+    [targetSheetId, action],
+  );
+  return result.rows[0].count;
+}
+
 describe.sequential(
   "marks submission, approval, locking, and corrections",
   () => {
@@ -179,6 +205,7 @@ describe.sequential(
         "SCHOOL_ADMIN",
       ]);
       await addPerson("reviewer", ["HEAD_TEACHER"]);
+      await addPerson("approver", ["HEAD_TEACHER"]);
       await addPerson("outsider", ["HEAD_TEACHER"], ids.otherSchool);
       await addPerson("impostor", ["SUBJECT_TEACHER"]);
       await db.query(
@@ -229,9 +256,10 @@ describe.sequential(
         "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$2,$3,$4,$5,current_date-30)",
         [ids.assignment, ids.term, ids.class, ids.subject, teacherMembership],
       );
-      [teacher, reviewer, outsider, impostor] = await Promise.all([
+      [teacher, reviewer, approver, outsider, impostor] = await Promise.all([
         signIn("teacher"),
         signIn("reviewer"),
+        signIn("approver"),
         signIn("outsider"),
         signIn("impostor"),
       ]);
@@ -301,6 +329,90 @@ describe.sequential(
         "update public.staff_role_assignments set revoked_at=null where membership_id=$1 and role='SUBJECT_TEACHER'",
         [people.get("teacher")!.membershipId],
       );
+    });
+
+    it("returns no workflow detail through another selected school", async () => {
+      const result = await outsider.rpc("get_mark_sheet_workflow_detail", {
+        target_mark_sheet_id: sheetId,
+      });
+      expect(result.error).toBeNull();
+      expect(result.data).toEqual([]);
+    });
+
+    it("rejects a different subject teacher bound to no assignment", async () => {
+      const result = await impostor.rpc("submit_mark_sheet", {
+        target_mark_sheet_id: sheetId,
+        expected_updated_at: await sheetUpdatedAt(),
+      });
+      expect(result.error).not.toBeNull();
+      expect(await auditCount("MARK_SHEET_SUBMITTED")).toBe(0);
+    });
+
+    it("rejects a stale submission without writing a success audit", async () => {
+      const result = await teacher.rpc("submit_mark_sheet", {
+        target_mark_sheet_id: sheetId,
+        expected_updated_at: new Date(0).toISOString(),
+      });
+      expect(result.error?.code).toBe("PT409");
+      expect(await auditCount("MARK_SHEET_SUBMITTED")).toBe(0);
+    });
+
+    it("revalidates a role revocation that commits before submission", async () => {
+      const control = new Client({ connectionString: databaseUrl });
+      await control.connect();
+      await control.query("begin");
+      try {
+        await control.query(
+          "update public.staff_role_assignments set revoked_at=now() where membership_id=$1 and role='SUBJECT_TEACHER'",
+          [people.get("teacher")!.membershipId],
+        );
+        const transition = Promise.resolve(
+          teacher.rpc("submit_mark_sheet", {
+            target_mark_sheet_id: sheetId,
+            expected_updated_at: await sheetUpdatedAt(),
+          }),
+        );
+        await waitForBlocked("submit_mark_sheet");
+        await control.query("commit");
+        expect((await transition).error).not.toBeNull();
+      } finally {
+        await control.query("rollback").catch(() => undefined);
+        await control.end();
+      }
+      await db.query(
+        "update public.staff_role_assignments set revoked_at=null where membership_id=$1 and role='SUBJECT_TEACHER'",
+        [people.get("teacher")!.membershipId],
+      );
+      expect(await auditCount("MARK_SHEET_SUBMITTED")).toBe(0);
+    });
+
+    it("revalidates membership suspension that commits before submission", async () => {
+      const control = new Client({ connectionString: databaseUrl });
+      await control.connect();
+      await control.query("begin");
+      try {
+        await control.query(
+          "update public.school_staff_memberships set status='SUSPENDED' where id=$1",
+          [people.get("teacher")!.membershipId],
+        );
+        const transition = Promise.resolve(
+          teacher.rpc("submit_mark_sheet", {
+            target_mark_sheet_id: sheetId,
+            expected_updated_at: await sheetUpdatedAt(),
+          }),
+        );
+        await waitForBlocked("submit_mark_sheet");
+        await control.query("commit");
+        expect((await transition).error).not.toBeNull();
+      } finally {
+        await control.query("rollback").catch(() => undefined);
+        await control.end();
+      }
+      await db.query(
+        "update public.school_staff_memberships set status='ACTIVE' where id=$1",
+        [people.get("teacher")!.membershipId],
+      );
+      expect(await auditCount("MARK_SHEET_SUBMITTED")).toBe(0);
     });
 
     it("fails roster mutation fast when marks workflow already holds the term", async () => {
@@ -400,7 +512,7 @@ describe.sequential(
       await resetSheetToDraft();
     });
 
-    it("serializes save before submit and rejects a competing stale submit", async () => {
+    it("serializes save before submit and submits the completed saved state", async () => {
       const locked = await lockSheet();
       let released = false;
       try {
@@ -444,6 +556,132 @@ describe.sequential(
       expect(frozen.error).not.toBeNull();
     });
 
+    it("allows exactly one winner in a return-versus-approve race", async () => {
+      expect(
+        (
+          await reviewer.rpc("start_mark_sheet_review", {
+            target_mark_sheet_id: sheetId,
+            expected_updated_at: await sheetUpdatedAt(),
+          })
+        ).error,
+      ).toBeNull();
+      const returnAudits = await auditCount("MARK_SHEET_RETURNED");
+      const approvalAudits = await auditCount("MARK_SHEET_APPROVED");
+      const blocker = await lockSheet();
+      let released = false;
+      try {
+        const timestamp = await sheetUpdatedAt();
+        const returned = Promise.resolve(
+          reviewer.rpc("return_mark_sheet", {
+            target_mark_sheet_id: sheetId,
+            expected_updated_at: timestamp,
+            return_reason: "Concurrent return wins or fails closed",
+          }),
+        );
+        await waitForBlocked("return_mark_sheet");
+        const approved = Promise.resolve(
+          approver.rpc("approve_mark_sheet", {
+            target_mark_sheet_id: sheetId,
+            expected_updated_at: timestamp,
+          }),
+        );
+        await waitForBlocked("approve_mark_sheet");
+        await blocker.query("commit");
+        released = true;
+        const results = await Promise.all([returned, approved]);
+        expect(results.filter((result) => result.error === null)).toHaveLength(
+          1,
+        );
+      } finally {
+        if (!released) await blocker.query("rollback");
+        await blocker.end();
+      }
+      const final = await db.query<{ workflow_status: string }>(
+        "select workflow_status from public.mark_sheets where id=$1",
+        [sheetId],
+      );
+      expect(["RETURNED", "APPROVED"]).toContain(final.rows[0].workflow_status);
+      expect(
+        (await auditCount("MARK_SHEET_RETURNED")) -
+          returnAudits +
+          ((await auditCount("MARK_SHEET_APPROVED")) - approvalAudits),
+      ).toBe(1);
+      await resetSheetToSubmitted();
+    });
+
+    it("rejects invalid return reasons without a success audit", async () => {
+      expect(
+        (
+          await reviewer.rpc("start_mark_sheet_review", {
+            target_mark_sheet_id: sheetId,
+            expected_updated_at: await sheetUpdatedAt(),
+          })
+        ).error,
+      ).toBeNull();
+      const before = await auditCount("MARK_SHEET_RETURNED");
+      const result = await reviewer.rpc("return_mark_sheet", {
+        target_mark_sheet_id: sheetId,
+        expected_updated_at: await sheetUpdatedAt(),
+        return_reason: "   ",
+      });
+      expect(result.error?.message).toContain("MARKS_WORKFLOW_REASON_REQUIRED");
+      expect(await auditCount("MARK_SHEET_RETURNED")).toBe(before);
+      await resetSheetToSubmitted();
+    });
+
+    it("re-evaluates term readiness after a queued sheet becomes blocking", async () => {
+      expect(
+        (
+          await reviewer.rpc("start_mark_sheet_review", {
+            target_mark_sheet_id: sheetId,
+            expected_updated_at: await sheetUpdatedAt(),
+          })
+        ).error,
+      ).toBeNull();
+      const blocker = new Client({ connectionString: databaseUrl });
+      await blocker.connect();
+      await blocker.query("begin");
+      let released = false;
+      try {
+        await blocker.query(
+          "select id from public.teaching_assignments where id=$1 for update",
+          [ids.assignment],
+        );
+        const returned = Promise.resolve(
+          reviewer.rpc("return_mark_sheet", {
+            target_mark_sheet_id: sheetId,
+            expected_updated_at: await sheetUpdatedAt(),
+            return_reason: "Readiness race fixture",
+          }),
+        );
+        await waitForBlocked("return_mark_sheet");
+        const advance = Promise.resolve(
+          reviewer.rpc("advance_term_marks_to_review", {
+            target_term_id: ids.term,
+            expected_updated_at: await termUpdatedAt(),
+          }),
+        );
+        await waitForBlocked("advance_term_marks_to_review");
+        await blocker.query("commit");
+        released = true;
+        expect((await returned).error).toBeNull();
+        expect((await advance).error?.message).toContain(
+          "TERM_MARKS_NOT_READY_FOR_REVIEW",
+        );
+      } finally {
+        if (!released) await blocker.query("rollback");
+        await blocker.end();
+      }
+      expect(
+        (
+          await db.query("select status from public.terms where id=$1", [
+            ids.term,
+          ])
+        ).rows[0].status,
+      ).toBe("MARKS_ENTRY");
+      await resetSheetToSubmitted();
+    });
+
     it("enforces separation of duties and supports return, correction, and resubmission", async () => {
       const selfReview = await teacher.rpc("start_mark_sheet_review", {
         target_mark_sheet_id: sheetId,
@@ -457,6 +695,24 @@ describe.sequential(
         expected_updated_at: await sheetUpdatedAt(),
       });
       expect(started.error).toBeNull();
+
+      const selfReturn = await teacher.rpc("return_mark_sheet", {
+        target_mark_sheet_id: sheetId,
+        expected_updated_at: await sheetUpdatedAt(),
+        return_reason: "Submitter cannot return their own work",
+      });
+      expect(selfReturn.error?.message).toContain(
+        "MARK_SHEET_SELF_REVIEW_FORBIDDEN",
+      );
+
+      const selfApprove = await teacher.rpc("approve_mark_sheet", {
+        target_mark_sheet_id: sheetId,
+        expected_updated_at: await sheetUpdatedAt(),
+      });
+      expect(selfApprove.error?.message).toContain(
+        "MARK_SHEET_SELF_REVIEW_FORBIDDEN",
+      );
+
       const returned = await reviewer.rpc("return_mark_sheet", {
         target_mark_sheet_id: sheetId,
         expected_updated_at: await sheetUpdatedAt(),
@@ -493,7 +749,7 @@ describe.sequential(
         );
         await waitForBlocked("start_mark_sheet_review");
         const second = Promise.resolve(
-          reviewer.rpc("start_mark_sheet_review", {
+          approver.rpc("start_mark_sheet_review", {
             target_mark_sheet_id: sheetId,
             expected_updated_at: timestamp,
           }),
@@ -541,8 +797,12 @@ describe.sequential(
         },
       );
       expect(reopened.error).toBeNull();
+      await db.query(
+        "update public.assessment_schemes set status='RETIRED' where id=$1",
+        [ids.scheme],
+      );
       const sourceBefore = await db.query(
-        "select score from public.marks where mark_sheet_id=$1 order by assessment_component_id",
+        "select id,assessment_component_id,enrollment_id,score::text,attendance_status,teacher_remark,row_version,created_by,updated_by,created_at::text,updated_at::text from public.marks where mark_sheet_id=$1 order by assessment_component_id",
         [sheetId],
       );
       const blocker = await lockSheet();
@@ -558,7 +818,7 @@ describe.sequential(
         );
         await waitForBlocked("create_mark_sheet_correction_revision");
         const second = Promise.resolve(
-          reviewer.rpc("create_mark_sheet_correction_revision", {
+          approver.rpc("create_mark_sheet_correction_revision", {
             source_mark_sheet_id: sheetId,
             expected_source_updated_at: timestamp,
             correction_reason: "Competing correction request",
@@ -580,10 +840,26 @@ describe.sequential(
         await blocker.end();
       }
       const cloned = await db.query(
-        "select score from public.marks where mark_sheet_id=$1 order by assessment_component_id",
+        "select assessment_component_id,enrollment_id,score::text,attendance_status,teacher_remark from public.marks where mark_sheet_id=$1 order by assessment_component_id",
         [correctionId],
       );
-      expect(cloned.rows).toEqual(sourceBefore.rows);
+      expect(cloned.rows).toEqual(
+        sourceBefore.rows.map(
+          ({
+            assessment_component_id,
+            enrollment_id,
+            score,
+            attendance_status,
+            teacher_remark,
+          }) => ({
+            assessment_component_id,
+            enrollment_id,
+            score,
+            attendance_status,
+            teacher_remark,
+          }),
+        ),
+      );
       const grid = await teacher.rpc("get_mark_entry_grid", {
         target_mark_sheet_id: correctionId,
       });
@@ -672,7 +948,7 @@ describe.sequential(
       });
       expect(nonRosterChange.error).toBeNull();
       const sourceAfter = await db.query(
-        "select score from public.marks where mark_sheet_id=$1 order by assessment_component_id",
+        "select id,assessment_component_id,enrollment_id,score::text,attendance_status,teacher_remark,row_version,created_by,updated_by,created_at::text,updated_at::text from public.marks where mark_sheet_id=$1 order by assessment_component_id",
         [sheetId],
       );
       expect(sourceAfter.rows).toEqual(sourceBefore.rows);
@@ -681,6 +957,90 @@ describe.sequential(
         [ids.school],
       );
       expect(audits.rows[0].count).toBeGreaterThanOrEqual(12);
+    });
+
+    it("keeps correction lineage singular and the retired source immutable", async () => {
+      const lineage = await db.query<{
+        assessment_scheme_id: string;
+        source_status: string;
+        source_version: number;
+        successor_count: number;
+        successor_version: number;
+      }>(
+        "select source.workflow_status source_status,source.version source_version,successor.version successor_version,successor.assessment_scheme_id,(select count(*)::int from public.mark_sheets child where child.supersedes_mark_sheet_id=source.id) successor_count from public.mark_sheets source join public.mark_sheets successor on successor.supersedes_mark_sheet_id=source.id where source.id=$1",
+        [sheetId],
+      );
+      expect(lineage.rows[0]).toMatchObject({
+        assessment_scheme_id: ids.scheme,
+        source_status: "LOCKED",
+        source_version: 1,
+        successor_count: 1,
+        successor_version: 2,
+      });
+      expect(
+        (
+          await db.query(
+            "select status from public.assessment_schemes where id=$1",
+            [ids.scheme],
+          )
+        ).rows[0].status,
+      ).toBe("RETIRED");
+    });
+
+    it("keeps every submitter-side review capability disabled after relock", async () => {
+      const detail = await teacher.rpc("get_mark_sheet_workflow_detail", {
+        target_mark_sheet_id: correctionId,
+      });
+      expect(detail.error).toBeNull();
+      expect(detail.data?.[0]).toMatchObject({
+        actor_is_submitter: true,
+        can_start_review: false,
+        can_return: false,
+        can_approve: false,
+        can_lock: false,
+      });
+    });
+
+    it("rejects controlled reopen after a downstream report batch appears", async () => {
+      const batchId = randomUUID();
+      await db.query(
+        "insert into public.report_batches(id,term_id,class_section_id,requested_by) values($1,$2,$3,$4)",
+        [batchId, ids.term, ids.class, people.get("reviewer")!.membershipId],
+      );
+      const before = await db.query<{ count: number }>(
+        "select count(*)::int count from public.audit_logs where entity_id=$1 and action='TERM_MARKS_REOPENED_FOR_CORRECTION'",
+        [ids.term],
+      );
+      const result = await reviewer.rpc(
+        "reopen_locked_term_for_mark_correction",
+        {
+          target_term_id: ids.term,
+          expected_updated_at: await termUpdatedAt(),
+          correction_reason: "Must fail after downstream report work",
+        },
+      );
+      expect(result.error?.message).toContain(
+        "TERM_MARKS_CORRECTION_DOWNSTREAM_DEPENDENCY",
+      );
+      const after = await db.query<{ count: number }>(
+        "select count(*)::int count from public.audit_logs where entity_id=$1 and action='TERM_MARKS_REOPENED_FOR_CORRECTION'",
+        [ids.term],
+      );
+      expect(after.rows[0].count).toBe(before.rows[0].count);
+    });
+
+    it("records one correction creation audit and no duplicate successor", async () => {
+      expect(
+        await auditCount(
+          "MARK_SHEET_CORRECTION_REVISION_CREATED",
+          correctionId,
+        ),
+      ).toBe(1);
+      const children = await db.query<{ count: number }>(
+        "select count(*)::int count from public.mark_sheets where supersedes_mark_sheet_id=$1",
+        [sheetId],
+      );
+      expect(children.rows[0].count).toBe(1);
     });
   },
 );

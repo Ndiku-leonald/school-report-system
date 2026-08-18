@@ -282,5 +282,15 @@ school, class, subject, scheme, components and roster from the selected session
 membership and teaching assignment. Schoolwide viewers have a read-only
 `/dashboard/marks` overview. Sheet revision identity is immutable, and marks
 mutations hold the selected authority, assignment, term and DRAFT-sheet state
-through each write. See [Marks entry](docs/marks-entry.md). Stage 10 workflow
-transitions and Stage 11 calculations are intentionally absent.
+through each write. See [Marks entry](docs/marks-entry.md).
+
+## Stage 10 secure marks workflow
+
+Teachers can submit complete sheets, authorized staff can review, return,
+approve, and lock them, and term readiness gates phase transitions. Controlled
+corrections create a new revision without unlocking or mutating the historical
+source. Revision lists use the mark-sheet UUID as their stable identity and
+label the latest sheet for each teaching assignment as the current revision.
+See [Marks workflow](docs/marks-workflow.md) and its
+[testing guide](docs/marks-workflow-testing.md). Stage 11 calculations and
+reports remain intentionally absent.

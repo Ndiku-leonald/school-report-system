@@ -41,7 +41,10 @@ A returned sheet stores a normalized reason and becomes editable only to the
 exact bound subject teacher with a live role and `MARKS_ENTER`. During
 `MARKS_ENTRY`, the assignment must still be current. During `REVIEW`, the
 historical binding may be used without reactivating an ended assignment.
-Resubmission repeats the completeness check.
+Resubmission repeats the completeness check. The same distinction applies to
+submission capability: an ordinary DRAFT needs a current assignment during
+`MARKS_ENTRY`, while a correction DRAFT may use its historical binding during
+`REVIEW`.
 
 ## Frozen data and correction lineage
 
@@ -89,3 +92,9 @@ action, and reason—never contacts, Auth IDs, tokens, or mark payloads.
 Server Actions validate with Zod and use the signed-in Supabase client.
 PostgreSQL remains authoritative; direct authenticated writes to `mark_sheets`
 and `marks` remain revoked under forced RLS.
+
+Revision list rows use the mark-sheet UUID as their stable React identity. The
+latest sheet for each teaching assignment is labeled `Current revision`; older
+sheets are labeled `Historical revision`. A teaching assignment without a
+sheet uses an assignment-scoped fallback identity, so revision rows never
+share keys or disappear during navigation.

@@ -12,25 +12,38 @@ npm run test:marks-workflow
 npm run test:e2e:marks-workflow
 ```
 
-`marks_workflow_management.test.sql` checks RPCs, execution grants, fixed
-search paths, forced RLS, direct-write denial, workflow guards, lineage,
-separation of duties, deterministic locks, downstream protection, privacy, and
-the Stage 11 boundary. Existing database suites exercise runtime constraints
-and privileged frozen-state behavior.
+Stage 10 has 173 database assertions: 58 structural assertions in
+`marks_workflow_management.test.sql` and 115 runtime behavioral assertions in
+`marks_workflow_behavior.test.sql`. Together they verify authenticated RPC
+execution, grants, fixed search paths, forced RLS, direct-write denial,
+selected-school and exact-teacher authority, every workflow state transition,
+completeness, stale writes, term readiness, correction lineage, audit
+cardinality, frozen enrollment scope, downstream protection, privacy, and the
+Stage 11 boundary.
 
-The signed-in integration suite executes the teacher/reviewer/locker flow
-through anonymous-key clients. It covers completeness, selected-school
-isolation, frozen marks, returned editing, separation of duties, readiness,
-locking, controlled reopen, correction cloning, one-successor enforcement,
-source immutability, post-lock roster freezing with non-roster metadata still
-allowed, and relock. Independent PostgreSQL and PostgREST connections
-deterministically exercise both save/submit winner orders, a true double
-submit, competing reviewers, and competing correction creators.
+The 20-case signed-in integration suite executes the
+teacher/reviewer/approver/locker flow through anonymous-key clients. It covers
+completeness, selected-school isolation, exact bound-teacher authority, live
+role and membership changes, frozen marks, returned editing, separation of
+duties, readiness, locking, controlled reopen, correction cloning,
+one-successor enforcement, source immutability, post-lock roster freezing with
+non-roster metadata still allowed, downstream report-batch protection, audit
+presence with selected exact cardinality checks, and relock. Independent
+PostgreSQL and PostgREST connections exercise submit-first and save-first
+ordering, double submit,
+competing review, return versus approval, role revocation, membership
+suspension, term-readiness re-evaluation, and competing correction creation.
 
-The Playwright suite covers incomplete and complete submission, read-only
-inputs, forbidden review access, queue/review/return, teacher resubmission,
-approval/locking, correction creation, new-revision navigation, old locked
-history, mobile grid usability, privacy, and absence of Stage 11 calculations.
+The 39-scenario Playwright suite uses two schools, multiple selected
+memberships, a teacher, a registrar reviewer/approver, a head-teacher
+locker/corrector, an unauthorized teacher, and a synthetic guardian-contact
+fixture. It covers incomplete and complete submission, read-only inputs,
+forbidden review access,
+queue/review/return, teacher resubmission, approval/locking, readiness and term
+controls, stale conflicts, correction creation, revision-two workflow and
+relock, current/historical labels, stable unique list keys, clean browser
+console output, mobile and keyboard usability, contact privacy, and absence of
+Stage 11 calculations.
 
 CI runs both dedicated suites after rebuilding migrations, regenerates types,
 and requires a clean generated contract. Its cleanup always stops Supabase.
