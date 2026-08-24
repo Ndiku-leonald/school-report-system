@@ -173,3 +173,11 @@ Subject teachers use `MARKS_SUBMIT` only for their bound sheet. Review,
 approval, and lock capabilities come from the migration-owned permission
 matrix, not a hard-coded role label. The submitter cannot perform a
 post-submission action on the same revision.
+
+## Stage 11
+
+Schoolwide result calculation is a report-generation capability. A user with
+`REPORTS_GENERATE` can calculate and review results; a user with
+`REPORTS_VIEW_ALL` can review without a Calculate control. `MARKS_VIEW_ALL`,
+`REPORTS_VIEW_ASSIGNED`, and subject assignments do not grant whole-grade
+calculation access.

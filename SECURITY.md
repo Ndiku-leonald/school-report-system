@@ -83,6 +83,12 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
 - Draft configuration may be edited, but active and retired assessment,
   grading, ranking, and promotion history must be preserved through explicit
   version-from-existing operations.
+- Stage 11 calculations require `REPORTS_GENERATE`, lock the term row while
+  deriving the latest mark-sheet revision for every class/subject scope, bind
+  exact grading/ranking/classification versions, and serialize the term/grade
+  race in PostgreSQL. Result tables force RLS, deny direct browser writes, and
+  expose only schoolwide read RPCs; result payloads never include guardian
+  contacts.
 
 ## Secrets and environment handling
 

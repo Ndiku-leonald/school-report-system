@@ -8,7 +8,7 @@ The product must remain configurable for different schools. School identity, sub
 
 ## Current status
 
-**Stage 10: secure marks workflow is implemented for review.** The repository
+**Stage 11: deterministic results calculation is implemented for review.** The repository
 contains the Stage 3 database foundation plus cookie-based Supabase Auth,
 server-authoritative staff membership checks, invitation and recovery flows,
 active-school selection, authentication audit events, and local-only Auth test
@@ -27,9 +27,10 @@ is atomic.
 
 Academic table writes remain deny-by-default. Stage 10 adds narrow, audited,
 concurrency-protected submission, review, return, resubmission, approval,
-locking, term-phase, and correction-revision RPCs. Calculations, report
-generation/publication, analytics, promotion processing, and parent
-verification have not been implemented.
+locking, term-phase, and correction-revision RPCs. Stage 11 calculates
+immutable term-and-grade results only from the latest locked mark-sheet
+revisions. Report snapshots, report generation/publication, analytics,
+promotion processing, and parent verification remain later-stage work.
 
 Stage 7 adds `/dashboard/students`, admission and profile workflows, guarded
 student and enrolment lifecycle changes, primary-guardian management, private
@@ -152,6 +153,9 @@ transactional audit events. Head and subject teachers retain read-only access.
 See [Academic configuration](docs/academic-configuration.md) and
 [Academic configuration testing](docs/academic-configuration-testing.md).
 
+Stage 11 adds optional versioned aggregate-classification configuration and the
+schoolwide results workspace. See [Results calculation](docs/results-calculation.md).
+
 ## Validation commands
 
 ```bash
@@ -163,12 +167,14 @@ npm run test:auth
 npm run test:authorization
 npm run test:academic-config
 npm run test:marks-workflow
+npm run test:results-engine
 npm run build
 npm run test:e2e
 npm run test:e2e:auth
 npm run test:e2e:authorization
 npm run test:e2e:academic-config
 npm run test:e2e:marks-workflow
+npm run test:e2e:results-engine
 ```
 
 Use `npx playwright install chromium` once if the local Playwright browser is not installed.

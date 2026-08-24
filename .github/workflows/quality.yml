@@ -98,6 +98,9 @@ jobs:
       - name: Run local marks-workflow integration tests
         run: npm run test:marks-workflow
 
+      - name: Run local results-engine integration tests
+        run: npm run test:results-engine
+
       - name: Verify generated database types
         run: |
           npm run db:types
@@ -127,6 +130,9 @@ jobs:
 
       - name: Run local marks-workflow browser tests
         run: npm run test:e2e:marks-workflow
+
+      - name: Run local results-engine browser tests
+        run: npm run test:e2e:results-engine
 
       - name: Stop local Supabase
         if: always()

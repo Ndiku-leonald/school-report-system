@@ -240,3 +240,12 @@ A correction is a new row with source version plus one, identical academic
 identity/scheme/assignment, and cloned marks. A historical locked sheet is
 never changed in place. The latest term/class/subject revision is authoritative
 for readiness.
+
+## Stage 11 calculated results
+
+Migration 23 keeps `mark_sheets`, `marks`, `assessment_schemes`, grading scales,
+ranking rules, and curriculum mappings as inputs. It adds immutable calculation
+runs, source manifests, student/subject outputs, component explanations,
+subject-performance summaries, and optional aggregate-classification scales.
+The run stores the exact rule identifiers and input/output checksums; it does
+not replace report or snapshot tables.

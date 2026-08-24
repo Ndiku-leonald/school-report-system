@@ -191,3 +191,12 @@ reopen. A correction may reuse only its exact locked source scheme; arbitrary
 retired schemes remain invalid. Enrollment roster identity is also frozen for
 submitted sheets and `REVIEW`/`LOCKED` terms, so an authorized student manager
 cannot alter the completion or report scope behind a protected revision.
+
+## Stage 11 result security
+
+Calculation and result-read RPCs use fixed search paths and revalidate the
+session-selected membership. Calculation requires `REPORTS_GENERATE`; reads
+require `REPORTS_VIEW_ALL` or that permission. New result tables force RLS and
+deny authenticated direct writes. Results are derived in PostgreSQL from a
+locked term and latest source revisions, and append-only triggers protect
+historical runs.

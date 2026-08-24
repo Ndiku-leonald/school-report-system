@@ -170,6 +170,14 @@ Implement academic years, terms, classes, streams, subjects, assessment models, 
 - Stage 7 was not part of the Stage 6 merge; calculation, ranking execution and
   promotion decisions remain unimplemented.
 
+## 11. Deterministic results calculation — Implemented for review
+
+Migration 23 adds immutable calculation runs, exact source manifests, weighted
+subject and overall results, configurable aggregate classification, ranking
+positions/ties, checksums, explanations, and calculation-review RPCs/routes.
+Inputs are limited to the latest locked revisions for a locked term. Stage 12
+owns report snapshots; Stage 13 owns PDFs; Stage 17 owns promotion decisions.
+
 ## 7. Student management â€” Implemented for review
 
 Implement student profiles, guardian relationships, academic-period enrolment,

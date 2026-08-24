@@ -24,6 +24,8 @@ export default async function DashboardLayout({
     "ASSIGNMENTS_VIEW_ALL",
     "ASSIGNMENTS_MANAGE",
     "MARKS_VIEW_ALL",
+    "REPORTS_VIEW_ALL",
+    "REPORTS_GENERATE",
   ]);
   const staffName = context.staff.profile
     ? `${context.staff.profile.first_name} ${context.staff.profile.last_name}`

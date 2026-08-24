@@ -160,3 +160,11 @@ school, class, subject, component and roster claims are never authoritative.
 but the submitter is excluded from every post-submission action. Mutations lock
 the Auth-session selection, membership, school, live grants, and mappings
 before academic rows; other memberships never contribute.
+
+## Results calculation authorization
+
+Stage 11 uses the existing `REPORTS_GENERATE` permission for calculation and
+`REPORTS_VIEW_ALL`/`REPORTS_GENERATE` for schoolwide review. It does not use
+`MARKS_VIEW_ALL` as a generation grant and does not union memberships or
+assignment-scoped teacher roles. The selected active school membership remains
+authoritative for every calculation and result read.

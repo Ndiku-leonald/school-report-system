@@ -138,3 +138,11 @@ class capacity without redefining them. It adds student, guardian and enrolment
 workflows only. Teacher-assignment management remains Stage 8; marks,
 calculations, reports, parent access and promotion execution remain later
 stages.
+
+## Aggregate classification configuration
+
+Stage 11 adds optional versioned aggregate-classification scales and bands.
+They are school-scoped, may be scoped to an academic year and grade, reject
+overlapping ranges, preserve active/retired history, and are edited only by
+audited configuration RPCs. Labels and ranges are configuration data, not
+universal Division rules.
