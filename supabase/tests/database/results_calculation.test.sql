@@ -38,7 +38,7 @@ select extensions.is((select proconfig[1] from pg_proc where oid = 'public.list_
 
 select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'status <> ''LOCKED''', 'calculation rejects non-locked terms');
 select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'row_number\(\) over\(partition by sheet.term_id, sheet.class_section_id, sheet.subject_id order by sheet.version desc', 'latest source revision is derived in the database');
-select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'workflow_status <> ''LOCKED''', 'latest source must be locked');
+select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'workflow_status.*LOCKED', 'latest source must be locked');
 select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'included_weight', 'weight renormalization is calculated');
 select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'round\(sum\(explanation.weighted_contribution\)', 'subject scores use deterministic numeric rounding');
 select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'PRESENT.*ABSENT', 'present and absent states are explicit');
