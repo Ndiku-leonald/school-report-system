@@ -15,9 +15,12 @@ declare actor record; term_row public.terms%rowtype; year_row public.academic_ye
   previous public.result_calculation_runs%rowtype; scale_id uuid; rule_id uuid; classification_id uuid; new_version integer; run_id uuid;
   input_hash text; output_hash text; direction text; tie_method public.ranking_tie_method; selected_ranking_basis public.ranking_basis;
   include_incomplete boolean; minimum_subjects integer; has_scope_issue boolean; has_unlocked_source boolean;
-  has_invalid_band boolean; source_count integer; source_table text := 'tmp_result_sources';
-  explanation_table text := 'tmp_result_explanations'; subject_table text := 'tmp_result_subjects'; student_table text := 'tmp_result_students';
+  has_invalid_band boolean; source_count integer; source_table text; explanation_table text; subject_table text; student_table text;
 begin
+  source_table := 'tmp_result_sources_' || replace(gen_random_uuid()::text, '-', '');
+  explanation_table := 'tmp_result_explanations_' || replace(gen_random_uuid()::text, '-', '');
+  subject_table := 'tmp_result_subjects_' || replace(gen_random_uuid()::text, '-', '');
+  student_table := 'tmp_result_students_' || replace(gen_random_uuid()::text, '-', '');
   select * into actor from internal.require_results_actor();
   perform pg_advisory_xact_lock(hashtextextended(target_term_id::text || ':' || target_grade_level_id::text, 11011));
   select term.* into term_row from public.terms term where term.id = target_term_id for update;
@@ -38,7 +41,7 @@ begin
   select rules.ranking_basis, rules.tie_method, rules.configuration ->> 'direction', coalesce((rules.configuration ->> 'include_incomplete')::boolean, false), coalesce(nullif(rules.configuration ->> 'minimum_subjects','')::integer, 0)
     into selected_ranking_basis, tie_method, direction, include_incomplete, minimum_subjects from public.ranking_rules rules where rules.id = rule_id;
 
-  create temporary table tmp_result_sources(mark_sheet_id uuid, class_section_id uuid, subject_id uuid, mark_sheet_version integer, assessment_scheme_id uuid, workflow_status public.mark_sheet_status) on commit drop;
+  execute format($sql$create temporary table %I(mark_sheet_id uuid, class_section_id uuid, subject_id uuid, mark_sheet_version integer, assessment_scheme_id uuid, workflow_status public.mark_sheet_status) on commit drop$sql$, source_table);
   if not exists (select 1 from public.class_sections where academic_year_id = year_row.id and grade_level_id = target_grade_level_id and is_active) or not exists (select 1 from public.grade_level_subjects where grade_level_id = target_grade_level_id) then raise exception 'RESULT_SCOPE_INCOMPLETE' using errcode = '23514'; end if;
   execute format($sql$
     insert into %I
@@ -57,7 +60,7 @@ begin
   execute format('select exists (select 1 from %I where workflow_status <> ''LOCKED''::public.mark_sheet_status)', source_table) into has_unlocked_source;
   if has_unlocked_source then raise exception 'RESULT_SOURCE_NOT_LOCKED' using errcode = '23514'; end if;
 
-  create temporary table tmp_result_explanations(enrollment_id uuid, class_section_id uuid, subject_id uuid, mark_sheet_id uuid, assessment_component_id uuid, component_name text, attendance_status public.assessment_attendance_status, entered_score numeric, maximum_score numeric, weight_percentage numeric, is_required boolean, included_weight numeric, weighted_contribution numeric) on commit drop;
+  execute format($sql$create temporary table %I(enrollment_id uuid, class_section_id uuid, subject_id uuid, mark_sheet_id uuid, assessment_component_id uuid, component_name text, attendance_status public.assessment_attendance_status, entered_score numeric, maximum_score numeric, weight_percentage numeric, is_required boolean, included_weight numeric, weighted_contribution numeric) on commit drop$sql$, explanation_table);
   execute format($sql$
     insert into %I
     select enrollment.id, source.class_section_id, source.subject_id, source.mark_sheet_id, component.id, component.name, mark.attendance_status, mark.score, component.maximum_score, component.weight_percentage, component.is_required,
@@ -66,7 +69,7 @@ begin
     from %I source join public.assessment_components component on component.assessment_scheme_id = source.assessment_scheme_id join public.enrollments enrollment on enrollment.class_section_id = source.class_section_id and enrollment.academic_year_id = $1 and enrollment.status in ('ACTIVE','REPEATING') left join public.marks mark on mark.mark_sheet_id = source.mark_sheet_id and mark.assessment_component_id = component.id and mark.enrollment_id = enrollment.id
   $sql$, explanation_table, source_table) using year_row.id;
 
-  create temporary table tmp_result_subjects(enrollment_id uuid, class_section_id uuid, subject_id uuid, mark_sheet_id uuid, subject_status public.calculated_subject_status, subject_score numeric, grade text, aggregate_points integer, is_pass boolean, assessed_weight numeric, has_absence boolean, has_exemption boolean, subject_position integer, subject_tie_size integer default 0, subject_is_tied boolean default false, contributes_to_aggregate boolean, is_required boolean) on commit drop;
+  execute format($sql$create temporary table %I(enrollment_id uuid, class_section_id uuid, subject_id uuid, mark_sheet_id uuid, subject_status public.calculated_subject_status, subject_score numeric, grade text, aggregate_points integer, is_pass boolean, assessed_weight numeric, has_absence boolean, has_exemption boolean, subject_position integer, subject_tie_size integer default 0, subject_is_tied boolean default false, contributes_to_aggregate boolean, is_required boolean) on commit drop$sql$, subject_table);
   execute format($sql$
     insert into %I
     select explanation.enrollment_id, explanation.class_section_id, explanation.subject_id, explanation.mark_sheet_id,
@@ -88,7 +91,7 @@ begin
   $sql$, subject_table) into has_invalid_band;
   if has_invalid_band then raise exception 'RESULT_GRADING_BAND_MISSING' using errcode = '23514'; end if;
 
-  create temporary table tmp_result_students(enrollment_id uuid, class_section_id uuid, subject_count integer, complete_subject_count integer, subjects_passed integer, overall_total numeric, overall_average numeric, overall_grade text, aggregate_total integer, aggregate_classification text, is_complete boolean, ranking_eligible boolean, ranking_metric numeric, class_position integer, grade_level_position integer, class_tie_size integer default 0, grade_level_tie_size integer default 0, class_is_tied boolean default false, grade_level_is_tied boolean default false) on commit drop;
+  execute format($sql$create temporary table %I(enrollment_id uuid, class_section_id uuid, subject_count integer, complete_subject_count integer, subjects_passed integer, overall_total numeric, overall_average numeric, overall_grade text, aggregate_total integer, aggregate_classification text, is_complete boolean, ranking_eligible boolean, ranking_metric numeric, class_position integer, grade_level_position integer, class_tie_size integer default 0, grade_level_tie_size integer default 0, class_is_tied boolean default false, grade_level_is_tied boolean default false) on commit drop$sql$, student_table);
   execute format($sql$
     insert into %I
     select enrollment_id, class_section_id, count(*)::integer, count(*) filter(where subject_status='COMPLETE')::integer, count(*) filter(where subject_status='COMPLETE' and is_pass)::integer, sum(subject_score) filter(where subject_status='COMPLETE'), round(sum(subject_score) filter(where subject_status='COMPLETE') / nullif(count(*) filter(where subject_status='COMPLETE'),0), 2), null,
