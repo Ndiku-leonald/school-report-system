@@ -429,7 +429,7 @@ async function createPolicyFixture(
     [classSection, year, grade, `Policy ${name} Class`, `P-${yearNumber}`],
   );
   await query(
-    "insert into public.subjects(id,school_id,code,name,sort_order) values($1,$5,$6,$7,1),($2,$5,$8,$9,2),($3,$5,$10,$11,3)",
+    "insert into public.subjects(id,school_id,code,name,sort_order) values($1,$4,$5,$6,1),($2,$4,$7,$8,2),($3,$4,$9,$10,3)",
     [
       subjects[0],
       subjects[1],
