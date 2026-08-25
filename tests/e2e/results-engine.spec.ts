@@ -109,12 +109,16 @@ async function setup() {
     [ids.assignment, ids.term, ids.class, ids.subject, ids.membership],
   );
   await database.query(
-    "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$2,$3,$4,'Browser Scheme','ACTIVE','2041-01-02',$5)",
+    "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$2,$3,$4,'Browser Scheme','DRAFT','2041-01-02',$5)",
     [ids.scheme, ids.term, ids.grade, ids.subject, ids.membership],
   );
   await database.query(
     "insert into public.assessment_components(id,assessment_scheme_id,name,component_code,maximum_score,weight_percentage,sort_order) values($1,$2,'Browser Exam','RB',100,100,1)",
     [ids.component, ids.scheme],
+  );
+  await database.query(
+    "update public.assessment_schemes set status='ACTIVE' where id=$1",
+    [ids.scheme],
   );
   await database.query(
     "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id) values($1,$2,$3,$4,$5,$6)",

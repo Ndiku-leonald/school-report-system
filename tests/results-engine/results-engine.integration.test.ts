@@ -170,7 +170,7 @@ async function setup() {
     ],
   );
   await query(
-    "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$4,$5,$6,'Integration English','ACTIVE','2040-01-02',$7),($2,$4,$5,$8,'Integration Mathematics','ACTIVE','2040-01-02',$7),($3,$4,$5,$9,'Integration Arts','ACTIVE','2040-01-02',$7)",
+    "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$4,$5,$6,'Integration English','DRAFT','2040-01-02',$7),($2,$4,$5,$8,'Integration Mathematics','DRAFT','2040-01-02',$7),($3,$4,$5,$9,'Integration Arts','DRAFT','2040-01-02',$7)",
     [
       ids.schemeA,
       ids.schemeB,
@@ -193,6 +193,10 @@ async function setup() {
       ids.schemeB,
       ids.schemeC,
     ],
+  );
+  await query(
+    "update public.assessment_schemes set status='ACTIVE' where id = any($1::uuid[])",
+    [[ids.schemeA, ids.schemeB, ids.schemeC]],
   );
   await query(
     "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id) values($1,$7,$8,$10,$13,$16),($2,$7,$8,$11,$14,$17),($3,$7,$8,$12,$15,$18),($4,$7,$9,$10,$13,$19),($5,$7,$9,$11,$14,$20),($6,$7,$9,$12,$15,$21)",
