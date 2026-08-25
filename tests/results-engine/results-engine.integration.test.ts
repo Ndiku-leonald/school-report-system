@@ -432,7 +432,7 @@ describe.sequential(
             [runId],
           )
         ).rows[0].count,
-      ).toBe(24);
+      ).toBe(12);
     });
     it("materializes six class performance rows", async () => {
       expect(

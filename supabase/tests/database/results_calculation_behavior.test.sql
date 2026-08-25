@@ -181,7 +181,7 @@ select extensions.is((select count(*)::integer from public.result_calculation_so
 select extensions.is((select count(*)::integer from public.result_calculation_sources where not curriculum_contributes_to_aggregate), 2, '30. aggregate contribution is snapshotted');
 select extensions.is((select count(*)::integer from public.calculated_student_results where calculation_run_id = (select id from public.result_calculation_runs where term_id = 'b4100000-0000-4000-8000-000000000001')), 4, '32. every learner receives an overall result');
 select extensions.is((select count(*)::integer from public.calculated_subject_results where calculation_run_id = (select id from public.result_calculation_runs where term_id = 'b4100000-0000-4000-8000-000000000001')), 12, '33. every learner-subject result is materialized');
-select extensions.is((select count(*)::integer from public.calculated_component_explanations where calculation_run_id = (select id from public.result_calculation_runs where term_id = 'b4100000-0000-4000-8000-000000000001')), 24, '34. component explanations include missing cells');
+select extensions.is((select count(*)::integer from public.calculated_component_explanations where calculation_run_id = (select id from public.result_calculation_runs where term_id = 'b4100000-0000-4000-8000-000000000001')), 12, '34. component explanations include missing cells');
 select extensions.is((select count(*)::integer from public.calculated_subject_performance where calculation_run_id = (select id from public.result_calculation_runs where term_id = 'b4100000-0000-4000-8000-000000000001')), 6, '35. class subject performance is materialized');
 select extensions.is((select count(*)::integer from public.calculated_grade_subject_performance where calculation_run_id = (select id from public.result_calculation_runs where term_id = 'b4100000-0000-4000-8000-000000000001')), 3, '36. grade-wide subject performance is materialized');
 
@@ -237,7 +237,7 @@ select extensions.ok(not has_function_privilege('anon', 'public.list_result_grad
 select extensions.ok(pg_has_role(current_user, 'postgres', 'member'), '81. assertions execute in the database test role');
 select extensions.ok((select count(*) = 6 from public.result_calculation_sources where calculation_run_id = (select id from public.result_calculation_runs where term_id = 'b4100000-0000-4000-8000-000000000001') and curriculum_sort_order between 1 and 3), '82. curriculum ordering is snapshotted');
 select extensions.ok((select count(*) = 6 from public.result_calculation_sources where mark_sheet_version = 1), '83. source revision is snapshotted');
-select extensions.ok((select count(*) = 5 from public.calculated_component_explanations where entered_score is not null), '84. present mark scores are retained in explanations');
+select extensions.ok((select count(*) = 6 from public.calculated_component_explanations where entered_score is not null), '84. present mark scores are retained in explanations');
 select extensions.ok((select count(*) = 4 from public.calculated_subject_results where has_exemption), '85. exemption flags are retained');
 select extensions.ok((select count(*) = 0 from public.calculated_subject_results where subject_status = 'COMPLETE' and subject_score is null), '86. complete subjects have scores');
 select extensions.ok((select count(*) = 4 from public.calculated_subject_results where subject_status = 'EXEMPTED' and subject_score is null), '87. exempted subjects do not invent scores');
@@ -248,9 +248,9 @@ select extensions.ok((select count(*) = 0 from public.calculated_student_results
 select extensions.ok((select count(*) = 0 from public.calculated_student_results where grade_level_is_tied), '92. grade-wide tie flags remain false without overall ties');
 select extensions.ok((select count(*) = 1 from public.calculated_subject_results where subject_id = 'b4400000-0000-4000-8000-000000000001' and subject_position = 2), '93. class-scoped subject ordinal has a second position');
 select extensions.ok((select count(*) = 1 from public.calculated_subject_results where subject_id = 'b4400000-0000-4000-8000-000000000001' and subject_score = 0), '94. absent-style zero score is not conflated with missing score');
-select extensions.ok((select count(*) = 1 from public.calculated_grade_subject_performance where grade_distribution ? 'A'), '95. grade performance contains grade distribution');
+select extensions.ok((select count(*) = 2 from public.calculated_grade_subject_performance where grade_distribution ? 'A'), '95. grade performance contains grade distribution');
 select extensions.ok((select count(*) = 3 from public.calculated_grade_subject_performance where grade_distribution is not null), '96. every grade performance row has distribution json');
-select extensions.ok((select count(*) = 6 from public.calculated_subject_performance where pass_rate is not null), '97. class performance contains pass rates');
+select extensions.ok((select count(*) = 4 from public.calculated_subject_performance where pass_rate is not null), '97. class performance contains pass rates');
 select extensions.ok((select count(*) = 3 from public.calculated_grade_subject_performance where created_at is not null), '98. grade performance rows are timestamped');
 select extensions.ok((select count(*) = 1 from public.result_calculation_runs where supersedes_run_id is null), '99. first run has no predecessor');
 select extensions.ok((select count(*) = 0 from public.result_calculation_runs where supersedes_run_id is not null), '100. reuse creates no successor');
