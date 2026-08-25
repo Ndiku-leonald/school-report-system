@@ -1264,7 +1264,7 @@ describe.sequential(
         if (metric === "AVERAGE")
           expect(row.ranking_metric).toBe(row.overall_average);
         if (metric === "AGGREGATE")
-          expect(row.ranking_metric).toBe(String(row.aggregate_total));
+          expect(Number(row.ranking_metric)).toBe(Number(row.aggregate_total));
       }
     });
     it.each([
@@ -1304,7 +1304,7 @@ describe.sequential(
       });
       expect(result.error).toBeNull();
       const rows = await query(
-        "select student.admission_number, result.class_position, result.grade_level_position, subject.subject_position from public.calculated_student_results result join public.enrollments enrollment on enrollment.id=result.enrollment_id join public.students student on student.id=enrollment.student_id join public.calculated_subject_results subject on subject.calculation_run_id=result.calculation_run_id and subject.enrollment_id=result.enrollment_id order by result.class_position, subject.subject_position, result.enrollment_id limit 4",
+        "select student.admission_number, result.class_position, result.grade_level_position, subject.subject_position from public.calculated_student_results result join public.enrollments enrollment on enrollment.id=result.enrollment_id join public.students student on student.id=enrollment.student_id join public.calculated_subject_results subject on subject.calculation_run_id=result.calculation_run_id and subject.enrollment_id=result.enrollment_id where result.calculation_run_id=$1 order by result.class_position, subject.subject_position, result.enrollment_id limit 4",
         [result.data?.[0]?.calculation_run_id],
       );
       expect(rows.rows[0].admission_number).toBe(fixture.admissions[1]);
@@ -1324,7 +1324,7 @@ describe.sequential(
       expect(result.error).toBeNull();
       fixture.runId = result.data?.[0]?.calculation_run_id ?? "";
       const rows = await query(
-        "select subject_id, subject_status, subject_score::text, grade, has_absence, has_exemption, assessed_weight::text from public.calculated_subject_results where calculation_run_id=$1",
+        "select subject_id, subject_status, subject_score::text, grade, has_absence, has_exemption, assessed_weight::text, subject_position from public.calculated_subject_results where calculation_run_id=$1",
         [fixture.runId],
       );
       const byKey = (key: string) =>
