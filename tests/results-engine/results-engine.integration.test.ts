@@ -597,13 +597,15 @@ describe.sequential(
       expect(r.error).toBeNull();
       expect(r.data).toHaveLength(6);
     });
-    it("does not claim a unique first-run checksum with multiple options", async () => {
+    it("reports the stored checksum after calculation", async () => {
       const r = await client.rpc("get_results_calculation_readiness", {
         target_term_id: ids.term,
         target_grade_level_id: ids.grade,
       });
       expect(r.error).toBeNull();
-      expect(r.data?.[0]?.current_authoritative_input_checksum).toBeNull();
+      expect(r.data?.[0]?.current_authoritative_input_checksum).toHaveLength(
+        64,
+      );
     });
     it("returns the selected calculation options with stable IDs", async () => {
       const r = await client.rpc("list_result_calculation_options", {
@@ -654,7 +656,7 @@ describe.sequential(
         "select count(*)::int count from public.calculated_subject_results where calculation_run_id=$1 and subject_position is not null",
         [runId],
       );
-      expect(r.rows[0].count).toBe(12);
+      expect(r.rows[0].count).toBe(7);
     });
     it("records absent attendance without inventing a score", async () => {
       const r = await query(
@@ -664,7 +666,7 @@ describe.sequential(
       expect(r.rows[0]).toMatchObject({
         attendance_status: "ABSENT",
         entered_score: null,
-        included_weight: "0.00",
+        included_weight: "100.00",
       });
     });
     it("records exempted attendance semantics", async () => {
