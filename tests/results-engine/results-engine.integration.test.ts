@@ -421,8 +421,8 @@ async function createPolicyFixture(
     ],
   );
   await query(
-    "insert into public.grade_levels(id,school_id,code,name,sort_order) values($1,$2,$3,$4,1)",
-    [grade, ids.school, `P${yearNumber}`, `Policy ${name} Grade`],
+    "insert into public.grade_levels(id,school_id,code,name,sort_order) values($1,$2,$3,$4,$5)",
+    [grade, ids.school, `P${yearNumber}`, `Policy ${name} Grade`, yearNumber],
   );
   await query(
     "insert into public.class_sections(id,academic_year_id,grade_level_id,name,class_code) values($1,$2,$3,$4,$5)",
@@ -656,8 +656,8 @@ async function createComponentFixture() {
     [term, year, `${yearNumber}-01-01`, `${yearNumber}-06-30`],
   );
   await query(
-    "insert into public.grade_levels(id,school_id,code,name,sort_order) values($1,$2,$3,'Component Policy Grade',1)",
-    [grade, ids.school, `CP${yearNumber}`],
+    "insert into public.grade_levels(id,school_id,code,name,sort_order) values($1,$2,$3,'Component Policy Grade',$4)",
+    [grade, ids.school, `CP${yearNumber}`, yearNumber],
   );
   await query(
     "insert into public.class_sections(id,academic_year_id,grade_level_id,name,class_code) values($1,$2,$3,'Component Policy Class',$4)",
