@@ -3,19 +3,11 @@ import { createClient } from "@supabase/supabase-js";
 import { randomUUID } from "node:crypto";
 import { Client } from "pg";
 
-if (process.env.RESULTS_ENGINE_E2E !== "1")
-  throw new Error("Results E2E requires the local results-engine runner.");
-const url = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!;
-const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY!;
-const databaseUrl = process.env.SUPABASE_LOCAL_DB_URL!;
-for (const [name, value] of Object.entries({
-  url,
-  anonKey,
-  serviceKey,
-  databaseUrl,
-}))
-  if (!value) throw new Error(`${name} is required for results E2E.`);
+const enabled = process.env.RESULTS_ENGINE_E2E === "1";
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+const databaseUrl = process.env.SUPABASE_LOCAL_DB_URL ?? "";
 const nonce = Date.now();
 const password = "synthetic-results-browser-password";
 const ids = Object.fromEntries(
@@ -37,13 +29,15 @@ const ids = Object.fromEntries(
     "rule",
   ].map((key) => [key, randomUUID()]),
 ) as Record<string, string>;
-const admin = createClient(url, serviceKey, {
-  auth: {
-    autoRefreshToken: false,
-    detectSessionInUrl: false,
-    persistSession: false,
-  },
-});
+const admin = enabled
+  ? createClient(url, serviceKey, {
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: false,
+      },
+    })
+  : null;
 const database = new Client({ connectionString: databaseUrl });
 let email = "";
 let runPath = "/dashboard/results";
@@ -51,7 +45,7 @@ let runPath = "/dashboard/results";
 async function setup() {
   await database.connect();
   email = `results.browser.${nonce}@example.invalid`;
-  const auth = await admin.auth.admin.createUser({
+  const auth = await admin!.auth.admin.createUser({
     email,
     password,
     email_confirm: true,
@@ -186,6 +180,7 @@ async function login(page: Page) {
 }
 
 test.describe.serial("results engine dedicated browser verification", () => {
+  test.skip(!enabled, "requires the local results-engine runner");
   test.beforeAll(setup);
   test.afterAll(async () => database.end());
   test("1. unauthenticated results route redirects to staff login", async ({
