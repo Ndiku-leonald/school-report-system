@@ -327,7 +327,11 @@ test.describe.serial("results engine dedicated browser verification", () => {
     ).toBeVisible();
   });
   test("26. class subject performance card is visible", async ({ page }) => {
-    await expect(page.getByText("Results Browser Subject")).toBeVisible();
+    await expect(
+      page.getByRole("heading", {
+        name: "Results Browser Subject · Results Browser Class",
+      }),
+    ).toBeVisible();
   });
   test("27. grade-wide performance section is visible", async ({ page }) => {
     await expect(
