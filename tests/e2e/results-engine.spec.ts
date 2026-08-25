@@ -247,7 +247,9 @@ test.describe.serial("results engine dedicated browser verification", () => {
   });
   test("8. readiness shows a student population", async ({ page }) => {
     await page.goto("/dashboard/results");
-    await expect(page.getByText("Students")).toBeVisible();
+    await expect(
+      page.getByRole("main").locator("dt").filter({ hasText: "Students" }),
+    ).toBeVisible();
   });
   test("9. ready state is shown before the first run", async ({ page }) => {
     await page.goto("/dashboard/results");
