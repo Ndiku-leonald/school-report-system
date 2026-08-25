@@ -398,7 +398,12 @@ async function createPolicyFixture(
   const scale = randomUUID();
   const rule = randomUUID();
   const yearNumber = 2050 + Object.keys(policyFixtures).length;
-  const admissions = ["Z-010", "A-002", "M-005", "B-001"];
+  const admissions = [
+    `P${yearNumber}-Z-010`,
+    `P${yearNumber}-A-002`,
+    `P${yearNumber}-M-005`,
+    `P${yearNumber}-B-001`,
+  ];
 
   await query(
     "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,$3,$4,$5,'DRAFT')",
@@ -1302,7 +1307,7 @@ describe.sequential(
         "select student.admission_number, result.class_position, result.grade_level_position, subject.subject_position from public.calculated_student_results result join public.enrollments enrollment on enrollment.id=result.enrollment_id join public.students student on student.id=enrollment.student_id join public.calculated_subject_results subject on subject.calculation_run_id=result.calculation_run_id and subject.enrollment_id=result.enrollment_id order by result.class_position, subject.subject_position, result.enrollment_id limit 4",
         [result.data?.[0]?.calculation_run_id],
       );
-      expect(rows.rows[0].admission_number).toBe("A-002");
+      expect(rows.rows[0].admission_number).toBe(fixture.admissions[1]);
       expect(rows.rows[0].class_position).toBe(1);
       expect(rows.rows[0].grade_level_position).toBe(1);
       expect(rows.rows[0].subject_position).toBe(1);
