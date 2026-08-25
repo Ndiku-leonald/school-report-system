@@ -225,7 +225,7 @@ async function setup() {
     ],
   );
   await query(
-    "insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$7,$10,90,'PRESENT',$14,$14),($1,$7,$11,90,'PRESENT',$14,$14),($2,$8,$10,80,'PRESENT',$14,$14),($4,$7,$12,90,'PRESENT',$14,$14),($5,$8,$12,70,'PRESENT',$14,$14),($5,$8,$13,60,'PRESENT',$14,$14),($4,$7,$13,null,'ABSENT',$14,$14),($3,$9,$10,null,'EXEMPTED',$14,$14),($3,$9,$11,null,'EXEMPTED',$14,$14),($6,$9,$12,null,'EXEMPTED',$14,$14),($6,$9,$13,null,'EXEMPTED',$14,$14)",
+    "insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$7,$10,90,'PRESENT',$15,$15),($1,$7,$11,90,'PRESENT',$15,$15),($2,$8,$10,80,'PRESENT',$15,$15),($4,$7,$12,90,'PRESENT',$15,$15),($5,$8,$12,70,'PRESENT',$15,$15),($5,$8,$13,60,'PRESENT',$15,$15),($4,$7,$13,null,'ABSENT',$15,$15),($3,$9,$10,null,'EXEMPTED',$15,$15),($3,$9,$11,null,'EXEMPTED',$15,$15),($6,$9,$12,null,'EXEMPTED',$15,$15),($6,$9,$13,null,'EXEMPTED',$15,$15)",
     [
       ids.sheetA1,
       ids.sheetA2,
@@ -240,6 +240,7 @@ async function setup() {
       ids.enrollmentB,
       ids.enrollmentC,
       ids.enrollmentD,
+      ids.membership,
       ids.membership,
     ],
   );
