@@ -25,14 +25,8 @@ export function CalculationForm({
   options: ResultCalculationOption[];
   canCalculate: boolean;
 }) {
-  const [scale, setScale] = useState(
-    options.find((option) => option.option_type === "GRADING_SCALE")
-      ?.option_id ?? "",
-  );
-  const [ranking, setRanking] = useState(
-    options.find((option) => option.option_type === "RANKING_RULE")
-      ?.option_id ?? "",
-  );
+  const [scale, setScale] = useState("");
+  const [ranking, setRanking] = useState("");
   const [classification, setClassification] = useState("");
   const [result, setResult] = useState<ResultActionResult | null>(null);
   const [pending, startTransition] = useTransition();
@@ -57,6 +51,7 @@ export function CalculationForm({
             onChange={(event) => setScale(event.target.value)}
             disabled={!canCalculate || pending}
           >
+            <option value="">Select a grading scale</option>
             {scales.map((option) => (
               <option key={option.option_id} value={option.option_id}>
                 {option.option_name} · v{option.option_version}
@@ -72,6 +67,7 @@ export function CalculationForm({
             onChange={(event) => setRanking(event.target.value)}
             disabled={!canCalculate || pending}
           >
+            <option value="">Select a ranking rule</option>
             {rankings.map((option) => (
               <option key={option.option_id} value={option.option_id}>
                 {option.option_name} · v{option.option_version} ·{" "}

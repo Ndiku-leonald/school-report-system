@@ -154,7 +154,10 @@ See [Academic configuration](docs/academic-configuration.md) and
 [Academic configuration testing](docs/academic-configuration-testing.md).
 
 Stage 11 adds optional versioned aggregate-classification configuration and the
-schoolwide results workspace. See [Results calculation](docs/results-calculation.md).
+schoolwide results workspace. Readiness is calculated from active curriculum
+scopes, and obsolete subject sheets are ignored. When multiple scales or ranking
+rules apply, operators explicitly select both; persisted runs retain those exact
+rule IDs for later checksum validation. See [Results calculation](docs/results-calculation.md).
 
 ## Validation commands
 

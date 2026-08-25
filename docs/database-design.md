@@ -28,7 +28,9 @@ the seed is an example, not production policy.
   components.
 - **Results:** a mark sheet is the workflow aggregate for one class, subject,
   term, scheme, and teaching assignment. Marks attach an enrollment and
-  assessment component to that sheet.
+  assessment component to that sheet. Stage 11 derives expected result scopes
+  from active class sections crossed with the grade's curriculum mappings and
+  stores immutable source manifests for each run.
 - **Rules:** grading scales, ranking rules, and promotion rules are versioned and
   can be scoped to a school, year, or grade level.
 - **Reports:** batches coordinate generation. Reports are versioned records;
@@ -79,6 +81,11 @@ Rules and report templates are versioned. Active-record partial unique indexes
 prevent conflicting current versions while retaining retired records. Reports
 use immutable JSON snapshots so later edits to live marks or configuration
 cannot silently change an already generated historical report.
+
+Result calculation runs retain the exact grading scale, ranking rule, and
+optional aggregate-classification scale used for that version. Readiness uses
+those stored IDs when validating a run checksum, so rule retirement does not
+silently change the meaning of an existing result set.
 
 Key database checks include:
 

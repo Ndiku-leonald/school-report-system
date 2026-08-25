@@ -52,8 +52,8 @@ export default async function ResultsDashboardPage() {
               readiness &&
               readiness.missing_source_scopes === 0 &&
               readiness.non_locked_latest_scopes === 0 &&
-              readiness.applicable_grading_scale_count === 1 &&
-              readiness.applicable_ranking_rule_count === 1,
+              readiness.applicable_grading_scale_count >= 1 &&
+              readiness.applicable_ranking_rule_count >= 1,
             );
             return (
               <Card key={`${term.term_id}-${term.grade_level_id}`}>

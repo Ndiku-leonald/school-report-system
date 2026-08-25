@@ -89,6 +89,11 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
   race in PostgreSQL. Result tables force RLS, deny direct browser writes, and
   expose only schoolwide read RPCs; result payloads never include guardian
   contacts.
+- Stage 11 readiness derives expected scopes only from active class sections
+  crossed with the grade's curriculum mappings. Obsolete or unmapped sheets
+  cannot make a grade appear ready, and an unlocked latest revision cannot be
+  hidden by an older locked sheet. `ORDINAL` ranking uses normalized admission
+  numbers followed by enrollment UUIDs for class, grade, and subject determinism.
 
 ## Secrets and environment handling
 

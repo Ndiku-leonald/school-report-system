@@ -25,7 +25,9 @@ const ids = Object.fromEntries(
     "component",
     "sheet",
     "scale",
+    "schoolScale",
     "rule",
+    "schoolRule",
   ].map((key) => [key, randomUUID()]),
 ) as Record<string, string>;
 const admin = enabled
@@ -140,12 +142,33 @@ async function setup() {
     [ids.scale],
   );
   await database.query(
+    "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,null,null,'Browser School Scale',1,true,'2041-01-02',$3)",
+    [ids.schoolScale, ids.school, ids.membership],
+  );
+  await database.query(
+    "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,50,'F',1,false,1),($1,50,80,'C',2,true,2),($1,80,100,'A',3,true,3)",
+    [ids.schoolScale],
+  );
+  await database.query(
     "insert into public.ranking_rules(id,school_id,academic_year_id,grade_level_id,name,version,ranking_basis,tie_method,configuration,is_active,created_by) values($1,$2,$3,$4,'Browser Ranking',1,'AVERAGE','DENSE',$5,true,$6)",
     [
       ids.rule,
       ids.school,
       ids.year,
       ids.grade,
+      JSON.stringify({
+        direction: "DESC",
+        minimum_subjects: 1,
+        include_incomplete: false,
+      }),
+      ids.membership,
+    ],
+  );
+  await database.query(
+    "insert into public.ranking_rules(id,school_id,academic_year_id,grade_level_id,name,version,ranking_basis,tie_method,configuration,is_active,created_by) values($1,$2,null,null,'Browser School Ranking',1,'AVERAGE','DENSE',$3,true,$4)",
+    [
+      ids.schoolRule,
+      ids.school,
       JSON.stringify({
         direction: "DESC",
         minimum_subjects: 1,
@@ -189,6 +212,19 @@ async function openLatestCalculation(page: Page) {
   runPath = new URL(page.url()).pathname;
 }
 
+async function selectCalculationRules(page: Page) {
+  const scale = await page
+    .getByLabel("Grading scale")
+    .locator("option", { hasText: "Browser Scale" })
+    .getAttribute("value");
+  const ranking = await page
+    .getByLabel("Ranking rule")
+    .locator("option", { hasText: "Browser Ranking" })
+    .getAttribute("value");
+  await page.getByLabel("Grading scale").selectOption(scale!);
+  await page.getByLabel("Ranking rule").selectOption(ranking!);
+}
+
 test.describe.serial("results engine dedicated browser verification", () => {
   test.skip(!enabled, "requires the local results-engine runner");
   test.beforeAll(setup);
@@ -198,6 +234,7 @@ test.describe.serial("results engine dedicated browser verification", () => {
     await login(page);
     if (testInfo.title.startsWith("16.")) {
       await page.goto("/dashboard/results");
+      await selectCalculationRules(page);
       await page
         .getByRole("button", { name: "Calculate locked results" })
         .click();
@@ -277,12 +314,14 @@ test.describe.serial("results engine dedicated browser verification", () => {
     page,
   }) => {
     await page.goto("/dashboard/results");
+    await selectCalculationRules(page);
     await expect(
       page.getByRole("button", { name: "Calculate locked results" }),
     ).toBeEnabled();
   });
   test("15. calculation action returns a success alert", async ({ page }) => {
     await page.goto("/dashboard/results");
+    await selectCalculationRules(page);
     await page
       .getByRole("button", { name: "Calculate locked results" })
       .click();
@@ -387,5 +426,143 @@ test.describe.serial("results engine dedicated browser verification", () => {
     page,
   }) => {
     await expect(page.getByText("Sources / students")).toBeVisible();
+  });
+  test("37. calculation remains disabled until a grading scale is chosen", async ({
+    page,
+  }) => {
+    await page.goto("/dashboard/results");
+    await expect(
+      page.getByRole("button", { name: "Calculate locked results" }),
+    ).toBeDisabled();
+  });
+  test("38. calculation remains disabled until a ranking rule is chosen", async ({
+    page,
+  }) => {
+    await page.goto("/dashboard/results");
+    await page.getByLabel("Grading scale").selectOption({ index: 1 });
+    await expect(
+      page.getByRole("button", { name: "Calculate locked results" }),
+    ).toBeDisabled();
+  });
+  test("39. explicit rule selections enable calculation", async ({ page }) => {
+    await page.goto("/dashboard/results");
+    await expect(
+      page.getByLabel("Grading scale").locator("option"),
+    ).toHaveCount(3);
+    await expect(page.getByLabel("Ranking rule").locator("option")).toHaveCount(
+      3,
+    );
+    await selectCalculationRules(page);
+    await expect(
+      page.getByRole("button", { name: "Calculate locked results" }),
+    ).toBeEnabled();
+  });
+  test("40. student detail route is reachable from the result table", async ({
+    page,
+  }) => {
+    await openLatestCalculation(page);
+    await page.getByText("RB-001").click();
+    await page.waitForURL(/dashboard\/results\/.*\/students\/.+/);
+    await expect(
+      page.getByRole("heading", { name: "Subject results" }),
+    ).toBeVisible();
+  });
+  test("41. student detail exposes subject score and grade columns", async ({
+    page,
+  }) => {
+    await openLatestCalculation(page);
+    await page.getByText("RB-001").click();
+    await expect(
+      page.getByRole("columnheader", { name: "Score" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("columnheader", { name: "Grade" }),
+    ).toBeVisible();
+  });
+  test("42. component explanation is visible on student detail", async ({
+    page,
+  }) => {
+    await openLatestCalculation(page);
+    await page.getByText("RB-001").click();
+    await expect(
+      page.getByRole("heading", { name: "Calculation explanation" }),
+    ).toBeVisible();
+  });
+  test("43. student detail exposes class and grade positions", async ({
+    page,
+  }) => {
+    await openLatestCalculation(page);
+    await page.getByText("RB-001").click();
+    await expect(
+      page.getByText("Class position", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Grade position", { exact: true }),
+    ).toBeVisible();
+  });
+  test("44. student detail shows academic attendance semantics", async ({
+    page,
+  }) => {
+    await openLatestCalculation(page);
+    await page.getByText("RB-001").click();
+    await expect(
+      page.getByText(/ABSENT retains component weight/),
+    ).toBeVisible();
+    await expect(
+      page.getByText(/EXEMPTED and optional missing inputs/),
+    ).toBeVisible();
+  });
+  test("45. result tables retain horizontal overflow on a narrow viewport", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openLatestCalculation(page);
+    const table = page.getByRole("table").first();
+    await expect(table).toBeVisible();
+    await expect(table).toHaveCSS("min-width", "900px");
+  });
+  test("46. result detail has semantic table headers", async ({ page }) => {
+    await openLatestCalculation(page);
+    await expect(
+      page.getByRole("columnheader", { name: "Admission" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("columnheader", { name: "Positions" }),
+    ).toBeVisible();
+  });
+  test("47. result detail can receive keyboard focus", async ({ page }) => {
+    await openLatestCalculation(page);
+    await page.keyboard.press("Tab");
+    await expect(page.locator(":focus")).toBeVisible();
+  });
+  test("48. classification remains explicitly optional", async ({ page }) => {
+    await page.goto("/dashboard/results");
+    await expect(page.getByLabel("Classification (optional)")).toHaveValue("");
+  });
+  test("49. calculation detail preserves the selected rule identity", async ({
+    page,
+  }) => {
+    await openLatestCalculation(page);
+    await expect(page.getByText("Browser Ranking")).toBeVisible();
+  });
+  test("50. calculation detail remains academic-only", async ({ page }) => {
+    await openLatestCalculation(page);
+    await expect(
+      page.getByText(/publication.*promotion controls/i),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("main")
+        .getByRole("button", { name: /PDF|Publish|Promotion/i }),
+    ).toHaveCount(0);
+  });
+  test("51. selected calculation controls remain available after navigation", async ({
+    page,
+  }) => {
+    await page.goto("/dashboard/results");
+    await selectCalculationRules(page);
+    await page.reload();
+    await expect(page.getByLabel("Grading scale")).toBeVisible();
+    await expect(page.getByLabel("Ranking rule")).toBeVisible();
   });
 });

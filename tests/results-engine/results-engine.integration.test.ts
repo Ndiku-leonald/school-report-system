@@ -49,7 +49,9 @@ const ids = Object.fromEntries(
     "enrollmentC",
     "enrollmentD",
     "scale",
+    "schoolScale",
     "rule",
+    "schoolRule",
     "schemeA",
     "schemeB",
     "schemeC",
@@ -255,12 +257,33 @@ async function setup() {
     ids.scale,
   ]);
   await query(
+    "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,null,null,'Integration School Scale',1,true,'2040-01-02',$3)",
+    [ids.schoolScale, ids.school, ids.membership],
+  );
+  await query(
+    "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,50,'F',1,false,1),($1,50,80,'C',2,true,2),($1,80,100,'A',3,true,3)",
+    [ids.schoolScale],
+  );
+  await query(
     "insert into public.ranking_rules(id,school_id,academic_year_id,grade_level_id,name,version,ranking_basis,tie_method,configuration,is_active,created_by) values($1,$2,$3,$4,'Integration Ranking',1,'AVERAGE','DENSE',$5,true,$6)",
     [
       ids.rule,
       ids.school,
       ids.year,
       ids.grade,
+      JSON.stringify({
+        direction: "DESC",
+        include_incomplete: true,
+        minimum_subjects: 1,
+      }),
+      ids.membership,
+    ],
+  );
+  await query(
+    "insert into public.ranking_rules(id,school_id,academic_year_id,grade_level_id,name,version,ranking_basis,tie_method,configuration,is_active,created_by) values($1,$2,null,null,'Integration School Ranking',1,'AVERAGE','DENSE',$3,true,$4)",
+    [
+      ids.schoolRule,
+      ids.school,
       JSON.stringify({
         direction: "DESC",
         include_incomplete: true,
@@ -338,19 +361,19 @@ describe.sequential(
       });
       expect(r.data?.[0]?.non_locked_latest_scopes).toBe(0);
     });
-    it("reports one applicable grading scale", async () => {
+    it("reports multiple applicable grading scales", async () => {
       const r = await client.rpc("get_results_calculation_readiness", {
         target_term_id: ids.term,
         target_grade_level_id: ids.grade,
       });
-      expect(r.data?.[0]?.applicable_grading_scale_count).toBe(1);
+      expect(r.data?.[0]?.applicable_grading_scale_count).toBe(2);
     });
-    it("reports one applicable ranking rule", async () => {
+    it("reports multiple applicable ranking rules", async () => {
       const r = await client.rpc("get_results_calculation_readiness", {
         target_term_id: ids.term,
         target_grade_level_id: ids.grade,
       });
-      expect(r.data?.[0]?.applicable_ranking_rule_count).toBe(1);
+      expect(r.data?.[0]?.applicable_ranking_rule_count).toBe(2);
     });
     it("calculates and returns a run", async () => {
       const r = await client.rpc("calculate_grade_results", {
@@ -570,6 +593,168 @@ describe.sequential(
       });
       expect(r.error).toBeNull();
       expect(r.data).toHaveLength(6);
+    });
+    it("does not claim a unique first-run checksum with multiple options", async () => {
+      const r = await client.rpc("get_results_calculation_readiness", {
+        target_term_id: ids.term,
+        target_grade_level_id: ids.grade,
+      });
+      expect(r.error).toBeNull();
+      expect(r.data?.[0]?.current_authoritative_input_checksum).toBeNull();
+    });
+    it("returns the selected calculation options with stable IDs", async () => {
+      const r = await client.rpc("list_result_calculation_options", {
+        target_term_id: ids.term,
+        target_grade_level_id: ids.grade,
+      });
+      expect(r.error).toBeNull();
+      expect(r.data).toEqual(
+        expect.arrayContaining([
+          expect.objectContaining({
+            option_type: "GRADING_SCALE",
+            option_id: ids.scale,
+          }),
+          expect.objectContaining({
+            option_type: "RANKING_RULE",
+            option_id: ids.rule,
+          }),
+        ]),
+      );
+    });
+    it("stores the exact selected grading and ranking rule IDs", async () => {
+      const r = await query(
+        "select grading_scale_id, ranking_rule_id, aggregate_classification_scale_id from public.result_calculation_runs where id=$1",
+        [runId],
+      );
+      expect(r.rows[0]).toMatchObject({
+        grading_scale_id: ids.scale,
+        ranking_rule_id: ids.rule,
+        aggregate_classification_scale_id: null,
+      });
+    });
+    it("produces deterministic class positions", async () => {
+      const r = await query(
+        "select count(*)::int count from public.calculated_student_results where calculation_run_id=$1 and class_position is not null",
+        [runId],
+      );
+      expect(r.rows[0].count).toBe(4);
+    });
+    it("produces deterministic grade-wide positions", async () => {
+      const r = await query(
+        "select count(*)::int count from public.calculated_student_results where calculation_run_id=$1 and grade_level_position is not null",
+        [runId],
+      );
+      expect(r.rows[0].count).toBe(4);
+    });
+    it("keeps each subject rank within its class section", async () => {
+      const r = await query(
+        "select count(*)::int count from public.calculated_subject_results where calculation_run_id=$1 and subject_position is not null",
+        [runId],
+      );
+      expect(r.rows[0].count).toBe(12);
+    });
+    it("records absent attendance without inventing a score", async () => {
+      const r = await query(
+        "select attendance_status, entered_score, included_weight from public.calculated_component_explanations where calculation_run_id=$1 and enrollment_id=$2 and subject_id=$3",
+        [runId, ids.enrollmentD, ids.subjectA],
+      );
+      expect(r.rows[0]).toMatchObject({
+        attendance_status: "ABSENT",
+        entered_score: null,
+        included_weight: "0.00",
+      });
+    });
+    it("records exempted attendance semantics", async () => {
+      const r = await query(
+        "select has_exemption, subject_score from public.calculated_subject_results where calculation_run_id=$1 and enrollment_id=$2 and subject_id=$3",
+        [runId, ids.enrollmentA, ids.subjectC],
+      );
+      expect(r.rows[0]).toMatchObject({
+        has_exemption: true,
+        subject_score: null,
+      });
+    });
+    it("does not aggregate a learner with an incomplete required subject", async () => {
+      const r = await query(
+        "select aggregate_total, aggregate_classification, is_complete from public.calculated_student_results where calculation_run_id=$1 and enrollment_id=$2",
+        [runId, ids.enrollmentB],
+      );
+      expect(r.rows[0]).toMatchObject({
+        aggregate_total: null,
+        aggregate_classification: null,
+        is_complete: false,
+      });
+    });
+    it("persists the exact curriculum source manifest", async () => {
+      const r = await query(
+        "select count(*)::int count, count(distinct mark_sheet_id)::int distinct_count from public.result_calculation_sources where calculation_run_id=$1",
+        [runId],
+      );
+      expect(r.rows[0]).toMatchObject({ count: 6, distinct_count: 6 });
+    });
+    it("writes one calculation audit event for the created run", async () => {
+      const r = await query(
+        "select count(*)::int count from public.audit_logs where entity_type='result_calculation_run' and entity_id=$1 and action='RESULT_CALCULATION_CREATED'",
+        [runId],
+      );
+      expect(r.rows[0].count).toBe(1);
+    });
+    it("does not add an audit event during idempotent reuse", async () => {
+      const r = await query(
+        "select count(*)::int count from public.audit_logs where entity_type='result_calculation_run' and action='RESULT_CALCULATION_CREATED' and new_values->>'term_id'=$1",
+        [ids.term],
+      );
+      expect(r.rows[0].count).toBe(1);
+    });
+    it("does not expose guardian or contact fields in student results", async () => {
+      const r = await client.rpc("list_calculated_student_results", {
+        target_run_id: runId,
+      });
+      expect(r.error).toBeNull();
+      const keys = Object.keys(r.data?.[0] ?? {});
+      expect(
+        keys.some((key) => /guardian|contact|phone|email/i.test(key)),
+      ).toBe(false);
+    });
+    it("keeps readiness checksum bound to the stored run rules", async () => {
+      const readiness = await client.rpc("get_results_calculation_readiness", {
+        target_term_id: ids.term,
+        target_grade_level_id: ids.grade,
+      });
+      const stored = await query(
+        "select input_checksum from public.result_calculation_runs where id=$1",
+        [runId],
+      );
+      expect(readiness.error).toBeNull();
+      expect(readiness.data?.[0]?.current_authoritative_input_checksum).toBe(
+        stored.rows[0].input_checksum,
+      );
+    });
+    it("serializes concurrent identical calculation requests", async () => {
+      const requests = await Promise.all(
+        [1, 2].map(() =>
+          client.rpc("calculate_grade_results", {
+            target_term_id: ids.term,
+            target_grade_level_id: ids.grade,
+            target_grading_scale_id: ids.scale,
+            target_ranking_rule_id: ids.rule,
+            target_aggregate_classification_scale_id: null,
+          }),
+        ),
+      );
+      expect(requests.every((request) => request.error === null)).toBe(true);
+      expect(
+        requests.every(
+          (request) => request.data?.[0]?.calculation_run_id === runId,
+        ),
+      ).toBe(true);
+    });
+    it("keeps a single run after concurrent reuse", async () => {
+      const r = await query(
+        "select count(*)::int count from public.result_calculation_runs where term_id=$1 and grade_level_id=$2",
+        [ids.term, ids.grade],
+      );
+      expect(r.rows[0].count).toBe(1);
     });
   },
 );

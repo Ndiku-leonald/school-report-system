@@ -106,6 +106,13 @@ records may be introduced until later mutation workflows, storage controls,
 abuse-case tests, backup/restore procedures, and operational monitoring are
 independently reviewed.
 
+Stage 11 result calculation adds a database-authoritative readiness boundary:
+only active class-section/curriculum intersections are expected, latest sheet
+revisions are checked for locking, and calculation execution rechecks authority
+under locks. Result readers receive school-scoped RPC rows without guardian or
+contact fields; result tables remain forced-RLS and direct browser writes remain
+revoked.
+
 The helper and RPC security review is documented in
 [authorization-model.md](authorization-model.md).
 

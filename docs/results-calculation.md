@@ -18,6 +18,22 @@ The manifest records the exact mark sheet, revision, class, subject, and
 assessment scheme. Input and output checksums are SHA-256 hex digests over
 stable, ordered numeric/text representations; they are not caller-supplied.
 
+## Readiness and rule selection
+
+Readiness is authoritative over active class sections in the selected academic
+year and grade, crossed with `grade_level_subjects`. Sheets for obsolete or
+unmapped subjects do not inflate source counts or block calculation. For each
+expected class/subject scope, only the highest sheet version is authoritative;
+an unlocked newer revision blocks the scope even when an older revision is
+locked.
+
+The calculation form enables when one or more active grading scales and ranking
+rules apply. The operator must explicitly select both IDs; the UI never silently
+chooses the first option. A first-run checksum is available when each rule type
+has exactly one applicable option. Once a run exists, readiness computes the
+checksum with that run's stored grading, ranking, and optional classification
+IDs, even if those rules are later retired or replaced.
+
 ## Subject score
 
 For `PRESENT`, normalized score is `score / maximum_score` and weighted
@@ -53,7 +69,10 @@ validated configured metric. Eligibility requires a non-null metric, the
 configured minimum subject count, and (when configured) complete required
 subjects. The configured direction is honored. DENSE, COMPETITION, ORDINAL,
 and SHARED tie behavior is persisted with class and grade-level tie metadata;
-subject positions are calculated separately from complete subject scores.
+subject positions are calculated separately from complete subject scores. Every
+`ORDINAL` ordering uses `upper(btrim(admission_number))`, then the immutable
+enrollment UUID as the final deterministic tiebreaker for class, grade, and
+subject rankings.
 
 `REPORTS_GENERATE` is required to calculate. Whole-school reads require
 `REPORTS_VIEW_ALL` or `REPORTS_GENERATE`; assignment-scoped subject teachers

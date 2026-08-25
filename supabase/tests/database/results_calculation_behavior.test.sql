@@ -41,7 +41,8 @@ insert into public.subjects (id, school_id, code, name, sort_order)
 values
   ('b4400000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000001', 'RR-ENG', 'Runtime English', 1),
   ('b4400000-0000-4000-8000-000000000002', 'b1000000-0000-4000-8000-000000000001', 'RR-MAT', 'Runtime Mathematics', 2),
-  ('b4400000-0000-4000-8000-000000000003', 'b1000000-0000-4000-8000-000000000001', 'RR-ART', 'Runtime Arts', 3);
+  ('b4400000-0000-4000-8000-000000000003', 'b1000000-0000-4000-8000-000000000001', 'RR-ART', 'Runtime Arts', 3),
+  ('b4400000-0000-4000-8000-000000000004', 'b1000000-0000-4000-8000-000000000001', 'RR-OBSOLETE', 'Runtime Obsolete', 4);
 
 insert into public.grade_level_subjects (id, grade_level_id, subject_id, is_required, contributes_to_aggregate, sort_order)
 values
@@ -70,21 +71,24 @@ values
   ('b4800000-0000-4000-8000-000000000003', 'b4100000-0000-4000-8000-000000000001', 'b4300000-0000-4000-8000-000000000001', 'b4400000-0000-4000-8000-000000000003', 'b3000000-0000-4000-8000-000000000001', '2039-01-02'),
   ('b4800000-0000-4000-8000-000000000004', 'b4100000-0000-4000-8000-000000000001', 'b4300000-0000-4000-8000-000000000002', 'b4400000-0000-4000-8000-000000000001', 'b3000000-0000-4000-8000-000000000001', '2039-01-02'),
   ('b4800000-0000-4000-8000-000000000005', 'b4100000-0000-4000-8000-000000000001', 'b4300000-0000-4000-8000-000000000002', 'b4400000-0000-4000-8000-000000000002', 'b3000000-0000-4000-8000-000000000001', '2039-01-02'),
-  ('b4800000-0000-4000-8000-000000000006', 'b4100000-0000-4000-8000-000000000001', 'b4300000-0000-4000-8000-000000000002', 'b4400000-0000-4000-8000-000000000003', 'b3000000-0000-4000-8000-000000000001', '2039-01-02');
+  ('b4800000-0000-4000-8000-000000000006', 'b4100000-0000-4000-8000-000000000001', 'b4300000-0000-4000-8000-000000000002', 'b4400000-0000-4000-8000-000000000003', 'b3000000-0000-4000-8000-000000000001', '2039-01-02'),
+  ('b4800000-0000-4000-8000-000000000007', 'b4100000-0000-4000-8000-000000000001', 'b4300000-0000-4000-8000-000000000001', 'b4400000-0000-4000-8000-000000000004', 'b3000000-0000-4000-8000-000000000001', '2039-01-02');
 
 insert into public.assessment_schemes (id, term_id, grade_level_id, subject_id, name, status, effective_from, created_by)
 values
   ('b4900000-0000-4000-8000-000000000001', 'b4100000-0000-4000-8000-000000000001', 'b4200000-0000-4000-8000-000000000001', 'b4400000-0000-4000-8000-000000000001', 'Runtime English Scheme', 'DRAFT', '2039-01-02', 'b3000000-0000-4000-8000-000000000001'),
   ('b4900000-0000-4000-8000-000000000002', 'b4100000-0000-4000-8000-000000000001', 'b4200000-0000-4000-8000-000000000001', 'b4400000-0000-4000-8000-000000000002', 'Runtime Mathematics Scheme', 'DRAFT', '2039-01-02', 'b3000000-0000-4000-8000-000000000001'),
-  ('b4900000-0000-4000-8000-000000000003', 'b4100000-0000-4000-8000-000000000001', 'b4200000-0000-4000-8000-000000000001', 'b4400000-0000-4000-8000-000000000003', 'Runtime Arts Scheme', 'DRAFT', '2039-01-02', 'b3000000-0000-4000-8000-000000000001');
+  ('b4900000-0000-4000-8000-000000000003', 'b4100000-0000-4000-8000-000000000001', 'b4200000-0000-4000-8000-000000000001', 'b4400000-0000-4000-8000-000000000003', 'Runtime Arts Scheme', 'DRAFT', '2039-01-02', 'b3000000-0000-4000-8000-000000000001'),
+  ('b4900000-0000-4000-8000-000000000004', 'b4100000-0000-4000-8000-000000000001', 'b4200000-0000-4000-8000-000000000001', 'b4400000-0000-4000-8000-000000000004', 'Runtime Obsolete Scheme', 'DRAFT', '2039-01-02', 'b3000000-0000-4000-8000-000000000001');
 
 insert into public.assessment_components (id, assessment_scheme_id, name, component_code, maximum_score, weight_percentage, sort_order)
 values
   ('b4a00000-0000-4000-8000-000000000001', 'b4900000-0000-4000-8000-000000000001', 'Runtime English Exam', 'RR-ENG-EXAM', 100, 100, 1),
   ('b4a00000-0000-4000-8000-000000000002', 'b4900000-0000-4000-8000-000000000002', 'Runtime Mathematics Exam', 'RR-MAT-EXAM', 100, 100, 1),
-  ('b4a00000-0000-4000-8000-000000000003', 'b4900000-0000-4000-8000-000000000003', 'Runtime Arts Exam', 'RR-ART-EXAM', 100, 100, 1);
+  ('b4a00000-0000-4000-8000-000000000003', 'b4900000-0000-4000-8000-000000000003', 'Runtime Arts Exam', 'RR-ART-EXAM', 100, 100, 1),
+  ('b4a00000-0000-4000-8000-000000000004', 'b4900000-0000-4000-8000-000000000004', 'Runtime Obsolete Exam', 'RR-OBS-EXAM', 100, 100, 1);
 update public.assessment_schemes set status = 'ACTIVE'
-where id in ('b4900000-0000-4000-8000-000000000001','b4900000-0000-4000-8000-000000000002','b4900000-0000-4000-8000-000000000003');
+where id in ('b4900000-0000-4000-8000-000000000001','b4900000-0000-4000-8000-000000000002','b4900000-0000-4000-8000-000000000003','b4900000-0000-4000-8000-000000000004');
 
 insert into public.mark_sheets (id, term_id, class_section_id, subject_id, assessment_scheme_id, teaching_assignment_id)
 values
@@ -93,7 +97,8 @@ values
   ('b4b00000-0000-4000-8000-000000000003', 'b4100000-0000-4000-8000-000000000001', 'b4300000-0000-4000-8000-000000000001', 'b4400000-0000-4000-8000-000000000003', 'b4900000-0000-4000-8000-000000000003', 'b4800000-0000-4000-8000-000000000003'),
   ('b4b00000-0000-4000-8000-000000000004', 'b4100000-0000-4000-8000-000000000001', 'b4300000-0000-4000-8000-000000000002', 'b4400000-0000-4000-8000-000000000001', 'b4900000-0000-4000-8000-000000000001', 'b4800000-0000-4000-8000-000000000004'),
   ('b4b00000-0000-4000-8000-000000000005', 'b4100000-0000-4000-8000-000000000001', 'b4300000-0000-4000-8000-000000000002', 'b4400000-0000-4000-8000-000000000002', 'b4900000-0000-4000-8000-000000000002', 'b4800000-0000-4000-8000-000000000005'),
-  ('b4b00000-0000-4000-8000-000000000006', 'b4100000-0000-4000-8000-000000000001', 'b4300000-0000-4000-8000-000000000002', 'b4400000-0000-4000-8000-000000000003', 'b4900000-0000-4000-8000-000000000003', 'b4800000-0000-4000-8000-000000000006');
+  ('b4b00000-0000-4000-8000-000000000006', 'b4100000-0000-4000-8000-000000000001', 'b4300000-0000-4000-8000-000000000002', 'b4400000-0000-4000-8000-000000000003', 'b4900000-0000-4000-8000-000000000003', 'b4800000-0000-4000-8000-000000000006'),
+  ('b4b00000-0000-4000-8000-000000000007', 'b4100000-0000-4000-8000-000000000001', 'b4300000-0000-4000-8000-000000000001', 'b4400000-0000-4000-8000-000000000004', 'b4900000-0000-4000-8000-000000000004', 'b4800000-0000-4000-8000-000000000007');
 
 insert into public.marks (id, mark_sheet_id, assessment_component_id, enrollment_id, score, attendance_status, created_by, updated_by)
 values
@@ -139,8 +144,9 @@ update public.terms set status = 'LOCKED' where id = 'b4100000-0000-4000-8000-00
 select extensions.is((select count(*)::integer from public.class_sections where grade_level_id = 'b4200000-0000-4000-8000-000000000001'), 2, '2. synthetic fixture has two classes');
 select extensions.is((select count(*)::integer from public.enrollments where academic_year_id = 'b4000000-0000-4000-8000-000000000001'), 4, '3. synthetic fixture has four learners');
 select extensions.is((select count(*)::integer from public.grade_level_subjects where grade_level_id = 'b4200000-0000-4000-8000-000000000001'), 3, '4. synthetic curriculum has three subjects');
-select extensions.is((select count(*)::integer from public.mark_sheets where term_id = 'b4100000-0000-4000-8000-000000000001'), 6, '5. all class-subject source sheets exist');
+select extensions.is((select count(*)::integer from public.mark_sheets where term_id = 'b4100000-0000-4000-8000-000000000001'), 7, '5. six curriculum sources plus one obsolete sheet exist');
 select extensions.is((select count(*)::integer from public.mark_sheets where term_id = 'b4100000-0000-4000-8000-000000000001' and workflow_status = 'LOCKED'), 5, '6. five source sheets are locked');
+select extensions.is((select count(*)::integer from public.mark_sheets where term_id = 'b4100000-0000-4000-8000-000000000001' and subject_id = 'b4400000-0000-4000-8000-000000000004'), 1, '6a. obsolete non-curriculum sheet is present');
 select extensions.is((select count(*)::integer from public.marks where mark_sheet_id = 'b4b00000-0000-4000-8000-000000000001'), 2, '7. present English marks are stored');
 select extensions.is((select count(*)::integer from public.marks where attendance_status = 'EXEMPTED'), 4, '8. exempted attendance is stored');
 select extensions.is((select count(*)::integer from public.marks where attendance_status = 'ABSENT'), 1, '9. absent attendance is stored');
@@ -149,9 +155,9 @@ select extensions.lives_ok(
   $$ select * from public.get_results_calculation_readiness('b4100000-0000-4000-8000-000000000001','b4200000-0000-4000-8000-000000000001') $$,
   '10. authorized user can inspect readiness');
 select extensions.is((select expected_class_subject_scopes::integer from public.get_results_calculation_readiness('b4100000-0000-4000-8000-000000000001','b4200000-0000-4000-8000-000000000001')), 6, '11. readiness expects every class-subject scope');
-select extensions.is((select source_sheet_count::integer from public.get_results_calculation_readiness('b4100000-0000-4000-8000-000000000001','b4200000-0000-4000-8000-000000000001')), 6, '12. readiness sees every latest sheet');
+select extensions.is((select source_sheet_count::integer from public.get_results_calculation_readiness('b4100000-0000-4000-8000-000000000001','b4200000-0000-4000-8000-000000000001')), 6, '12. readiness ignores the obsolete non-curriculum sheet');
 select extensions.is((select missing_source_scopes::integer from public.get_results_calculation_readiness('b4100000-0000-4000-8000-000000000001','b4200000-0000-4000-8000-000000000001')), 0, '13. no source scope is missing');
-select extensions.is((select non_locked_latest_scopes::integer from public.get_results_calculation_readiness('b4100000-0000-4000-8000-000000000001','b4200000-0000-4000-8000-000000000001')), 1, '14. readiness identifies the one unlocked latest sheet');
+select extensions.is((select non_locked_latest_scopes::integer from public.get_results_calculation_readiness('b4100000-0000-4000-8000-000000000001','b4200000-0000-4000-8000-000000000001')), 1, '14. readiness ignores the obsolete sheet when counting unlocked sources');
 select extensions.ok(not (select up_to_date from public.get_results_calculation_readiness('b4100000-0000-4000-8000-000000000001','b4200000-0000-4000-8000-000000000001')), '15. readiness is not calculable while a source is unlocked');
 select extensions.is((select applicable_grading_scale_count::integer from public.get_results_calculation_readiness('b4100000-0000-4000-8000-000000000001','b4200000-0000-4000-8000-000000000001')), 1, '16. one grading scale is applicable');
 select extensions.is((select applicable_ranking_rule_count::integer from public.get_results_calculation_readiness('b4100000-0000-4000-8000-000000000001','b4200000-0000-4000-8000-000000000001')), 1, '17. one ranking rule is applicable');

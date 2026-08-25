@@ -99,6 +99,15 @@ Navigation declarations carry required permissions and are filtered before
 rendering. This is a usability control only. Every destination and data
 operation must still apply a server guard and database RLS.
 
+## Results authority
+
+The results workspace requires `REPORTS_GENERATE` for calculation and uses the
+same selected-membership authorization context as other academic reads. The
+database readiness and calculation functions independently recheck the school,
+term, grade, active curriculum scopes, latest locked source revisions, and the
+selected rule IDs. Multiple applicable rules are presented as explicit choices;
+the browser does not grant authority by choosing a default.
+
 ## Deny-by-default boundaries
 
 Stage 5 adds authenticated reads only to the approved academic-configuration,

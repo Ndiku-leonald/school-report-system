@@ -23,6 +23,7 @@ select extensions.has_function('public', 'list_result_subject_performance', arra
 select extensions.has_function('public', 'get_results_calculation_readiness', array['uuid','uuid'], 'calculation readiness RPC exists');
 select extensions.has_function('public', 'list_result_grade_subject_performance', array['uuid'], 'grade-wide performance read RPC exists');
 select extensions.has_function('internal', 'lock_and_require_results_authority', array[]::text[], 'calculation authority lock helper exists');
+select extensions.has_function('internal', 'results_input_checksum', array['uuid','uuid','uuid','uuid','uuid'], 'calculation checksum helper exists');
 select extensions.has_function('public', 'save_aggregate_classification_scale', array['uuid','timestamp with time zone','uuid','uuid','text','jsonb'], 'classification draft RPC exists');
 select extensions.has_function('public', 'create_aggregate_classification_scale_version', array['uuid','timestamp with time zone','text','jsonb'], 'classification version RPC exists');
 
@@ -64,12 +65,14 @@ select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uui
 select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'curriculum_is_required', 'calculation checksum captures curriculum requiredness');
 select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'calculated_grade_subject_performance', 'calculation writes grade-wide subject performance');
 select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'partition by subject.class_section_id, subject.subject_id', 'subject ranks are class-scoped');
+select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'upper\(btrim\(person.admission_number\)\)', 'ORDINAL ranks use normalized admission numbers');
 select extensions.ok(pg_get_functiondef('public.calculate_grade_results(uuid,uuid,uuid,uuid,uuid)'::regprocedure) !~* 'partition by subject.subject_id, subject.subject_score', 'subject ranks do not cross class boundaries');
 select extensions.ok(pg_get_functiondef('internal.results_input_checksum(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'grading_bands', 'input checksum captures grading bands');
 select extensions.ok(pg_get_functiondef('internal.results_input_checksum(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'ranking_rules', 'input checksum captures ranking configuration');
 select extensions.ok(pg_get_functiondef('internal.results_input_checksum(uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'aggregate_classification_bands', 'input checksum captures classification bands');
 select extensions.ok(pg_get_functiondef('public.get_results_calculation_readiness(uuid,uuid)'::regprocedure) ~* 'non_locked_latest_scopes', 'readiness reports unlocked latest sources');
 select extensions.ok(pg_get_functiondef('public.get_results_calculation_readiness(uuid,uuid)'::regprocedure) ~* 'current_authoritative_input_checksum', 'readiness reports authoritative checksum');
+select extensions.ok(pg_get_functiondef('public.get_results_calculation_readiness(uuid,uuid)'::regprocedure) ~* 'expected_scopes', 'readiness derives from expected curriculum scopes');
 
 select extensions.ok(exists(select 1 from pg_trigger where tgname = 'result_calculation_runs_append_only'), 'runs are append-only');
 select extensions.ok(exists(select 1 from pg_trigger where tgname = 'result_calculation_sources_append_only'), 'sources are append-only');
