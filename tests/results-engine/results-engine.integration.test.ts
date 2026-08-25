@@ -1307,10 +1307,14 @@ describe.sequential(
         "select student.admission_number, result.class_position, result.grade_level_position, subject.subject_position from public.calculated_student_results result join public.enrollments enrollment on enrollment.id=result.enrollment_id join public.students student on student.id=enrollment.student_id join public.calculated_subject_results subject on subject.calculation_run_id=result.calculation_run_id and subject.enrollment_id=result.enrollment_id where result.calculation_run_id=$1 order by result.class_position, subject.subject_position, result.enrollment_id limit 4",
         [result.data?.[0]?.calculation_run_id],
       );
-      expect(rows.rows[0].admission_number).toBe(fixture.admissions[1]);
+      expect(rows.rows[0].admission_number).toBe(fixture.admissions[0]);
       expect(rows.rows[0].class_position).toBe(1);
       expect(rows.rows[0].grade_level_position).toBe(1);
       expect(rows.rows[0].subject_position).toBe(1);
+      expect(rows.rows[1].admission_number).toBe(fixture.admissions[1]);
+      expect(rows.rows[1].class_position).toBe(2);
+      expect(rows.rows[2].admission_number).toBe(fixture.admissions[2]);
+      expect(rows.rows[2].class_position).toBe(3);
     });
     it("preserves the accepted component attendance matrix", async () => {
       const fixture = componentFixture!;
