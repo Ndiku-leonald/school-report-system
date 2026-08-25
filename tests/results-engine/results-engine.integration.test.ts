@@ -257,13 +257,16 @@ async function setup() {
     ids.scale,
   ]);
   await query(
-    "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,null,null,'Integration School Scale',1,true,'2040-01-02',$3)",
+    "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,null,null,'Integration School Scale',1,false,'2040-01-02',$3)",
     [ids.schoolScale, ids.school, ids.membership],
   );
   await query(
     "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,50,'F',1,false,1),($1,50,80,'C',2,true,2),($1,80,100,'A',3,true,3)",
     [ids.schoolScale],
   );
+  await query("update public.grading_scales set is_active=true where id=$1", [
+    ids.schoolScale,
+  ]);
   await query(
     "insert into public.ranking_rules(id,school_id,academic_year_id,grade_level_id,name,version,ranking_basis,tie_method,configuration,is_active,created_by) values($1,$2,$3,$4,'Integration Ranking',1,'AVERAGE','DENSE',$5,true,$6)",
     [
