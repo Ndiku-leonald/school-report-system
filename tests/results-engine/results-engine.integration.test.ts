@@ -75,6 +75,25 @@ const ids = Object.fromEntries(
 let client: SupabaseClient;
 let runId = "";
 
+type PolicyFixture = {
+  term: string;
+  grade: string;
+  scale: string;
+  rule: string;
+  enrollments: string[];
+  admissions: string[];
+};
+
+const policyFixtures: Record<string, PolicyFixture> = {};
+let componentFixture: {
+  term: string;
+  grade: string;
+  scale: string;
+  rule: string;
+  subjects: Record<string, string>;
+  runId: string;
+} | null = null;
+
 async function query(text: string, values: unknown[] = []) {
   return db.query(text, values);
 }
@@ -324,6 +343,454 @@ async function setup() {
     target_membership_id: ids.membership,
   });
   if (selected.error) throw selected.error;
+
+  for (const [name, basis, direction, configuredMetric] of [
+    ["total", "TOTAL", "DESC", null],
+    ["average", "AVERAGE", "DESC", null],
+    ["aggregate", "AGGREGATE", "ASC", null],
+    ["configured-total", "CONFIGURED", "DESC", "TOTAL"],
+    ["configured-average", "CONFIGURED", "DESC", "AVERAGE"],
+    ["configured-aggregate", "CONFIGURED", "DESC", "AGGREGATE"],
+  ] as const) {
+    policyFixtures[name] = await createPolicyFixture(
+      name,
+      basis,
+      direction,
+      configuredMetric,
+      "DENSE",
+    );
+  }
+  for (const [name, tieMethod] of [
+    ["dense", "DENSE"],
+    ["competition", "COMPETITION"],
+    ["shared", "SHARED"],
+    ["ordinal", "ORDINAL"],
+  ] as const) {
+    policyFixtures[`tie-${name}`] = await createPolicyFixture(
+      `tie-${name}`,
+      "AVERAGE",
+      "DESC",
+      null,
+      tieMethod,
+    );
+  }
+  componentFixture = await createComponentFixture();
+}
+
+async function createPolicyFixture(
+  name: string,
+  basis: "TOTAL" | "AVERAGE" | "AGGREGATE" | "CONFIGURED",
+  direction: "ASC" | "DESC",
+  configuredMetric: "TOTAL" | "AVERAGE" | "AGGREGATE" | null,
+  tieMethod: "DENSE" | "COMPETITION" | "ORDINAL" | "SHARED" = "DENSE",
+): Promise<PolicyFixture> {
+  const year = randomUUID();
+  const term = randomUUID();
+  const grade = randomUUID();
+  const classSection = randomUUID();
+  const subjects = [randomUUID(), randomUUID(), randomUUID()];
+  const students = [randomUUID(), randomUUID(), randomUUID(), randomUUID()];
+  const enrollments = students.map(() => randomUUID());
+  const assignments = subjects.map(() => randomUUID());
+  const schemes = subjects.map(() => randomUUID());
+  const components = subjects.map(() => randomUUID());
+  const sheets = subjects.map(() => randomUUID());
+  const scale = randomUUID();
+  const rule = randomUUID();
+  const yearNumber = 2050 + Object.keys(policyFixtures).length;
+  const admissions = ["Z-010", "A-002", "M-005", "B-001"];
+
+  await query(
+    "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,$3,$4,$5,'ACTIVE')",
+    [
+      year,
+      ids.school,
+      `Policy ${name}`,
+      `${yearNumber}-01-01`,
+      `${yearNumber}-12-31`,
+    ],
+  );
+  await query(
+    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,$3,1,$4,$5,'MARKS_ENTRY')",
+    [
+      term,
+      year,
+      `Policy ${name} Term`,
+      `${yearNumber}-01-01`,
+      `${yearNumber}-06-30`,
+    ],
+  );
+  await query(
+    "insert into public.grade_levels(id,school_id,code,name,sort_order) values($1,$2,$3,$4,1)",
+    [grade, ids.school, `P${yearNumber}`, `Policy ${name} Grade`],
+  );
+  await query(
+    "insert into public.class_sections(id,academic_year_id,grade_level_id,name,class_code) values($1,$2,$3,$4,$5)",
+    [classSection, year, grade, `Policy ${name} Class`, `P-${yearNumber}`],
+  );
+  await query(
+    "insert into public.subjects(id,school_id,code,name,sort_order) values($1,$5,$6,$7,1),($2,$5,$8,$9,2),($3,$5,$10,$11,3)",
+    [
+      subjects[0],
+      subjects[1],
+      subjects[2],
+      ids.school,
+      `P${yearNumber}A`,
+      `Policy ${name} A`,
+      `P${yearNumber}B`,
+      `Policy ${name} B`,
+      `P${yearNumber}C`,
+      `Policy ${name} C`,
+    ],
+  );
+  await query(
+    "insert into public.grade_level_subjects(grade_level_id,subject_id,is_required,contributes_to_aggregate,sort_order) values($1,$2,true,true,1),($1,$3,true,true,2),($1,$4,true,true,3)",
+    [grade, ...subjects],
+  );
+  await query(
+    "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date) values($1,$5,$6,'Policy','One',$10),($2,$5,$7,'Policy','Two',$10),($3,$5,$8,'Policy','Three',$10),($4,$5,$9,'Policy','Four',$10)",
+    [...students, ids.school, ...admissions, `${yearNumber}-01-02`],
+  );
+  await query(
+    "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,enrolled_on) values($1,$5,$9,$10,$11),($2,$6,$9,$10,$11),($3,$7,$9,$10,$11),($4,$8,$9,$10,$11)",
+    [...enrollments, ...students, year, classSection, `${yearNumber}-01-02`],
+  );
+  await query(
+    "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$4,$5,$6,$9,$10),($2,$4,$5,$7,$9,$10),($3,$4,$5,$8,$9,$10)",
+    [
+      ...assignments,
+      term,
+      classSection,
+      ...subjects,
+      ids.membership,
+      `${yearNumber}-01-02`,
+    ],
+  );
+  await query(
+    "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$4,$5,$7,$8,'DRAFT',$13,$6),($2,$4,$5,$9,$10,'DRAFT',$13,$6),($3,$4,$5,$11,$12,'DRAFT',$13,$6)",
+    [
+      ...schemes,
+      term,
+      grade,
+      ids.membership,
+      ...subjects.flatMap((subject, index) => [
+        subject,
+        `Policy ${name} Scheme ${index + 1}`,
+      ]),
+      `${yearNumber}-01-02`,
+    ],
+  );
+  await query(
+    "insert into public.assessment_components(id,assessment_scheme_id,name,component_code,maximum_score,weight_percentage,sort_order) values($1,$4,$7,$10,100,100,1),($2,$5,$8,$11,100,100,1),($3,$6,$9,$12,100,100,1)",
+    [
+      ...components,
+      ...schemes,
+      ...subjects.map((_, index) => `Policy Component ${index + 1}`),
+      ...subjects.map((_, index) => `P-${yearNumber}-${index + 1}`),
+    ],
+  );
+  await query(
+    "update public.assessment_schemes set status='ACTIVE' where id=any($1::uuid[])",
+    [schemes],
+  );
+  await query(
+    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id) values($1,$4,$5,$6,$9,$12),($2,$4,$5,$7,$10,$13),($3,$4,$5,$8,$11,$14)",
+    [...sheets, term, classSection, ...subjects, ...schemes, ...assignments],
+  );
+
+  const scores = [
+    [100, 100, 100],
+    [90, 90, 90],
+    [90, 90, 90],
+    [80, 80, 80],
+  ];
+  for (
+    let studentIndex = 0;
+    studentIndex < enrollments.length;
+    studentIndex += 1
+  ) {
+    for (
+      let subjectIndex = 0;
+      subjectIndex < subjects.length;
+      subjectIndex += 1
+    ) {
+      await query(
+        "insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$2,$3,$4,'PRESENT',$5,$5)",
+        [
+          sheets[subjectIndex],
+          components[subjectIndex],
+          enrollments[studentIndex],
+          scores[studentIndex][subjectIndex],
+          ids.membership,
+        ],
+      );
+    }
+  }
+  await query(
+    "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,$3,$4,$5,1,false,$6,$7)",
+    [
+      scale,
+      ids.school,
+      year,
+      grade,
+      `Policy ${name} Scale`,
+      `${yearNumber}-01-02`,
+      ids.membership,
+    ],
+  );
+  await query(
+    "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,50,'F',1,false,1),($1,50,80,'C',2,true,2),($1,80,100,'A',3,true,3)",
+    [scale],
+  );
+  await query("update public.grading_scales set is_active=true where id=$1", [
+    scale,
+  ]);
+  await query(
+    "insert into public.ranking_rules(id,school_id,academic_year_id,grade_level_id,name,version,ranking_basis,tie_method,configuration,is_active,created_by) values($1,$2,$3,$4,$5,1,$6,$7,$8,true,$9)",
+    [
+      rule,
+      ids.school,
+      year,
+      grade,
+      `Policy ${name} Ranking`,
+      basis,
+      tieMethod,
+      JSON.stringify({
+        direction,
+        include_incomplete: false,
+        minimum_subjects: 1,
+        ...(configuredMetric ? { configured_metric: configuredMetric } : {}),
+      }),
+      ids.membership,
+    ],
+  );
+  await query(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await query(
+    "update public.mark_sheets set workflow_status='LOCKED',locked_by=$2,locked_at=now() where term_id=$1",
+    [term, ids.membership],
+  );
+  await query(
+    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+  );
+  await query("update public.terms set status='LOCKED' where id=$1", [term]);
+  return { term, grade, scale, rule, enrollments, admissions };
+}
+
+async function createComponentFixture() {
+  const year = randomUUID();
+  const term = randomUUID();
+  const grade = randomUUID();
+  const classSection = randomUUID();
+  const student = randomUUID();
+  const enrollment = randomUUID();
+  const scale = randomUUID();
+  const rule = randomUUID();
+  const yearNumber = 2200 + Object.keys(policyFixtures).length;
+  const definitions = [
+    {
+      key: "zero",
+      components: [
+        { weight: 100, required: true, score: 0, status: "PRESENT" },
+      ],
+    },
+    {
+      key: "absent",
+      components: [
+        { weight: 40, required: true, score: 80, status: "PRESENT" },
+        { weight: 60, required: true, score: null, status: "ABSENT" },
+      ],
+    },
+    {
+      key: "exempted",
+      components: [
+        { weight: 40, required: true, score: 80, status: "PRESENT" },
+        { weight: 60, required: true, score: null, status: "EXEMPTED" },
+      ],
+    },
+    {
+      key: "optional-na",
+      components: [
+        { weight: 70, required: true, score: 75, status: "PRESENT" },
+        { weight: 30, required: false, score: null, status: "NOT_ASSESSED" },
+      ],
+    },
+    {
+      key: "missing-optional",
+      components: [
+        { weight: 70, required: true, score: 75, status: "PRESENT" },
+        { weight: 30, required: false, score: null, status: "MISSING" },
+      ],
+    },
+    {
+      key: "required-na",
+      components: [
+        { weight: 100, required: true, score: null, status: "NOT_ASSESSED" },
+      ],
+    },
+    {
+      key: "all-exempted",
+      components: [
+        { weight: 50, required: true, score: null, status: "EXEMPTED" },
+        { weight: 50, required: true, score: null, status: "EXEMPTED" },
+      ],
+    },
+  ] as const;
+  const subjects = Object.fromEntries(
+    definitions.map(({ key }) => [key, randomUUID()]),
+  );
+
+  await query(
+    "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,$3,$4,$5,'ACTIVE')",
+    [
+      year,
+      ids.school,
+      "Component Policy Year",
+      `${yearNumber}-01-01`,
+      `${yearNumber}-12-31`,
+    ],
+  );
+  await query(
+    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Component Policy Term',1,$3,$4,'MARKS_ENTRY')",
+    [term, year, `${yearNumber}-01-01`, `${yearNumber}-06-30`],
+  );
+  await query(
+    "insert into public.grade_levels(id,school_id,code,name,sort_order) values($1,$2,$3,'Component Policy Grade',1)",
+    [grade, ids.school, `CP${yearNumber}`],
+  );
+  await query(
+    "insert into public.class_sections(id,academic_year_id,grade_level_id,name,class_code) values($1,$2,$3,'Component Policy Class',$4)",
+    [classSection, year, grade, `CP-${yearNumber}`],
+  );
+  await query(
+    "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date) values($1,$2,'CP-001','Component','Policy',$3)",
+    [student, ids.school, `${yearNumber}-01-02`],
+  );
+  await query(
+    "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,enrolled_on) values($1,$2,$3,$4,$5)",
+    [enrollment, student, year, classSection, `${yearNumber}-01-02`],
+  );
+  for (const [index, definition] of definitions.entries()) {
+    const subject = subjects[definition.key];
+    const assignment = randomUUID();
+    const scheme = randomUUID();
+    const sheet = randomUUID();
+    await query(
+      "insert into public.subjects(id,school_id,code,name,sort_order) values($1,$2,$3,$4,$5)",
+      [
+        subject,
+        ids.school,
+        `CP-${index + 1}`,
+        `Component ${definition.key}`,
+        index + 1,
+      ],
+    );
+    await query(
+      "insert into public.grade_level_subjects(grade_level_id,subject_id,is_required,contributes_to_aggregate,sort_order) values($1,$2,true,false,$3)",
+      [grade, subject, index + 1],
+    );
+    await query(
+      "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$2,$3,$4,$5,$6)",
+      [
+        assignment,
+        term,
+        classSection,
+        subject,
+        ids.membership,
+        `${yearNumber}-01-02`,
+      ],
+    );
+    await query(
+      "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$2,$3,$4,$5,'DRAFT',$6,$7)",
+      [
+        scheme,
+        term,
+        grade,
+        subject,
+        `Component ${definition.key} Scheme`,
+        `${yearNumber}-01-02`,
+        ids.membership,
+      ],
+    );
+    const componentIds: string[] = [];
+    for (const [componentIndex, component] of definition.components.entries()) {
+      const componentId = randomUUID();
+      componentIds.push(componentId);
+      await query(
+        "insert into public.assessment_components(id,assessment_scheme_id,name,component_code,maximum_score,weight_percentage,sort_order,is_required) values($1,$2,$3,$4,100,$5,$6,$7)",
+        [
+          componentId,
+          scheme,
+          `Component ${componentIndex + 1}`,
+          `CP-${index + 1}-${componentIndex + 1}`,
+          component.weight,
+          componentIndex + 1,
+          component.required,
+        ],
+      );
+    }
+    await query(
+      "update public.assessment_schemes set status='ACTIVE' where id=$1",
+      [scheme],
+    );
+    await query(
+      "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id) values($1,$2,$3,$4,$5,$6)",
+      [sheet, term, classSection, subject, scheme, assignment],
+    );
+    for (const [componentIndex, component] of definition.components.entries()) {
+      if (component.status === "MISSING") continue;
+      await query(
+        "insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$2,$3,$4,$5,$6,$6)",
+        [
+          sheet,
+          componentIds[componentIndex],
+          enrollment,
+          component.score,
+          component.status,
+          ids.membership,
+        ],
+      );
+    }
+  }
+  await query(
+    "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,$3,$4,'Component Policy Scale',1,false,$5,$6)",
+    [scale, ids.school, year, grade, `${yearNumber}-01-02`, ids.membership],
+  );
+  await query(
+    "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,50,'F',1,false,1),($1,50,80,'C',2,true,2),($1,80,100,'A',3,true,3)",
+    [scale],
+  );
+  await query("update public.grading_scales set is_active=true where id=$1", [
+    scale,
+  ]);
+  await query(
+    "insert into public.ranking_rules(id,school_id,academic_year_id,grade_level_id,name,version,ranking_basis,tie_method,configuration,is_active,created_by) values($1,$2,$3,$4,'Component Policy Ranking',1,'AVERAGE','DENSE',$5,true,$6)",
+    [
+      rule,
+      ids.school,
+      year,
+      grade,
+      JSON.stringify({
+        direction: "DESC",
+        include_incomplete: true,
+        minimum_subjects: 1,
+      }),
+      ids.membership,
+    ],
+  );
+  await query(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await query(
+    "update public.mark_sheets set workflow_status='LOCKED',locked_by=$2,locked_at=now() where term_id=$1",
+    [term, ids.membership],
+  );
+  await query(
+    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+  );
+  await query("update public.terms set status='LOCKED' where id=$1", [term]);
+  return { term, grade, scale, rule, subjects, runId: "" };
 }
 
 describe.sequential(
@@ -760,6 +1227,139 @@ describe.sequential(
         [ids.term, ids.grade],
       );
       expect(r.rows[0].count).toBe(1);
+    });
+    it.each([
+      ["total", "TOTAL"],
+      ["average", "AVERAGE"],
+      ["aggregate", "AGGREGATE"],
+      ["configured-total", "TOTAL"],
+      ["configured-average", "AVERAGE"],
+      ["configured-aggregate", "AGGREGATE"],
+    ] as const)("executes the %s ranking basis", async (name, metric) => {
+      const fixture = policyFixtures[name];
+      const result = await client.rpc("calculate_grade_results", {
+        target_term_id: fixture.term,
+        target_grade_level_id: fixture.grade,
+        target_grading_scale_id: fixture.scale,
+        target_ranking_rule_id: fixture.rule,
+        target_aggregate_classification_scale_id: null,
+      });
+      expect(result.error).toBeNull();
+      const rows = await query(
+        "select result.ranking_metric::text, result.overall_total::text, result.overall_average::text, result.aggregate_total from public.calculated_student_results result join public.enrollments enrollment on enrollment.id=result.enrollment_id join public.students student on student.id=enrollment.student_id where result.calculation_run_id=$1 order by student.admission_number, result.enrollment_id",
+        [result.data?.[0]?.calculation_run_id],
+      );
+      expect(rows.rows).toHaveLength(4);
+      for (const row of rows.rows) {
+        if (metric === "TOTAL")
+          expect(row.ranking_metric).toBe(row.overall_total);
+        if (metric === "AVERAGE")
+          expect(row.ranking_metric).toBe(row.overall_average);
+        if (metric === "AGGREGATE")
+          expect(row.ranking_metric).toBe(String(row.aggregate_total));
+      }
+    });
+    it.each([
+      ["dense", [1, 2, 2, 3]],
+      ["competition", [1, 2, 2, 4]],
+      ["shared", [1, 2, 2, 4]],
+    ] as const)("applies the %s tie method", async (name, expected) => {
+      const fixture = policyFixtures[`tie-${name}`];
+      const result = await client.rpc("calculate_grade_results", {
+        target_term_id: fixture.term,
+        target_grade_level_id: fixture.grade,
+        target_grading_scale_id: fixture.scale,
+        target_ranking_rule_id: fixture.rule,
+        target_aggregate_classification_scale_id: null,
+      });
+      expect(result.error).toBeNull();
+      const rows = await query(
+        "select class_position, class_tie_size, class_is_tied from public.calculated_student_results where calculation_run_id=$1 order by overall_average desc, enrollment_id",
+        [result.data?.[0]?.calculation_run_id],
+      );
+      expect(rows.rows.map((row) => row.class_position)).toEqual(expected);
+      expect(
+        rows.rows.slice(1, 3).every((row) => row.class_tie_size === 2),
+      ).toBe(true);
+      expect(rows.rows.slice(1, 3).every((row) => row.class_is_tied)).toBe(
+        true,
+      );
+    });
+    it("uses normalized admission numbers before enrollment UUIDs for ORDINAL class, grade, and subject positions", async () => {
+      const fixture = policyFixtures["tie-ordinal"];
+      const result = await client.rpc("calculate_grade_results", {
+        target_term_id: fixture.term,
+        target_grade_level_id: fixture.grade,
+        target_grading_scale_id: fixture.scale,
+        target_ranking_rule_id: fixture.rule,
+        target_aggregate_classification_scale_id: null,
+      });
+      expect(result.error).toBeNull();
+      const rows = await query(
+        "select student.admission_number, result.class_position, result.grade_level_position, subject.subject_position from public.calculated_student_results result join public.enrollments enrollment on enrollment.id=result.enrollment_id join public.students student on student.id=enrollment.student_id join public.calculated_subject_results subject on subject.calculation_run_id=result.calculation_run_id and subject.enrollment_id=result.enrollment_id order by result.class_position, subject.subject_position, result.enrollment_id limit 4",
+        [result.data?.[0]?.calculation_run_id],
+      );
+      expect(rows.rows[0].admission_number).toBe("A-002");
+      expect(rows.rows[0].class_position).toBe(1);
+      expect(rows.rows[0].grade_level_position).toBe(1);
+      expect(rows.rows[0].subject_position).toBe(1);
+    });
+    it("preserves the accepted component attendance matrix", async () => {
+      const fixture = componentFixture!;
+      const result = await client.rpc("calculate_grade_results", {
+        target_term_id: fixture.term,
+        target_grade_level_id: fixture.grade,
+        target_grading_scale_id: fixture.scale,
+        target_ranking_rule_id: fixture.rule,
+        target_aggregate_classification_scale_id: null,
+      });
+      expect(result.error).toBeNull();
+      fixture.runId = result.data?.[0]?.calculation_run_id ?? "";
+      const rows = await query(
+        "select subject_id, subject_status, subject_score::text, grade, has_absence, has_exemption, assessed_weight::text from public.calculated_subject_results where calculation_run_id=$1",
+        [fixture.runId],
+      );
+      const byKey = (key: string) =>
+        rows.rows.find((row) => row.subject_id === fixture.subjects[key]);
+      expect(byKey("zero")).toMatchObject({
+        subject_status: "COMPLETE",
+        subject_score: "0.00",
+        grade: "F",
+        has_absence: false,
+        has_exemption: false,
+      });
+      expect(byKey("absent")).toMatchObject({
+        subject_status: "COMPLETE",
+        subject_score: "32.00",
+        has_absence: true,
+        assessed_weight: "100.00",
+      });
+      expect(byKey("exempted")).toMatchObject({
+        subject_status: "COMPLETE",
+        subject_score: "80.00",
+        has_exemption: true,
+        assessed_weight: "40.00",
+      });
+      expect(byKey("optional-na")).toMatchObject({
+        subject_status: "COMPLETE",
+        subject_score: "75.00",
+      });
+      expect(byKey("missing-optional")).toMatchObject({
+        subject_status: "COMPLETE",
+        subject_score: "75.00",
+      });
+      expect(byKey("required-na")).toMatchObject({
+        subject_status: "INCOMPLETE",
+        subject_score: null,
+        grade: null,
+        subject_position: null,
+      });
+      expect(byKey("all-exempted")).toMatchObject({
+        subject_status: "EXEMPTED",
+        subject_score: null,
+        grade: null,
+        subject_position: null,
+      });
     });
   },
 );
