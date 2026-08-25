@@ -5,7 +5,6 @@ import { Client } from "pg";
 
 const enabled = process.env.RESULTS_ENGINE_E2E === "1";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
-const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
 const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
 const databaseUrl = process.env.SUPABASE_LOCAL_DB_URL ?? "";
 const nonce = Date.now();
