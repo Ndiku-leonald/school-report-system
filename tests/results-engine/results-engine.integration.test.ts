@@ -1304,7 +1304,7 @@ describe.sequential(
       });
       expect(result.error).toBeNull();
       const rows = await query(
-        "select student.admission_number, result.class_position, result.grade_level_position, subject.subject_position from public.calculated_student_results result join public.enrollments enrollment on enrollment.id=result.enrollment_id join public.students student on student.id=enrollment.student_id join public.calculated_subject_results subject on subject.calculation_run_id=result.calculation_run_id and subject.enrollment_id=result.enrollment_id where result.calculation_run_id=$1 order by result.class_position, subject.subject_position, result.enrollment_id limit 4",
+        "select student.admission_number, result.class_position, result.grade_level_position, min(subject.subject_position) as subject_position from public.calculated_student_results result join public.enrollments enrollment on enrollment.id=result.enrollment_id join public.students student on student.id=enrollment.student_id join public.calculated_subject_results subject on subject.calculation_run_id=result.calculation_run_id and subject.enrollment_id=result.enrollment_id where result.calculation_run_id=$1 group by student.admission_number, result.class_position, result.grade_level_position, result.enrollment_id order by result.class_position, min(subject.subject_position), result.enrollment_id limit 4",
         [result.data?.[0]?.calculation_run_id],
       );
       expect(rows.rows[0].admission_number).toBe(fixture.admissions[0]);
