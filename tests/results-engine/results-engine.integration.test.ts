@@ -429,7 +429,7 @@ async function createPolicyFixture(
     [classSection, year, grade, `Policy ${name} Class`, `P-${yearNumber}`],
   );
   await query(
-    "insert into public.subjects(id,school_id,code,name,sort_order) values($1,$4,$5,$6,1),($2,$4,$7,$8,2),($3,$4,$9,$10,3)",
+    "insert into public.subjects(id,school_id,code,name,sort_order) values($1,$4,$5,$6,$11),($2,$4,$7,$8,$12),($3,$4,$9,$10,$13)",
     [
       subjects[0],
       subjects[1],
@@ -441,6 +441,9 @@ async function createPolicyFixture(
       `Policy ${name} B`,
       `P${yearNumber}C`,
       `Policy ${name} C`,
+      yearNumber * 10 + 1,
+      yearNumber * 10 + 2,
+      yearNumber * 10 + 3,
     ],
   );
   await query(
@@ -683,7 +686,7 @@ async function createComponentFixture() {
         ids.school,
         `CP-${index + 1}`,
         `Component ${definition.key}`,
-        index + 1,
+        yearNumber * 10 + index + 1,
       ],
     );
     await query(
