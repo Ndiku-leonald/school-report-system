@@ -182,10 +182,35 @@ async function login(page: Page) {
   }
 }
 
+async function openLatestCalculation(page: Page) {
+  await page.goto("/dashboard/results");
+  await page.getByText("Open latest calculation").click();
+  await page.waitForURL(/dashboard\/results\/.+/);
+  runPath = new URL(page.url()).pathname;
+}
+
 test.describe.serial("results engine dedicated browser verification", () => {
   test.skip(!enabled, "requires the local results-engine runner");
   test.beforeAll(setup);
   test.afterAll(async () => database.end());
+  test.beforeEach(async ({ page }, testInfo) => {
+    if (testInfo.title.startsWith("1.")) return;
+    await login(page);
+    if (testInfo.title.startsWith("16.")) {
+      await page.goto("/dashboard/results");
+      await page
+        .getByRole("button", { name: "Calculate locked results" })
+        .click();
+    } else if (
+      /^(19\.|20\.|21\.|22\.|23\.|24\.|25\.|26\.|27\.|28\.|29\.|30\.|31\.|35\.|36\.)/.test(
+        testInfo.title,
+      )
+    ) {
+      await openLatestCalculation(page);
+    } else if (/^(18|33|34)\./.test(testInfo.title)) {
+      await page.goto("/dashboard/results");
+    }
+  });
   test("1. unauthenticated results route redirects to staff login", async ({
     page,
   }) => {
@@ -193,7 +218,6 @@ test.describe.serial("results engine dedicated browser verification", () => {
     await expect(page).toHaveURL(/staff-login|dashboard\/results/);
   });
   test("2. authenticated admin can sign in", async ({ page }) => {
-    await login(page);
     await expect(page).not.toHaveURL(/staff-login/);
   });
   test("3. results dashboard heading is visible", async ({ page }) => {
