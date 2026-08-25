@@ -224,30 +224,15 @@ async function setup() {
       ids.assignmentB3,
     ],
   );
-  const scope = await query(
-    "select mark_sheets.id, academic_years.school_id as sheet_school_id, (select school_id from public.school_staff_memberships where id=$2) as actor_school_id from public.mark_sheets join public.terms on terms.id=mark_sheets.term_id join public.academic_years on academic_years.id=terms.academic_year_id where mark_sheets.id=any($1::uuid[]) order by mark_sheets.id",
-    [
-      [
-        ids.sheetA1,
-        ids.sheetA2,
-        ids.sheetA3,
-        ids.sheetB1,
-        ids.sheetB2,
-        ids.sheetB3,
-      ],
-      ids.membership,
-    ],
-  );
-  console.log("results integration mark scope", JSON.stringify(scope.rows));
   await query(
     "with actor as (select id from public.school_staff_memberships where school_id=$14 limit 1) insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$7,$10,90,'PRESENT',(select id from actor),(select id from actor)),($1,$7,$11,90,'PRESENT',(select id from actor),(select id from actor)),($2,$8,$10,80,'PRESENT',(select id from actor),(select id from actor)),($4,$7,$12,90,'PRESENT',(select id from actor),(select id from actor)),($5,$8,$12,70,'PRESENT',(select id from actor),(select id from actor)),($5,$8,$13,60,'PRESENT',(select id from actor),(select id from actor)),($4,$7,$13,null,'ABSENT',(select id from actor),(select id from actor)),($3,$9,$10,null,'EXEMPTED',(select id from actor),(select id from actor)),($3,$9,$11,null,'EXEMPTED',(select id from actor),(select id from actor)),($6,$9,$12,null,'EXEMPTED',(select id from actor),(select id from actor)),($6,$9,$13,null,'EXEMPTED',(select id from actor),(select id from actor))",
     [
       ids.sheetA1,
       ids.sheetA2,
       ids.sheetA3,
-      ids.componentA,
-      ids.componentB,
-      ids.componentC,
+      ids.sheetB1,
+      ids.sheetB2,
+      ids.sheetB3,
       ids.componentA,
       ids.componentB,
       ids.componentC,
