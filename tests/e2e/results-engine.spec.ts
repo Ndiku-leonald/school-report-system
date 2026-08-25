@@ -412,6 +412,7 @@ test.describe.serial("results engine dedicated browser verification", () => {
   test("33. dashboard retains calculate access after a run", async ({
     page,
   }) => {
+    await selectCalculationRules(page);
     await expect(
       page.getByRole("button", { name: "Calculate locked results" }),
     ).toBeEnabled();
