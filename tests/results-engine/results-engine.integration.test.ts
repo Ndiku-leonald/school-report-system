@@ -401,7 +401,7 @@ async function createPolicyFixture(
   const admissions = ["Z-010", "A-002", "M-005", "B-001"];
 
   await query(
-    "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,$3,$4,$5,'ACTIVE')",
+    "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,$3,$4,$5,'DRAFT')",
     [
       year,
       ids.school,
@@ -642,7 +642,7 @@ async function createComponentFixture() {
   );
 
   await query(
-    "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,$3,$4,$5,'ACTIVE')",
+    "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,$3,$4,$5,'DRAFT')",
     [
       year,
       ids.school,
