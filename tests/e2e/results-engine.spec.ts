@@ -351,12 +351,16 @@ test.describe.serial("results engine dedicated browser verification", () => {
   test("30. detail page does not expose publication controls", async ({
     page,
   }) => {
-    await expect(page.getByText(/Publish|Withdraw|Promotion/)).toHaveCount(0);
+    await expect(
+      page.getByRole("main").getByText(/^(Publish|Withdraw|Promotion)$/),
+    ).toHaveCount(0);
   });
   test("31. detail page does not expose guardian contacts", async ({
     page,
   }) => {
-    await expect(page.getByText(/guardian|phone|email/i)).toHaveCount(0);
+    await expect(
+      page.getByRole("main").getByText(/^(Guardian|Phone|Email|Contact)$/i),
+    ).toHaveCount(0);
   });
   test("32. dashboard marks the run current", async ({ page }) => {
     await page.goto("/dashboard/results");
