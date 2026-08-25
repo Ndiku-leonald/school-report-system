@@ -22,6 +22,30 @@ export type ResultCalculationTerm = {
   created_at: string | null;
 };
 
+export type ResultCalculationReadiness = {
+  term_id: string;
+  term_status: string;
+  term_name: string;
+  academic_year_name: string;
+  grade_level_id: string;
+  grade_name: string;
+  class_count: number;
+  student_population: number;
+  expected_class_subject_scopes: number;
+  source_sheet_count: number;
+  missing_source_scopes: number;
+  non_locked_latest_scopes: number;
+  latest_run_id: string | null;
+  latest_version: number | null;
+  calculation_present: boolean;
+  applicable_grading_scale_count: number;
+  applicable_ranking_rule_count: number;
+  applicable_classification_scale_count: number;
+  current_authoritative_input_checksum: string | null;
+  latest_run_input_checksum: string | null;
+  up_to_date: boolean;
+};
+
 export type ResultCalculationOption = {
   option_type: "GRADING_SCALE" | "RANKING_RULE" | "CLASSIFICATION_SCALE";
   option_id: string;
@@ -143,6 +167,11 @@ export type SubjectPerformance = {
   exempted_count: number;
   grade_distribution: Record<string, number>;
 };
+
+export type GradeSubjectPerformance = Omit<
+  SubjectPerformance,
+  "class_section_id" | "class_name"
+>;
 
 export type AggregateClassificationBand = {
   id: string;

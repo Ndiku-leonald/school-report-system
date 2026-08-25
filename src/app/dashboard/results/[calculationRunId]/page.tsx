@@ -5,6 +5,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
   getCalculatedStudents,
+  getGradeSubjectPerformance,
   getResultCalculationRun,
   getSubjectPerformance,
 } from "@/lib/results-engine/data";
@@ -15,10 +16,11 @@ export default async function ResultCalculationRunPage({
   params: Promise<{ calculationRunId: string }>;
 }) {
   const { calculationRunId } = await params;
-  const [run, students, performance] = await Promise.all([
+  const [run, students, performance, gradePerformance] = await Promise.all([
     getResultCalculationRun(calculationRunId),
     getCalculatedStudents(calculationRunId),
     getSubjectPerformance(calculationRunId),
+    getGradeSubjectPerformance(calculationRunId),
   ]);
   return (
     <div className="space-y-8">
@@ -206,6 +208,58 @@ export default async function ResultCalculationRunPage({
               </CardContent>
             </Card>
           ))}
+        </div>
+      </section>
+      <section
+        className="space-y-3"
+        aria-labelledby="grade-performance-heading"
+      >
+        <div>
+          <h2
+            id="grade-performance-heading"
+            className="text-foreground text-lg font-bold tracking-tight"
+          >
+            Grade-wide subject performance
+          </h2>
+          <p className="text-muted-foreground text-sm">
+            All classes in this calculation scope, preserved as immutable
+            academic summaries.
+          </p>
+        </div>
+        <div className="border-border overflow-x-auto rounded-xl border">
+          <table className="w-full min-w-[720px] text-left text-sm">
+            <thead className="bg-surface-muted text-muted-foreground text-xs tracking-wide uppercase">
+              <tr>
+                <th className="px-4 py-3">Subject</th>
+                <th className="px-4 py-3">Mean</th>
+                <th className="px-4 py-3">Range</th>
+                <th className="px-4 py-3">Pass rate</th>
+                <th className="px-4 py-3">Complete / incomplete / exempted</th>
+              </tr>
+            </thead>
+            <tbody className="divide-border divide-y">
+              {gradePerformance.map((item) => (
+                <tr key={item.subject_id}>
+                  <td className="px-4 py-3 font-semibold">
+                    {item.subject_name}
+                  </td>
+                  <td className="px-4 py-3 font-mono">
+                    {item.mean_score ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 font-mono">
+                    {item.minimum_score ?? "—"} – {item.maximum_score ?? "—"}
+                  </td>
+                  <td className="px-4 py-3 font-mono">
+                    {item.pass_rate ?? "—"}%
+                  </td>
+                  <td className="px-4 py-3 font-mono">
+                    {item.complete_count} / {item.incomplete_count} /{" "}
+                    {item.exempted_count}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </section>
     </div>

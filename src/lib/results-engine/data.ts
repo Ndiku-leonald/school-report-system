@@ -13,7 +13,9 @@ import type {
   CalculatedStudent,
   CalculatedStudentDetail,
   CalculatedSubject,
+  GradeSubjectPerformance,
   ResultCalculationOption,
+  ResultCalculationReadiness,
   ResultCalculationRun,
   ResultCalculationTerm,
   ResultComponentExplanation,
@@ -56,6 +58,24 @@ export async function getResultCalculationOptions(
   if (result.error)
     throw new Error("Applicable calculation rules could not be loaded.");
   return (result.data ?? []) as ResultCalculationOption[];
+}
+
+export async function getResultCalculationReadiness(
+  termId: string,
+  gradeLevelId: string,
+) {
+  await requireAnyPermission(["REPORTS_VIEW_ALL", "REPORTS_GENERATE"]);
+  const result = await (
+    await rpcClient()
+  ).rpc("get_results_calculation_readiness", {
+    target_term_id: termId,
+    target_grade_level_id: gradeLevelId,
+  });
+  if (result.error)
+    throw new Error("Results calculation readiness could not be loaded.");
+  return (
+    ((result.data as ResultCalculationReadiness[] | null) ?? [])[0] ?? null
+  );
 }
 
 export async function getResultCalculationRun(runId: string) {
@@ -120,6 +140,16 @@ export async function getSubjectPerformance(runId: string) {
   ).rpc("list_result_subject_performance", { target_run_id: runId });
   if (result.error) throw new Error("Subject performance could not be loaded.");
   return (result.data ?? []) as SubjectPerformance[];
+}
+
+export async function getGradeSubjectPerformance(runId: string) {
+  await requireAnyPermission(["REPORTS_VIEW_ALL", "REPORTS_GENERATE"]);
+  const result = await (
+    await rpcClient()
+  ).rpc("list_result_grade_subject_performance", { target_run_id: runId });
+  if (result.error)
+    throw new Error("Grade-wide subject performance could not be loaded.");
+  return (result.data ?? []) as GradeSubjectPerformance[];
 }
 
 export async function getAggregateClassificationScales() {
