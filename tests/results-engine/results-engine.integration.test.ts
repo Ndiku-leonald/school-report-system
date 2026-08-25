@@ -112,7 +112,7 @@ async function setup() {
     [ids.year, ids.school],
   );
   await query(
-    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Integration Term',1,'2040-01-01','2040-06-30','DRAFT')",
+    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Integration Term',1,'2040-01-01','2040-06-30','MARKS_ENTRY')",
     [ids.term, ids.year],
   );
   await query(

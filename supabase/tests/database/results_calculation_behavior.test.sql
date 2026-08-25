@@ -27,7 +27,7 @@ values ('b4000000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-0000000
 
 insert into public.terms (id, academic_year_id, name, term_number, starts_on, ends_on, status)
 values ('b4100000-0000-4000-8000-000000000001', 'b4000000-0000-4000-8000-000000000001',
-  'Results Runtime Term', 1, '2039-01-01', '2039-06-30', 'DRAFT');
+  'Results Runtime Term', 1, '2039-01-01', '2039-06-30', 'MARKS_ENTRY');
 
 insert into public.grade_levels (id, school_id, code, name, sort_order)
 values ('b4200000-0000-4000-8000-000000000001', 'b1000000-0000-4000-8000-000000000001', 'RR1', 'Runtime Grade One', 1);
