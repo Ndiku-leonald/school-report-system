@@ -270,14 +270,14 @@ async function setup() {
     ],
   );
   await query(
-    "select set_config('app.marks_workflow_transition','allowed',true)",
+    "select set_config('app.marks_workflow_transition','allowed',false)",
   );
   await query(
     "update public.mark_sheets set workflow_status='LOCKED',locked_by=$2,locked_at=now() where term_id=$1",
     [ids.term, ids.membership],
   );
   await query(
-    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+    "select set_config('app.term_marks_workflow_transition','allowed',false)",
   );
   await query("update public.terms set status='LOCKED' where id=$1", [
     ids.term,
