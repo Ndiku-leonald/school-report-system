@@ -84,4 +84,9 @@ Changes affecting marks entry must preserve DRAFT-only semantics, exact current
 subject assignments, selected-membership isolation, implicit missing cells,
 row-version conflicts, atomic batches and contact-free read contracts. Run
 `npm run test:marks-entry` and `npm run test:e2e:marks-entry` plus pgTAP and all
-retained suites. Do not add Stage 10 transitions or Stage 11 calculations.
+retained suites.
+
+Stage 10 workflow changes must preserve the lock order documented in
+`docs/marks-workflow.md`, keep direct browser writes revoked, and include
+behavioral concurrency coverage. Run `npm run test:marks-workflow` and
+`npm run test:e2e:marks-workflow`. Do not add Stage 11 calculations.

@@ -1,20 +1,36 @@
 import { ListChecks } from "lucide-react";
+import Link from "next/link";
 
 import { PageHeader } from "@/components/layout/page-header";
 import { EmptyState } from "@/components/shared/empty-state";
 import { Badge } from "@/components/ui/badge";
+import { buttonStyles } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { requirePermission } from "@/lib/authorization/guards";
 import { getSchoolMarkSheets } from "@/lib/marks-entry/data";
 
 export default async function MarksOverviewPage() {
+  await requirePermission("MARKS_VIEW_ALL");
   const sheets = await getSchoolMarkSheets();
   return (
     <div className="space-y-7">
       <PageHeader
         eyebrow="Selected school"
         title="Marks overview"
-        description="Read-only operational completeness for mark sheets. Review, approval, grades, averages and rankings are not part of Stage 9."
-        actions={<Badge variant="info">Read only</Badge>}
+        description="Monitor completeness and move authorized submissions through review, approval, and locking."
+        actions={
+          <div className="flex flex-wrap gap-2">
+            <Link
+              className={buttonStyles({ variant: "secondary" })}
+              href="/dashboard/marks/terms"
+            >
+              Term workflow
+            </Link>
+            <Link className={buttonStyles()} href="/dashboard/marks/review">
+              Review queue
+            </Link>
+          </div>
+        }
       />
       {sheets.length ? (
         <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-3">
@@ -47,9 +63,12 @@ export default async function MarksOverviewPage() {
                 >
                   {sheet.entered_cells} / {sheet.expected_cells} cells entered
                 </p>
-                <p className="text-muted-foreground text-xs">
-                  Updated {new Date(sheet.updated_at).toLocaleString("en-UG")}
-                </p>
+                <Link
+                  className={buttonStyles({ variant: "secondary", size: "sm" })}
+                  href={`/dashboard/marks/review/${sheet.mark_sheet_id}`}
+                >
+                  Open workflow
+                </Link>
               </CardContent>
             </Card>
           ))}
@@ -58,7 +77,7 @@ export default async function MarksOverviewPage() {
         <EmptyState
           icon={ListChecks}
           title="No mark sheets"
-          description="No DRAFT or historical mark sheets are visible in the selected school."
+          description="No mark sheets are visible in the selected school."
         />
       )}
     </div>

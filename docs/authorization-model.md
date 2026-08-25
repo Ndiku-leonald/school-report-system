@@ -152,3 +152,11 @@ live grants (`granted_at <= now()` and not revoked). Mutation RPCs require
 `SUBJECT_TEACHER` role. Read RPCs distinguish selected-school
 `MARKS_VIEW_ALL` from exact-assignment `MARKS_VIEW_ASSIGNED`; caller-supplied
 school, class, subject, component and roster claims are never authoritative.
+
+## Marks-workflow permissions
+
+`MARKS_SUBMIT` is constrained to the exact live bound subject teacher.
+`MARKS_REVIEW`, `MARKS_APPROVE`, and `MARKS_LOCK` authorize their named steps,
+but the submitter is excluded from every post-submission action. Mutations lock
+the Auth-session selection, membership, school, live grants, and mappings
+before academic rows; other memberships never contribute.

@@ -61,6 +61,12 @@ Untrusted inputs include browser requests, uploaded or imported data, marks-entr
 - PostgreSQL Row Level Security must be enabled and explicitly tested for protected application tables and storage objects.
 - Subject teachers must be restricted to their current, explicit class and subject assignments. Class-level access must also be scoped to an authorized academic period.
 - Marks approval, locking, unlocking, report publication, report withdrawal, role changes, and other sensitive actions must produce tamper-resistant audit events with the actor, action, target, and time.
+- A mark-sheet submitter cannot review, return, approve, or lock the same
+  submission. Submitted, reviewed, approved, and locked marks are frozen below
+  RLS; exceptional correction creates a linked revision and never unlocks or
+  rewrites historical locked data.
+- A locked term can return to review only with live `MARKS_LOCK`, a normalized
+  reason, optimistic concurrency, and no downstream report or promotion record.
 - All untrusted input must be validated on the server. Output and file handling must be appropriate for the destination context.
 - Parent code and PIN verification must be rate-limited and monitored to reduce enumeration and brute-force risk.
 - Parent sessions must be secure, short-lived where appropriate, revocable, and restricted to the verified student's published reports.

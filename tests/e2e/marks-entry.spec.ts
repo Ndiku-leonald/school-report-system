@@ -412,7 +412,9 @@ test.describe.serial("marks entry", () => {
     await expect(
       page.getByRole("heading", { name: "Marks overview" }),
     ).toBeVisible();
-    await expect(page.getByText("Read only", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Review queue" }),
+    ).toBeVisible();
     await expect(page.getByRole("button", { name: "Save draft" })).toHaveCount(
       0,
     );
@@ -454,10 +456,15 @@ test.describe.serial("marks entry", () => {
       `private.guardian.${nonce}@example.invalid`,
     );
   });
-  test("25. Stage 10 controls are absent", async ({ page }) => {
+  test("25. complete draft exposes submission but no reviewer controls", async ({
+    page,
+  }) => {
     await openEditor(page);
     await expect(
-      page.getByRole("button", { name: /submit|review|approve|lock/i }),
+      page.getByRole("button", { name: "Submit for review" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: /start review|approve|lock sheet/i }),
     ).toHaveCount(0);
   });
 });

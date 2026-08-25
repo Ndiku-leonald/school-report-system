@@ -335,4 +335,15 @@ used only the local Supabase stack; no remote project was linked or modified.
 
 # Stage 8 — teacher assignments
 
-Stage 8 adds secure subject and class-teacher lifecycle management, overlap protection, atomic primary replacement, selected-membership visibility, audit events, and dedicated local validation. Stage 9 now adds DRAFT-only marks entry; submission remains Stage 10 and calculations remain Stage 11.
+Stage 8 adds secure subject and class-teacher lifecycle management, overlap protection, atomic primary replacement, selected-membership visibility, audit events, and dedicated local validation. Stage 9 adds draft marks entry.
+
+# Stage 10 — marks workflow
+
+Submission, review, return/resubmission, approval, sheet/term locking,
+readiness, timelines, and controlled correction revisions are implemented.
+The correction verification includes 173 Stage 10 database assertions, 20
+signed-in integration cases, and 39 browser scenarios. It covers selected-
+school isolation, exact bound-teacher authority, stale writes, all nine
+workflow race classes, roster freezing, correction lineage, stable revision
+navigation, browser console cleanliness, privacy, and the Stage 11 boundary.
+Stage 11 calculations remain unstarted.

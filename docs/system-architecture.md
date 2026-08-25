@@ -275,3 +275,12 @@ anonymous-key client; PostgreSQL repeats authorization and commits all cells or
 none. The teacher route is assignment-scoped and the dashboard route is a
 schoolwide read-only operational overview. No service-role client is present in
 application code.
+
+# Stage 10 marks-workflow slice
+
+Server Components obtain the queue, detail/history, and term readiness through
+selected-school RPCs. Client controls call Zod-validated Server Actions using
+the authenticated client. PostgreSQL owns the graph, completeness, separation
+of duties, locking, audit atomicity, freezing, downstream safeguards, and
+new-row correction lineage. Stage 11 consumes locked inputs later and is not
+invoked here.

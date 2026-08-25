@@ -200,6 +200,7 @@ async function authorityChangeWins(options: {
   restoreParams: unknown[];
   expectedCode: string;
   restoreBypassTriggers?: boolean;
+  transitionSetting?: "sheet" | "term";
 }) {
   const control = await openControlConnection(options.label);
   let committed = false;
@@ -207,6 +208,13 @@ async function authorityChangeWins(options: {
   const beforeAudits = await successAuditCount();
   try {
     await control.query("begin");
+    if (options.transitionSetting) {
+      await control.query("select set_config($1,'allowed',true)", [
+        options.transitionSetting === "sheet"
+          ? "app.marks_workflow_transition"
+          : "app.term_marks_workflow_transition",
+      ]);
+    }
     await control.query(options.changeSql, options.changeParams);
     const save = Promise.resolve(
       teacher.rpc(
@@ -232,6 +240,20 @@ async function authorityChangeWins(options: {
       await database.query("begin");
       try {
         await database.query("set local session_replication_role=replica");
+        await database.query(options.restoreSql, options.restoreParams);
+        await database.query("commit");
+      } catch (error) {
+        await database.query("rollback");
+        throw error;
+      }
+    } else if (options.transitionSetting) {
+      await database.query("begin");
+      try {
+        await database.query("select set_config($1,'allowed',true)", [
+          options.transitionSetting === "sheet"
+            ? "app.marks_workflow_transition"
+            : "app.term_marks_workflow_transition",
+        ]);
         await database.query(options.restoreSql, options.restoreParams);
         await database.query("commit");
       } catch (error) {
@@ -676,7 +698,7 @@ describe.sequential("secure marks entry", () => {
       restoreSql:
         "update public.teaching_assignments set ends_on=null,is_active=true where id=$1",
       restoreParams: [ids.assignment],
-      expectedCode: "42501",
+      expectedCode: "55000",
       // Stage 8 intentionally forbids reactivating historical assignments. The
       // superuser-only reset keeps this synthetic fixture reusable after the
       // real, committed end-state race has been proved.
@@ -691,6 +713,7 @@ describe.sequential("secure marks entry", () => {
       restoreSql: "update public.terms set status='MARKS_ENTRY' where id=$1",
       restoreParams: [ids.term],
       expectedCode: "55000",
+      transitionSetting: "term",
     });
   });
   it("a concurrent sheet workflow transition that wins first blocks the mark write", async () => {
@@ -703,6 +726,7 @@ describe.sequential("secure marks entry", () => {
         "update public.mark_sheets set workflow_status='DRAFT' where id=$1",
       restoreParams: [markSheetId],
       expectedCode: "55000",
+      transitionSetting: "sheet",
     });
   });
   it("a concurrent selected-membership switch that wins first blocks the old-school write", async () => {
@@ -820,19 +844,39 @@ describe.sequential("secure marks entry", () => {
     expect(r.error).not.toBeNull();
   });
   it("a non-DRAFT sheet cannot be edited", async () => {
-    await database.query(
-      "update public.mark_sheets set workflow_status='SUBMITTED' where id=$1",
-      [markSheetId],
-    );
+    await database.query("begin");
+    try {
+      await database.query(
+        "select set_config('app.marks_workflow_transition','allowed',true)",
+      );
+      await database.query(
+        "update public.mark_sheets set workflow_status='SUBMITTED' where id=$1",
+        [markSheetId],
+      );
+      await database.query("commit");
+    } catch (error) {
+      await database.query("rollback");
+      throw error;
+    }
     const r = await teacher.rpc(
       "save_mark_entry",
       entry({ expected_row_version: firstVersion }),
     );
-    expect(r.error?.message).toContain("SHEET_NOT_DRAFT");
-    await database.query(
-      "update public.mark_sheets set workflow_status='DRAFT' where id=$1",
-      [markSheetId],
-    );
+    expect(r.error?.message).toContain("SHEET_NOT_EDITABLE");
+    await database.query("begin");
+    try {
+      await database.query(
+        "select set_config('app.marks_workflow_transition','allowed',true)",
+      );
+      await database.query(
+        "update public.mark_sheets set workflow_status='DRAFT' where id=$1",
+        [markSheetId],
+      );
+      await database.query("commit");
+    } catch (error) {
+      await database.query("rollback");
+      throw error;
+    }
   });
   it("duplicate cells reject the entire batch", async () => {
     const cell = {

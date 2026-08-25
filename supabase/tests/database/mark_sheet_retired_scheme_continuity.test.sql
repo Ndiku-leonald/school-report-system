@@ -32,7 +32,7 @@ values
 
 insert into public.terms (id, academic_year_id, name, term_number, starts_on, ends_on, status, is_promotion_term)
 values
-  ('15400000-0000-4000-8000-000000000001', '15300000-0000-4000-8000-000000000001', 'Continuity Term', 1, '2038-01-01', '2038-06-30', 'DRAFT', false),
+  ('15400000-0000-4000-8000-000000000001', '15300000-0000-4000-8000-000000000001', 'Continuity Term', 1, '2038-01-01', '2038-06-30', 'MARKS_ENTRY', false),
   ('15400000-0000-4000-8000-000000000099', '15300000-0000-4000-8000-000000000099', 'Other Term', 1, '2038-01-01', '2038-06-30', 'DRAFT', false);
 
 insert into public.grade_levels (id, school_id, code, name, sort_order)
@@ -137,17 +137,18 @@ set status = 'RETIRED'
 where id = '15b00000-0000-4000-8000-000000000001';
 
 select extensions.lives_ok(
-  $$ update public.mark_sheets set workflow_status = 'SUBMITTED' where id = '15d00000-0000-4000-8000-000000000001' $$,
+  $$ select set_config('app.marks_workflow_transition', 'allowed', true); update public.mark_sheets set workflow_status = 'SUBMITTED' where id = '15d00000-0000-4000-8000-000000000001' $$,
   '6. a sheet created under an active scheme remains workflow-updateable after retirement'
 );
 
 select extensions.lives_ok(
-  $$ update public.mark_sheets set workflow_status = 'UNDER_REVIEW' where id = '15d00000-0000-4000-8000-000000000001' $$,
+  $$ select set_config('app.marks_workflow_transition', 'allowed', true); update public.mark_sheets set workflow_status = 'UNDER_REVIEW' where id = '15d00000-0000-4000-8000-000000000001' $$,
   '7. workflow status can change while the retired scheme reference is unchanged'
 );
 
 select extensions.lives_ok(
   $$
+    select set_config('app.marks_workflow_transition', 'allowed', true);
     update public.mark_sheets
     set submitted_by = '15200000-0000-4000-8000-000000000001', submitted_at = '2038-05-01 08:00:00+00'
     where id = '15d00000-0000-4000-8000-000000000001';

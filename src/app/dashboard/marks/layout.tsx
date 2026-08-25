@@ -1,12 +1,17 @@
 import type { ReactNode } from "react";
 
-import { requirePermission } from "@/lib/authorization/guards";
+import { requireAnyPermission } from "@/lib/authorization/guards";
 
 export default async function MarksOverviewLayout({
   children,
 }: {
   children: ReactNode;
 }) {
-  await requirePermission("MARKS_VIEW_ALL");
+  await requireAnyPermission([
+    "MARKS_VIEW_ALL",
+    "MARKS_REVIEW",
+    "MARKS_APPROVE",
+    "MARKS_LOCK",
+  ]);
   return children;
 }

@@ -166,3 +166,10 @@ subject assignment. `MARKS_ENTER` is necessary but never sufficient for a
 mutation: the same membership must also hold a live `SUBJECT_TEACHER` role and
 the current exact teaching assignment. Permission sets are never unioned across
 memberships.
+
+## Marks-workflow enforcement
+
+Subject teachers use `MARKS_SUBMIT` only for their bound sheet. Review,
+approval, and lock capabilities come from the migration-owned permission
+matrix, not a hard-coded role label. The submitter cannot perform a
+post-submission action on the same revision.

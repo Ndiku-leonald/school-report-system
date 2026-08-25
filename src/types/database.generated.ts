@@ -698,6 +698,7 @@ export type Database = {
           subject_id: string;
           submitted_at: string | null;
           submitted_by: string | null;
+          supersedes_mark_sheet_id: string | null;
           teaching_assignment_id: string;
           term_id: string;
           updated_at: string;
@@ -721,6 +722,7 @@ export type Database = {
           subject_id: string;
           submitted_at?: string | null;
           submitted_by?: string | null;
+          supersedes_mark_sheet_id?: string | null;
           teaching_assignment_id: string;
           term_id: string;
           updated_at?: string;
@@ -744,6 +746,7 @@ export type Database = {
           subject_id?: string;
           submitted_at?: string | null;
           submitted_by?: string | null;
+          supersedes_mark_sheet_id?: string | null;
           teaching_assignment_id?: string;
           term_id?: string;
           updated_at?: string;
@@ -805,6 +808,13 @@ export type Database = {
             columns: ["submitted_by"];
             isOneToOne: false;
             referencedRelation: "school_staff_memberships";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "mark_sheets_supersedes_mark_sheet_id_fkey";
+            columns: ["supersedes_mark_sheet_id"];
+            isOneToOne: false;
+            referencedRelation: "mark_sheets";
             referencedColumns: ["id"];
           },
           {
@@ -2319,6 +2329,22 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      advance_term_marks_to_review: {
+        Args: { expected_updated_at: string; target_term_id: string };
+        Returns: {
+          term_id: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+          term_updated_at: string;
+        }[];
+      };
+      approve_mark_sheet: {
+        Args: { expected_updated_at: string; target_mark_sheet_id: string };
+        Returns: {
+          mark_sheet_id: string;
+          sheet_updated_at: string;
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
+        }[];
+      };
       archive_academic_year: {
         Args: {
           expected_updated_at: string;
@@ -2497,6 +2523,20 @@ export type Database = {
           guardian_id: string;
           is_active: boolean;
           updated_at: string;
+        }[];
+      };
+      create_mark_sheet_correction_revision: {
+        Args: {
+          correction_reason: string;
+          expected_source_updated_at: string;
+          source_mark_sheet_id: string;
+        };
+        Returns: {
+          correction_sheet_id: string;
+          correction_version: number;
+          sheet_updated_at: string;
+          source_sheet_id: string;
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
         }[];
       };
       create_promotion_rule_version: {
@@ -2712,6 +2752,48 @@ export type Database = {
           workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
         }[];
       };
+      get_mark_sheet_workflow_detail: {
+        Args: { target_mark_sheet_id: string };
+        Returns: {
+          actor_is_submitter: boolean;
+          approved_at: string;
+          can_approve: boolean;
+          can_create_correction: boolean;
+          can_lock: boolean;
+          can_resubmit: boolean;
+          can_return: boolean;
+          can_start_review: boolean;
+          can_submit: boolean;
+          completion_percentage: number;
+          expected_required_cells: number;
+          locked_at: string;
+          mark_sheet_id: string;
+          missing_required_cells: number;
+          recorded_required_cells: number;
+          return_reason: string;
+          returned_at: string;
+          reviewed_at: string;
+          sheet_updated_at: string;
+          sheet_version: number;
+          submitted_at: string;
+          submitted_by: string;
+          supersedes_mark_sheet_id: string;
+          term_id: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
+        }[];
+      };
+      get_mark_sheet_workflow_history: {
+        Args: { target_mark_sheet_id: string };
+        Returns: {
+          actor_display_name: string;
+          actor_role_context: string;
+          audit_id: string;
+          occurred_at: string;
+          reason: string;
+          workflow_action: string;
+        }[];
+      };
       get_my_active_membership: { Args: never; Returns: string };
       get_my_effective_permissions: {
         Args: { target_membership_id: string };
@@ -2819,6 +2901,27 @@ export type Database = {
           term_starts_on: string;
           total_count: number;
           updated_at: string;
+        }[];
+      };
+      get_term_marks_workflow_readiness: {
+        Args: { target_term_id: string };
+        Returns: {
+          academic_year_name: string;
+          approved_sheets: number;
+          draft_sheets: number;
+          expected_scopes: number;
+          locked_sheets: number;
+          missing_mark_sheets: number;
+          missing_teaching_assignments: number;
+          ready_for_lock: boolean;
+          ready_for_review: boolean;
+          returned_sheets: number;
+          submitted_sheets: number;
+          term_id: string;
+          term_name: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+          term_updated_at: string;
+          under_review_sheets: number;
         }[];
       };
       link_guardian_to_student: {
@@ -2932,6 +3035,72 @@ export type Database = {
           workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
         }[];
       };
+      list_marks_review_queue: {
+        Args: {
+          filter_academic_year_id?: string;
+          filter_class_section_id?: string;
+          filter_grade_level_id?: string;
+          filter_staff_membership_id?: string;
+          filter_subject_id?: string;
+          filter_term_id?: string;
+          filter_workflow_status?: Database["public"]["Enums"]["mark_sheet_status"];
+          page_number?: number;
+          page_size?: number;
+        };
+        Returns: {
+          academic_year_id: string;
+          academic_year_name: string;
+          class_name: string;
+          class_section_id: string;
+          employee_number: string;
+          expected_required_cells: number;
+          grade_level_id: string;
+          grade_name: string;
+          mark_sheet_id: string;
+          missing_required_cells: number;
+          recorded_required_cells: number;
+          sheet_version: number;
+          staff_membership_id: string;
+          subject_id: string;
+          subject_name: string;
+          submitted_at: string;
+          teacher_name: string;
+          term_id: string;
+          term_name: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+          total_count: number;
+          updated_at: string;
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
+        }[];
+      };
+      list_marks_workflow_terms: {
+        Args: never;
+        Returns: {
+          academic_year_name: string;
+          academic_year_status: Database["public"]["Enums"]["academic_year_status"];
+          approved_sheets: number;
+          can_advance_review: boolean;
+          can_lock_term: boolean;
+          can_open_entry: boolean;
+          can_reopen_term: boolean;
+          draft_sheets: number;
+          ends_on: string;
+          expected_scopes: number;
+          locked_sheets: number;
+          missing_mark_sheets: number;
+          missing_teaching_assignments: number;
+          ready_for_lock: boolean;
+          ready_for_review: boolean;
+          returned_sheets: number;
+          starts_on: string;
+          submitted_sheets: number;
+          term_id: string;
+          term_name: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+          term_updated_at: string;
+          under_review_sheets: number;
+        }[];
+      };
       list_my_mark_sheets: {
         Args: never;
         Returns: {
@@ -3023,6 +3192,22 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      lock_mark_sheet: {
+        Args: { expected_updated_at: string; target_mark_sheet_id: string };
+        Returns: {
+          mark_sheet_id: string;
+          sheet_updated_at: string;
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
+        }[];
+      };
+      lock_term_marks: {
+        Args: { expected_updated_at: string; target_term_id: string };
+        Returns: {
+          term_id: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+          term_updated_at: string;
+        }[];
+      };
       move_student_class: {
         Args: {
           capacity_override?: boolean;
@@ -3046,12 +3231,32 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      open_term_marks_entry: {
+        Args: { expected_updated_at: string; target_term_id: string };
+        Returns: {
+          term_id: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+          term_updated_at: string;
+        }[];
+      };
       remove_grade_level_subject: {
         Args: { expected_updated_at: string; target_mapping_id: string };
         Returns: {
           entity_id: string;
           entity_status: string;
           updated_at: string;
+        }[];
+      };
+      reopen_locked_term_for_mark_correction: {
+        Args: {
+          correction_reason: string;
+          expected_updated_at: string;
+          target_term_id: string;
+        };
+        Returns: {
+          term_id: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+          term_updated_at: string;
         }[];
       };
       reorder_grade_levels: {
@@ -3084,12 +3289,32 @@ export type Database = {
           replacement_updated_at: string;
         }[];
       };
+      resubmit_returned_mark_sheet: {
+        Args: { expected_updated_at: string; target_mark_sheet_id: string };
+        Returns: {
+          mark_sheet_id: string;
+          sheet_updated_at: string;
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
+        }[];
+      };
       retire_assessment_scheme: {
         Args: { expected_updated_at: string; target_scheme_id: string };
         Returns: {
           entity_id: string;
           entity_status: string;
           updated_at: string;
+        }[];
+      };
+      return_mark_sheet: {
+        Args: {
+          expected_updated_at: string;
+          return_reason: string;
+          target_mark_sheet_id: string;
+        };
+        Returns: {
+          mark_sheet_id: string;
+          sheet_updated_at: string;
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
         }[];
       };
       save_assessment_scheme_draft: {
@@ -3257,6 +3482,22 @@ export type Database = {
           entity_id: string;
           entity_status: string;
           updated_at: string;
+        }[];
+      };
+      start_mark_sheet_review: {
+        Args: { expected_updated_at: string; target_mark_sheet_id: string };
+        Returns: {
+          mark_sheet_id: string;
+          sheet_updated_at: string;
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
+        }[];
+      };
+      submit_mark_sheet: {
+        Args: { expected_updated_at: string; target_mark_sheet_id: string };
+        Returns: {
+          mark_sheet_id: string;
+          sheet_updated_at: string;
+          workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
         }[];
       };
       unlink_guardian_from_student: {

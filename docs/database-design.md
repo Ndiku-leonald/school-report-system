@@ -232,3 +232,11 @@ revision or workflow through its APIs. `marks` stores one optional entered cell 
 enrolment; missing combinations remain implicit. Mutable cell fields are score,
 attendance, teacher remark and update metadata. `row_version` is the cell
 concurrency token and increments once per successful update.
+
+## Stage 10 correction lineage
+
+`mark_sheets.supersedes_mark_sheet_id` forms a one-successor immutable chain.
+A correction is a new row with source version plus one, identical academic
+identity/scheme/assignment, and cloned marks. A historical locked sheet is
+never changed in place. The latest term/class/subject revision is authoritative
+for readiness.

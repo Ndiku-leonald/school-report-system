@@ -1,9 +1,9 @@
 # Secure marks entry
 
-Stage 9 lets the current subject teacher create or reopen a version-1 `DRAFT`
-mark sheet and save component cells. It does not submit, return, review,
-approve, lock, reopen or revise a sheet, and it calculates no grades, averages,
-aggregates, ranks or positions.
+Stage 9 established version-1 draft entry. Stage 10 now submits, returns,
+reviews, approves, locks, and creates controlled correction revisions while
+still calculating no grades, averages, aggregates, ranks, or positions. See
+[marks-workflow.md](marks-workflow.md) for state and correction rules.
 
 ## Authority and availability
 
