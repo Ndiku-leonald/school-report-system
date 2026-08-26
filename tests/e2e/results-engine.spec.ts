@@ -18,7 +18,9 @@ const ids = Object.fromEntries(
     "class",
     "subject",
     "student",
+    "studentTwo",
     "enrollment",
+    "enrollmentTwo",
     "membership",
     "assignment",
     "scheme",
@@ -98,12 +100,19 @@ async function setup() {
     [ids.grade, ids.subject],
   );
   await database.query(
-    "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date) values($1,$2,'RB-001','Browser','Learner','2041-01-02')",
-    [ids.student, ids.school],
+    "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date) values($1,$3,'RB-001','Browser','Learner','2041-01-02'),($2,$3,'RB-002','Browser','Tie','2041-01-02')",
+    [ids.student, ids.studentTwo, ids.school],
   );
   await database.query(
-    "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,enrolled_on) values($1,$2,$3,$4,'2041-01-02')",
-    [ids.enrollment, ids.student, ids.year, ids.class],
+    "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,enrolled_on) values($1,$2,$3,$4,'2041-01-02'),($5,$6,$3,$4,'2041-01-02')",
+    [
+      ids.enrollment,
+      ids.student,
+      ids.year,
+      ids.class,
+      ids.enrollmentTwo,
+      ids.studentTwo,
+    ],
   );
   await database.query(
     "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$2,$3,$4,$5,'2041-01-02')",
@@ -126,8 +135,14 @@ async function setup() {
     [ids.sheet, ids.term, ids.class, ids.subject, ids.scheme, ids.assignment],
   );
   await database.query(
-    "insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$2,$3,88,'PRESENT',$4,$4)",
-    [ids.sheet, ids.component, ids.enrollment, ids.membership],
+    "insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$2,$3,88,'PRESENT',$5,$5),($1,$2,$4,88,'PRESENT',$5,$5)",
+    [
+      ids.sheet,
+      ids.component,
+      ids.enrollment,
+      ids.enrollmentTwo,
+      ids.membership,
+    ],
   );
   await database.query(
     "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,$3,$4,'Browser Scale',1,false,'2041-01-02',$5)",
@@ -180,6 +195,18 @@ async function setup() {
       }),
       ids.membership,
     ],
+  );
+  await database.query(
+    "insert into public.aggregate_classification_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,created_by) values($1,$2,$3,$4,'Browser Classification',1,false,$5)",
+    [ids.classification, ids.school, ids.year, ids.grade, ids.membership],
+  );
+  await database.query(
+    "insert into public.aggregate_classification_bands(scale_id,minimum_aggregate,maximum_aggregate,label,sort_order) values($1,0,2,'Needs support',1),($1,3,3,'On track',2),($1,4,10,'Advanced',3)",
+    [ids.classification],
+  );
+  await database.query(
+    "update public.aggregate_classification_scales set is_active=true where id=$1",
+    [ids.classification],
   );
   await database.query(
     "select set_config('app.marks_workflow_transition','allowed',false)",
@@ -243,12 +270,12 @@ test.describe.serial("results engine dedicated browser verification", () => {
         .getByRole("button", { name: "Calculate locked results" })
         .click();
     } else if (
-      /^(19\.|20\.|21\.|22\.|23\.|24\.|25\.|26\.|27\.|28\.|29\.|30\.|31\.|35\.|36\.)/.test(
+      /^(19\.|20\.|21\.|22\.|23\.|24\.|25\.|26\.|27\.|28\.|29\.|30\.|31\.|35\.|36\.|52\.)/.test(
         testInfo.title,
       )
     ) {
       await openLatestCalculation(page);
-    } else if (/^(18|33|34)\./.test(testInfo.title)) {
+    } else if (/^(18|33|34|53)\./.test(testInfo.title)) {
       await page.goto("/dashboard/results");
     }
   });
@@ -569,5 +596,28 @@ test.describe.serial("results engine dedicated browser verification", () => {
     await page.reload();
     await expect(page.getByLabel("Grading scale")).toBeVisible();
     await expect(page.getByLabel("Ranking rule")).toBeVisible();
+  });
+  test("52. browser detail renders a deterministic tie marker", async ({
+    page,
+  }) => {
+    await openLatestCalculation(page);
+    await expect(page.getByText("tied", { exact: true })).toBeVisible();
+  });
+  test("53. browser calculation accepts an explicit classification scale", async ({
+    page,
+  }) => {
+    await page.goto("/dashboard/results");
+    await selectCalculationRules(page);
+    const classification = await page
+      .getByLabel("Classification (optional)")
+      .locator("option", { hasText: "Browser Classification" })
+      .getAttribute("value");
+    await page
+      .getByLabel("Classification (optional)")
+      .selectOption(classification!);
+    await page
+      .getByRole("button", { name: "Calculate locked results" })
+      .click();
+    await expect(page.getByRole("status")).toContainText("Version 2");
   });
 });
