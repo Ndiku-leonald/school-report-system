@@ -257,6 +257,16 @@ async function selectCalculationRules(page: Page) {
   await page.getByLabel("Ranking rule").selectOption(ranking!);
 }
 
+async function selectClassificationScale(page: Page) {
+  const classification = await page
+    .getByLabel("Classification (optional)")
+    .locator("option", { hasText: "Browser Classification" })
+    .getAttribute("value");
+  await page
+    .getByLabel("Classification (optional)")
+    .selectOption(classification!);
+}
+
 test.describe.serial("results engine dedicated browser verification", () => {
   test.skip(!enabled, "requires the local results-engine runner");
   test.beforeAll(setup);
@@ -354,6 +364,7 @@ test.describe.serial("results engine dedicated browser verification", () => {
   test("15. calculation action returns a success alert", async ({ page }) => {
     await page.goto("/dashboard/results");
     await selectCalculationRules(page);
+    await selectClassificationScale(page);
     await page
       .getByRole("button", { name: "Calculate locked results" })
       .click();
@@ -604,21 +615,18 @@ test.describe.serial("results engine dedicated browser verification", () => {
     await openLatestCalculation(page);
     await expect(page.getByText("tied", { exact: true })).toHaveCount(2);
   });
-  test("53. browser calculation accepts an explicit classification scale", async ({
+  test("53. browser calculation preserves an explicit classification scale", async ({
     page,
   }) => {
     await page.goto("/dashboard/results");
     await selectCalculationRules(page);
-    const classification = await page
-      .getByLabel("Classification (optional)")
-      .locator("option", { hasText: "Browser Classification" })
-      .getAttribute("value");
-    await page
-      .getByLabel("Classification (optional)")
-      .selectOption(classification!);
+    await selectClassificationScale(page);
     await page
       .getByRole("button", { name: "Calculate locked results" })
       .click();
-    await expect(page.getByRole("status")).toContainText("Version 2");
+    await expect(page.getByRole("status")).toContainText("Version 1");
+    await expect(page.getByRole("status")).toContainText(
+      "identical calculation",
+    );
   });
 });
