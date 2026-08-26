@@ -1818,17 +1818,13 @@ describe.sequential(
       }
     });
     it("carries a Stage 10 correction revision into Stage 11 version two", async () => {
-      const correctionTeacher = await createResultsActor("correction-teacher", [
-        "SUBJECT_TEACHER",
-      ]);
       const correctionApprover = await createResultsActor(
         "correction-approver",
       );
-      const teacherClient = await signInResultsActor(correctionTeacher);
       const approverClient = await signInResultsActor(correctionApprover);
       await query(
-        "update public.teaching_assignments set staff_membership_id=$2 where id=$1",
-        [ids.assignmentA1, correctionTeacher.membershipId],
+        "insert into public.staff_role_assignments(id,membership_id,role,granted_at) values($1,$2,'SUBJECT_TEACHER',now()-interval '1 day')",
+        [randomUUID(), ids.membership],
       );
       const firstRun = await query(
         "select id, input_checksum from public.result_calculation_runs where term_id=$1 and grade_level_id=$2 order by version limit 1",
@@ -1860,7 +1856,7 @@ describe.sequential(
 
       expect(
         (
-          await teacherClient.rpc("submit_mark_sheet", {
+          await client.rpc("submit_mark_sheet", {
             target_mark_sheet_id: correctionSheetId,
             expected_updated_at: await markSheetUpdatedAt(correctionSheetId!),
           })
