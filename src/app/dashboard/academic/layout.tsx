@@ -14,6 +14,10 @@ const sections = [
   ["Assessment", "/dashboard/academic/assessment-schemes"],
   ["Grading", "/dashboard/academic/grading"],
   ["Ranking", "/dashboard/academic/ranking"],
+  [
+    "Aggregate classifications",
+    "/dashboard/academic/aggregate-classifications",
+  ],
   ["Promotion", "/dashboard/academic/promotion"],
 ] as const;
 

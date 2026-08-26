@@ -106,6 +106,13 @@ records may be introduced until later mutation workflows, storage controls,
 abuse-case tests, backup/restore procedures, and operational monitoring are
 independently reviewed.
 
+Stage 11 result calculation adds a database-authoritative readiness boundary:
+only active class-section/curriculum intersections are expected, latest sheet
+revisions are checked for locking, and calculation execution rechecks authority
+under locks. Result readers receive school-scoped RPC rows without guardian or
+contact fields; result tables remain forced-RLS and direct browser writes remain
+revoked.
+
 The helper and RPC security review is documented in
 [authorization-model.md](authorization-model.md).
 
@@ -191,3 +198,12 @@ reopen. A correction may reuse only its exact locked source scheme; arbitrary
 retired schemes remain invalid. Enrollment roster identity is also frozen for
 submitted sheets and `REVIEW`/`LOCKED` terms, so an authorized student manager
 cannot alter the completion or report scope behind a protected revision.
+
+## Stage 11 result security
+
+Calculation and result-read RPCs use fixed search paths and revalidate the
+session-selected membership. Calculation requires `REPORTS_GENERATE`; reads
+require `REPORTS_VIEW_ALL` or that permission. New result tables force RLS and
+deny authenticated direct writes. Results are derived in PostgreSQL from a
+locked term and latest source revisions, and append-only triggers protect
+historical runs.

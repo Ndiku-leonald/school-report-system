@@ -50,6 +50,121 @@ export type Database = {
           },
         ];
       };
+      aggregate_classification_bands: {
+        Row: {
+          created_at: string;
+          description: string | null;
+          id: string;
+          label: string;
+          maximum_aggregate: number;
+          minimum_aggregate: number;
+          scale_id: string;
+          sort_order: number;
+          updated_at: string;
+        };
+        Insert: {
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          label: string;
+          maximum_aggregate: number;
+          minimum_aggregate: number;
+          scale_id: string;
+          sort_order: number;
+          updated_at?: string;
+        };
+        Update: {
+          created_at?: string;
+          description?: string | null;
+          id?: string;
+          label?: string;
+          maximum_aggregate?: number;
+          minimum_aggregate?: number;
+          scale_id?: string;
+          sort_order?: number;
+          updated_at?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "aggregate_classification_bands_scale_id_fkey";
+            columns: ["scale_id"];
+            isOneToOne: false;
+            referencedRelation: "aggregate_classification_scales";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      aggregate_classification_scales: {
+        Row: {
+          academic_year_id: string | null;
+          created_at: string;
+          created_by: string | null;
+          grade_level_id: string | null;
+          id: string;
+          is_active: boolean;
+          name: string;
+          retired_at: string | null;
+          school_id: string;
+          updated_at: string;
+          version: number;
+        };
+        Insert: {
+          academic_year_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          grade_level_id?: string | null;
+          id?: string;
+          is_active?: boolean;
+          name: string;
+          retired_at?: string | null;
+          school_id: string;
+          updated_at?: string;
+          version?: number;
+        };
+        Update: {
+          academic_year_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          grade_level_id?: string | null;
+          id?: string;
+          is_active?: boolean;
+          name?: string;
+          retired_at?: string | null;
+          school_id?: string;
+          updated_at?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "aggregate_classification_scales_academic_year_id_fkey";
+            columns: ["academic_year_id"];
+            isOneToOne: false;
+            referencedRelation: "academic_years";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "aggregate_classification_scales_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "school_staff_memberships";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "aggregate_classification_scales_grade_level_id_fkey";
+            columns: ["grade_level_id"];
+            isOneToOne: false;
+            referencedRelation: "grade_levels";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "aggregate_classification_scales_school_id_fkey";
+            columns: ["school_id"];
+            isOneToOne: false;
+            referencedRelation: "schools";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       assessment_components: {
         Row: {
           assessment_scheme_id: string;
@@ -237,6 +352,432 @@ export type Database = {
             columns: ["school_id"];
             isOneToOne: false;
             referencedRelation: "schools";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      calculated_component_explanations: {
+        Row: {
+          assessment_component_id: string;
+          attendance_status:
+            Database["public"]["Enums"]["assessment_attendance_status"] | null;
+          calculation_run_id: string;
+          class_section_id: string;
+          component_name: string;
+          created_at: string;
+          enrollment_id: string;
+          entered_score: number | null;
+          id: string;
+          included_weight: number;
+          mark_sheet_id: string;
+          maximum_score: number;
+          subject_id: string;
+          weight_percentage: number;
+          weighted_contribution: number;
+        };
+        Insert: {
+          assessment_component_id: string;
+          attendance_status?:
+            Database["public"]["Enums"]["assessment_attendance_status"] | null;
+          calculation_run_id: string;
+          class_section_id: string;
+          component_name: string;
+          created_at?: string;
+          enrollment_id: string;
+          entered_score?: number | null;
+          id?: string;
+          included_weight?: number;
+          mark_sheet_id: string;
+          maximum_score: number;
+          subject_id: string;
+          weight_percentage: number;
+          weighted_contribution?: number;
+        };
+        Update: {
+          assessment_component_id?: string;
+          attendance_status?:
+            Database["public"]["Enums"]["assessment_attendance_status"] | null;
+          calculation_run_id?: string;
+          class_section_id?: string;
+          component_name?: string;
+          created_at?: string;
+          enrollment_id?: string;
+          entered_score?: number | null;
+          id?: string;
+          included_weight?: number;
+          mark_sheet_id?: string;
+          maximum_score?: number;
+          subject_id?: string;
+          weight_percentage?: number;
+          weighted_contribution?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "calculated_component_explanations_assessment_component_id_fkey";
+            columns: ["assessment_component_id"];
+            isOneToOne: false;
+            referencedRelation: "assessment_components";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_component_explanations_calculation_run_id_fkey";
+            columns: ["calculation_run_id"];
+            isOneToOne: false;
+            referencedRelation: "result_calculation_runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_component_explanations_class_section_id_fkey";
+            columns: ["class_section_id"];
+            isOneToOne: false;
+            referencedRelation: "class_sections";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_component_explanations_enrollment_id_fkey";
+            columns: ["enrollment_id"];
+            isOneToOne: false;
+            referencedRelation: "enrollments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_component_explanations_mark_sheet_id_fkey";
+            columns: ["mark_sheet_id"];
+            isOneToOne: false;
+            referencedRelation: "mark_sheets";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_component_explanations_subject_id_fkey";
+            columns: ["subject_id"];
+            isOneToOne: false;
+            referencedRelation: "subjects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      calculated_grade_subject_performance: {
+        Row: {
+          calculation_run_id: string;
+          complete_count: number;
+          created_at: string;
+          exempted_count: number;
+          grade_distribution: Json;
+          id: string;
+          incomplete_count: number;
+          maximum_score: number | null;
+          mean_score: number | null;
+          minimum_score: number | null;
+          pass_rate: number | null;
+          subject_id: string;
+        };
+        Insert: {
+          calculation_run_id: string;
+          complete_count?: number;
+          created_at?: string;
+          exempted_count?: number;
+          grade_distribution?: Json;
+          id?: string;
+          incomplete_count?: number;
+          maximum_score?: number | null;
+          mean_score?: number | null;
+          minimum_score?: number | null;
+          pass_rate?: number | null;
+          subject_id: string;
+        };
+        Update: {
+          calculation_run_id?: string;
+          complete_count?: number;
+          created_at?: string;
+          exempted_count?: number;
+          grade_distribution?: Json;
+          id?: string;
+          incomplete_count?: number;
+          maximum_score?: number | null;
+          mean_score?: number | null;
+          minimum_score?: number | null;
+          pass_rate?: number | null;
+          subject_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "calculated_grade_subject_performance_calculation_run_id_fkey";
+            columns: ["calculation_run_id"];
+            isOneToOne: false;
+            referencedRelation: "result_calculation_runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_grade_subject_performance_subject_id_fkey";
+            columns: ["subject_id"];
+            isOneToOne: false;
+            referencedRelation: "subjects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      calculated_student_results: {
+        Row: {
+          aggregate_classification: string | null;
+          aggregate_total: number | null;
+          calculation_run_id: string;
+          class_is_tied: boolean;
+          class_position: number | null;
+          class_section_id: string;
+          class_tie_size: number;
+          complete_subject_count: number;
+          created_at: string;
+          enrollment_id: string;
+          grade_level_is_tied: boolean;
+          grade_level_position: number | null;
+          grade_level_tie_size: number;
+          id: string;
+          is_complete: boolean;
+          overall_average: number | null;
+          overall_grade: string | null;
+          overall_total: number | null;
+          ranking_eligible: boolean;
+          ranking_metric: number | null;
+          subject_count: number;
+          subjects_passed: number;
+        };
+        Insert: {
+          aggregate_classification?: string | null;
+          aggregate_total?: number | null;
+          calculation_run_id: string;
+          class_is_tied?: boolean;
+          class_position?: number | null;
+          class_section_id: string;
+          class_tie_size?: number;
+          complete_subject_count: number;
+          created_at?: string;
+          enrollment_id: string;
+          grade_level_is_tied?: boolean;
+          grade_level_position?: number | null;
+          grade_level_tie_size?: number;
+          id?: string;
+          is_complete: boolean;
+          overall_average?: number | null;
+          overall_grade?: string | null;
+          overall_total?: number | null;
+          ranking_eligible: boolean;
+          ranking_metric?: number | null;
+          subject_count: number;
+          subjects_passed: number;
+        };
+        Update: {
+          aggregate_classification?: string | null;
+          aggregate_total?: number | null;
+          calculation_run_id?: string;
+          class_is_tied?: boolean;
+          class_position?: number | null;
+          class_section_id?: string;
+          class_tie_size?: number;
+          complete_subject_count?: number;
+          created_at?: string;
+          enrollment_id?: string;
+          grade_level_is_tied?: boolean;
+          grade_level_position?: number | null;
+          grade_level_tie_size?: number;
+          id?: string;
+          is_complete?: boolean;
+          overall_average?: number | null;
+          overall_grade?: string | null;
+          overall_total?: number | null;
+          ranking_eligible?: boolean;
+          ranking_metric?: number | null;
+          subject_count?: number;
+          subjects_passed?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "calculated_student_results_calculation_run_id_fkey";
+            columns: ["calculation_run_id"];
+            isOneToOne: false;
+            referencedRelation: "result_calculation_runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_student_results_class_section_id_fkey";
+            columns: ["class_section_id"];
+            isOneToOne: false;
+            referencedRelation: "class_sections";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_student_results_enrollment_id_fkey";
+            columns: ["enrollment_id"];
+            isOneToOne: false;
+            referencedRelation: "enrollments";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      calculated_subject_performance: {
+        Row: {
+          calculation_run_id: string;
+          class_section_id: string;
+          complete_count: number;
+          created_at: string;
+          exempted_count: number;
+          grade_distribution: Json;
+          id: string;
+          incomplete_count: number;
+          maximum_score: number | null;
+          mean_score: number | null;
+          minimum_score: number | null;
+          pass_rate: number | null;
+          subject_id: string;
+        };
+        Insert: {
+          calculation_run_id: string;
+          class_section_id: string;
+          complete_count?: number;
+          created_at?: string;
+          exempted_count?: number;
+          grade_distribution?: Json;
+          id?: string;
+          incomplete_count?: number;
+          maximum_score?: number | null;
+          mean_score?: number | null;
+          minimum_score?: number | null;
+          pass_rate?: number | null;
+          subject_id: string;
+        };
+        Update: {
+          calculation_run_id?: string;
+          class_section_id?: string;
+          complete_count?: number;
+          created_at?: string;
+          exempted_count?: number;
+          grade_distribution?: Json;
+          id?: string;
+          incomplete_count?: number;
+          maximum_score?: number | null;
+          mean_score?: number | null;
+          minimum_score?: number | null;
+          pass_rate?: number | null;
+          subject_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "calculated_subject_performance_calculation_run_id_fkey";
+            columns: ["calculation_run_id"];
+            isOneToOne: false;
+            referencedRelation: "result_calculation_runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_subject_performance_class_section_id_fkey";
+            columns: ["class_section_id"];
+            isOneToOne: false;
+            referencedRelation: "class_sections";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_subject_performance_subject_id_fkey";
+            columns: ["subject_id"];
+            isOneToOne: false;
+            referencedRelation: "subjects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      calculated_subject_results: {
+        Row: {
+          aggregate_points: number | null;
+          assessed_weight: number;
+          calculation_run_id: string;
+          class_section_id: string;
+          created_at: string;
+          enrollment_id: string;
+          grade: string | null;
+          has_absence: boolean;
+          has_exemption: boolean;
+          id: string;
+          is_pass: boolean | null;
+          mark_sheet_id: string;
+          subject_id: string;
+          subject_is_tied: boolean;
+          subject_position: number | null;
+          subject_score: number | null;
+          subject_status: Database["public"]["Enums"]["calculated_subject_status"];
+          subject_tie_size: number;
+        };
+        Insert: {
+          aggregate_points?: number | null;
+          assessed_weight: number;
+          calculation_run_id: string;
+          class_section_id: string;
+          created_at?: string;
+          enrollment_id: string;
+          grade?: string | null;
+          has_absence?: boolean;
+          has_exemption?: boolean;
+          id?: string;
+          is_pass?: boolean | null;
+          mark_sheet_id: string;
+          subject_id: string;
+          subject_is_tied?: boolean;
+          subject_position?: number | null;
+          subject_score?: number | null;
+          subject_status: Database["public"]["Enums"]["calculated_subject_status"];
+          subject_tie_size?: number;
+        };
+        Update: {
+          aggregate_points?: number | null;
+          assessed_weight?: number;
+          calculation_run_id?: string;
+          class_section_id?: string;
+          created_at?: string;
+          enrollment_id?: string;
+          grade?: string | null;
+          has_absence?: boolean;
+          has_exemption?: boolean;
+          id?: string;
+          is_pass?: boolean | null;
+          mark_sheet_id?: string;
+          subject_id?: string;
+          subject_is_tied?: boolean;
+          subject_position?: number | null;
+          subject_score?: number | null;
+          subject_status?: Database["public"]["Enums"]["calculated_subject_status"];
+          subject_tie_size?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "calculated_subject_results_calculation_run_id_fkey";
+            columns: ["calculation_run_id"];
+            isOneToOne: false;
+            referencedRelation: "result_calculation_runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_subject_results_class_section_id_fkey";
+            columns: ["class_section_id"];
+            isOneToOne: false;
+            referencedRelation: "class_sections";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_subject_results_enrollment_id_fkey";
+            columns: ["enrollment_id"];
+            isOneToOne: false;
+            referencedRelation: "enrollments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_subject_results_mark_sheet_id_fkey";
+            columns: ["mark_sheet_id"];
+            isOneToOne: false;
+            referencedRelation: "mark_sheets";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "calculated_subject_results_subject_id_fkey";
+            columns: ["subject_id"];
+            isOneToOne: false;
+            referencedRelation: "subjects";
             referencedColumns: ["id"];
           },
         ];
@@ -1595,6 +2136,189 @@ export type Database = {
           },
         ];
       };
+      result_calculation_runs: {
+        Row: {
+          aggregate_classification_scale_id: string | null;
+          created_at: string;
+          created_by: string | null;
+          grade_level_id: string;
+          grading_scale_id: string;
+          id: string;
+          input_checksum: string;
+          output_checksum: string;
+          ranking_rule_id: string;
+          supersedes_run_id: string | null;
+          term_id: string;
+          version: number;
+        };
+        Insert: {
+          aggregate_classification_scale_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          grade_level_id: string;
+          grading_scale_id: string;
+          id?: string;
+          input_checksum: string;
+          output_checksum: string;
+          ranking_rule_id: string;
+          supersedes_run_id?: string | null;
+          term_id: string;
+          version: number;
+        };
+        Update: {
+          aggregate_classification_scale_id?: string | null;
+          created_at?: string;
+          created_by?: string | null;
+          grade_level_id?: string;
+          grading_scale_id?: string;
+          id?: string;
+          input_checksum?: string;
+          output_checksum?: string;
+          ranking_rule_id?: string;
+          supersedes_run_id?: string | null;
+          term_id?: string;
+          version?: number;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "result_calculation_runs_aggregate_classification_scale_id_fkey";
+            columns: ["aggregate_classification_scale_id"];
+            isOneToOne: false;
+            referencedRelation: "aggregate_classification_scales";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "result_calculation_runs_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "school_staff_memberships";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "result_calculation_runs_grade_level_id_fkey";
+            columns: ["grade_level_id"];
+            isOneToOne: false;
+            referencedRelation: "grade_levels";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "result_calculation_runs_grading_scale_id_fkey";
+            columns: ["grading_scale_id"];
+            isOneToOne: false;
+            referencedRelation: "grading_scales";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "result_calculation_runs_ranking_rule_id_fkey";
+            columns: ["ranking_rule_id"];
+            isOneToOne: false;
+            referencedRelation: "ranking_rules";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "result_calculation_runs_supersedes_run_id_fkey";
+            columns: ["supersedes_run_id"];
+            isOneToOne: false;
+            referencedRelation: "result_calculation_runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "result_calculation_runs_term_id_fkey";
+            columns: ["term_id"];
+            isOneToOne: false;
+            referencedRelation: "terms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      result_calculation_sources: {
+        Row: {
+          assessment_scheme_id: string;
+          calculation_run_id: string;
+          class_section_id: string;
+          created_at: string;
+          curriculum_contributes_to_aggregate: boolean;
+          curriculum_is_required: boolean;
+          curriculum_sort_order: number;
+          grade_level_subject_id: string;
+          id: string;
+          mark_sheet_id: string;
+          mark_sheet_version: number;
+          subject_id: string;
+        };
+        Insert: {
+          assessment_scheme_id: string;
+          calculation_run_id: string;
+          class_section_id: string;
+          created_at?: string;
+          curriculum_contributes_to_aggregate: boolean;
+          curriculum_is_required: boolean;
+          curriculum_sort_order: number;
+          grade_level_subject_id: string;
+          id?: string;
+          mark_sheet_id: string;
+          mark_sheet_version: number;
+          subject_id: string;
+        };
+        Update: {
+          assessment_scheme_id?: string;
+          calculation_run_id?: string;
+          class_section_id?: string;
+          created_at?: string;
+          curriculum_contributes_to_aggregate?: boolean;
+          curriculum_is_required?: boolean;
+          curriculum_sort_order?: number;
+          grade_level_subject_id?: string;
+          id?: string;
+          mark_sheet_id?: string;
+          mark_sheet_version?: number;
+          subject_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "result_calculation_source_curriculum_fk";
+            columns: ["grade_level_subject_id"];
+            isOneToOne: false;
+            referencedRelation: "grade_level_subjects";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "result_calculation_sources_assessment_scheme_id_fkey";
+            columns: ["assessment_scheme_id"];
+            isOneToOne: false;
+            referencedRelation: "assessment_schemes";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "result_calculation_sources_calculation_run_id_fkey";
+            columns: ["calculation_run_id"];
+            isOneToOne: false;
+            referencedRelation: "result_calculation_runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "result_calculation_sources_class_section_id_fkey";
+            columns: ["class_section_id"];
+            isOneToOne: false;
+            referencedRelation: "class_sections";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "result_calculation_sources_mark_sheet_id_fkey";
+            columns: ["mark_sheet_id"];
+            isOneToOne: false;
+            referencedRelation: "mark_sheets";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "result_calculation_sources_subject_id_fkey";
+            columns: ["subject_id"];
+            isOneToOne: false;
+            referencedRelation: "subjects";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       role_permissions: {
         Row: {
           created_at: string;
@@ -2267,6 +2991,14 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      activate_aggregate_classification_scale: {
+        Args: { expected_updated_at: string; target_scale_id: string };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
       activate_assessment_scheme: {
         Args: { expected_updated_at: string; target_scheme_id: string };
         Returns: {
@@ -2357,6 +3089,22 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      calculate_grade_results: {
+        Args: {
+          target_aggregate_classification_scale_id?: string;
+          target_grade_level_id: string;
+          target_grading_scale_id: string;
+          target_ranking_rule_id: string;
+          target_term_id: string;
+        };
+        Returns: {
+          calculation_run_id: string;
+          calculation_version: number;
+          input_checksum: string;
+          output_checksum: string;
+          reused: boolean;
+        }[];
+      };
       change_enrollment_status: {
         Args: {
           exited_on: string;
@@ -2403,6 +3151,19 @@ export type Database = {
           year_ends_on: string;
           year_name: string;
           year_starts_on: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
+      create_aggregate_classification_scale_version: {
+        Args: {
+          expected_updated_at: string;
+          scale_bands: Json;
+          scale_name: string;
+          source_scale_id: string;
         };
         Returns: {
           entity_id: string;
@@ -2633,6 +3394,14 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      deactivate_aggregate_classification_scale: {
+        Args: { expected_updated_at: string; target_scale_id: string };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
+        }[];
+      };
       deactivate_grading_scale: {
         Args: { expected_updated_at: string; target_scale_id: string };
         Returns: {
@@ -2679,6 +3448,27 @@ export type Database = {
         Returns: {
           assignment_id: string;
           updated_at: string;
+        }[];
+      };
+      get_calculated_student_result: {
+        Args: { target_enrollment_id: string; target_run_id: string };
+        Returns: {
+          admission_number: string;
+          aggregate_classification: string;
+          aggregate_total: number;
+          calculation_version: number;
+          class_name: string;
+          class_position: number;
+          enrollment_id: string;
+          grade_level_position: number;
+          grade_name: string;
+          is_complete: boolean;
+          overall_average: number;
+          overall_grade: string;
+          overall_total: number;
+          ranking_eligible: boolean;
+          student_name: string;
+          term_name: string;
         }[];
       };
       get_class_roster: {
@@ -2825,6 +3615,60 @@ export type Database = {
           workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
         }[];
       };
+      get_result_calculation_run: {
+        Args: { target_run_id: string };
+        Returns: {
+          academic_year_id: string;
+          academic_year_name: string;
+          classification_scale_id: string;
+          classification_scale_name: string;
+          classification_scale_version: number;
+          created_at: string;
+          grade_level_id: string;
+          grade_name: string;
+          grading_scale_id: string;
+          grading_scale_name: string;
+          grading_scale_version: number;
+          input_checksum: string;
+          output_checksum: string;
+          ranking_rule_id: string;
+          ranking_rule_name: string;
+          ranking_rule_version: number;
+          run_id: string;
+          source_sheet_count: number;
+          student_count: number;
+          supersedes_run_id: string;
+          term_id: string;
+          term_name: string;
+          version: number;
+        }[];
+      };
+      get_results_calculation_readiness: {
+        Args: { target_grade_level_id: string; target_term_id: string };
+        Returns: {
+          academic_year_name: string;
+          applicable_classification_scale_count: number;
+          applicable_grading_scale_count: number;
+          applicable_ranking_rule_count: number;
+          calculation_present: boolean;
+          class_count: number;
+          current_authoritative_input_checksum: string;
+          expected_class_subject_scopes: number;
+          grade_level_id: string;
+          grade_name: string;
+          latest_run_id: string;
+          latest_run_input_checksum: string;
+          latest_version: number;
+          missing_source_scopes: number;
+          non_locked_latest_scopes: number;
+          source_sheet_count: number;
+          student_population: number;
+          term_id: string;
+          term_name: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+          up_to_date: boolean;
+        }[];
+      };
       get_student_details: {
         Args: { target_student_id: string };
         Returns: {
@@ -2937,12 +3781,71 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      list_aggregate_classification_scales: {
+        Args: never;
+        Returns: {
+          academic_year_id: string;
+          bands: Json;
+          grade_level_id: string;
+          id: string;
+          is_active: boolean;
+          name: string;
+          retired_at: string;
+          updated_at: string;
+          version: number;
+        }[];
+      };
       list_assignment_teachers: {
         Args: never;
         Returns: {
           display_name: string;
           employee_number: string;
           staff_membership_id: string;
+        }[];
+      };
+      list_calculated_student_results: {
+        Args: { target_run_id: string };
+        Returns: {
+          admission_number: string;
+          aggregate_classification: string;
+          aggregate_total: number;
+          class_is_tied: boolean;
+          class_name: string;
+          class_position: number;
+          class_section_id: string;
+          class_tie_size: number;
+          complete_subject_count: number;
+          enrollment_id: string;
+          grade_level_is_tied: boolean;
+          grade_level_position: number;
+          grade_level_tie_size: number;
+          is_complete: boolean;
+          overall_average: number;
+          overall_grade: string;
+          overall_total: number;
+          ranking_eligible: boolean;
+          ranking_metric: number;
+          student_name: string;
+          subject_count: number;
+          subjects_passed: number;
+        }[];
+      };
+      list_calculated_subject_results: {
+        Args: { target_enrollment_id: string; target_run_id: string };
+        Returns: {
+          aggregate_points: number;
+          assessed_weight: number;
+          grade: string;
+          has_absence: boolean;
+          has_exemption: boolean;
+          is_pass: boolean;
+          subject_id: string;
+          subject_is_tied: boolean;
+          subject_name: string;
+          subject_position: number;
+          subject_score: number;
+          subject_status: Database["public"]["Enums"]["calculated_subject_status"];
+          subject_tie_size: number;
         }[];
       };
       list_class_teacher_assignments: {
@@ -3116,6 +4019,79 @@ export type Database = {
           term_status: Database["public"]["Enums"]["term_status"];
           updated_at: string;
           workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
+        }[];
+      };
+      list_result_calculation_options: {
+        Args: { target_grade_level_id: string; target_term_id: string };
+        Returns: {
+          option_id: string;
+          option_name: string;
+          option_type: string;
+          option_version: number;
+          ranking_basis: Database["public"]["Enums"]["ranking_basis"];
+          tie_method: Database["public"]["Enums"]["ranking_tie_method"];
+        }[];
+      };
+      list_result_calculation_terms: {
+        Args: never;
+        Returns: {
+          academic_year_id: string;
+          academic_year_name: string;
+          created_at: string;
+          grade_level_id: string;
+          grade_name: string;
+          input_checksum: string;
+          latest_run_id: string;
+          latest_version: number;
+          term_id: string;
+          term_name: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+        }[];
+      };
+      list_result_component_explanations: {
+        Args: { target_enrollment_id: string; target_run_id: string };
+        Returns: {
+          attendance_status: Database["public"]["Enums"]["assessment_attendance_status"];
+          component_name: string;
+          entered_score: number;
+          included_weight: number;
+          maximum_score: number;
+          subject_id: string;
+          subject_name: string;
+          weight_percentage: number;
+          weighted_contribution: number;
+        }[];
+      };
+      list_result_grade_subject_performance: {
+        Args: { target_run_id: string };
+        Returns: {
+          complete_count: number;
+          exempted_count: number;
+          grade_distribution: Json;
+          incomplete_count: number;
+          maximum_score: number;
+          mean_score: number;
+          minimum_score: number;
+          pass_rate: number;
+          subject_id: string;
+          subject_name: string;
+        }[];
+      };
+      list_result_subject_performance: {
+        Args: { target_run_id: string };
+        Returns: {
+          class_name: string;
+          class_section_id: string;
+          complete_count: number;
+          exempted_count: number;
+          grade_distribution: Json;
+          incomplete_count: number;
+          maximum_score: number;
+          mean_score: number;
+          minimum_score: number;
+          pass_rate: number;
+          subject_id: string;
+          subject_name: string;
         }[];
       };
       list_students: {
@@ -3315,6 +4291,21 @@ export type Database = {
           mark_sheet_id: string;
           sheet_updated_at: string;
           workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
+        }[];
+      };
+      save_aggregate_classification_scale: {
+        Args: {
+          expected_updated_at: string;
+          scale_bands: Json;
+          scale_name: string;
+          target_academic_year_id: string;
+          target_grade_level_id: string;
+          target_scale_id: string;
+        };
+        Returns: {
+          entity_id: string;
+          entity_status: string;
+          updated_at: string;
         }[];
       };
       save_assessment_scheme_draft: {
@@ -3727,6 +4718,7 @@ export type Database = {
       assessment_attendance_status:
         "PRESENT" | "ABSENT" | "EXEMPTED" | "NOT_ASSESSED";
       assessment_scheme_status: "DRAFT" | "ACTIVE" | "RETIRED";
+      calculated_subject_status: "COMPLETE" | "INCOMPLETE" | "EXEMPTED";
       enrollment_status:
         "ACTIVE" | "TRANSFERRED" | "WITHDRAWN" | "COMPLETED" | "REPEATING";
       mark_sheet_status:
@@ -3959,6 +4951,7 @@ export const Constants = {
         "NOT_ASSESSED",
       ],
       assessment_scheme_status: ["DRAFT", "ACTIVE", "RETIRED"],
+      calculated_subject_status: ["COMPLETE", "INCOMPLETE", "EXEMPTED"],
       enrollment_status: [
         "ACTIVE",
         "TRANSFERRED",

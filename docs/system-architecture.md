@@ -25,9 +25,10 @@ Vercel
 ```
 
 The application, Stage 3 PostgreSQL foundation, Stage 4 staff authentication,
-and Stage 5 school/assignment authorization boundary are implemented. Domain
-CRUD services, calculations, report rendering, storage, and parent access
-remain deferred.
+Stage 5 school/assignment authorization boundary, Stage 10 marks workflow, and
+Stage 11 calculation engine are implemented. Report rendering, snapshots,
+publication, storage delivery, parent access, analytics, and promotion remain
+separate stages.
 
 ## Application responsibilities
 
@@ -64,7 +65,7 @@ The implementation should keep these concerns explicit:
 - Classes, streams, subjects, and assessments
 - Staff assignments and student enrolment
 - Marks capture and workflow transitions
-- Grading, aggregate, ranking, and promotion calculation
+- Grading, aggregate, and ranking calculation
 - Report snapshots, artifacts, review, and publication
 - Parent verification and restricted report access
 - Analytics
