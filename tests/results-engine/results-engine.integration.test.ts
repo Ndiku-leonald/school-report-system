@@ -404,6 +404,13 @@ async function setup() {
     "AGGREGATE",
     "DESC",
     null,
+    "DENSE",
+    [
+      [40, 40, 40],
+      [90, 90, 90],
+      [90, 90, 90],
+      [90, 90, 90],
+    ],
   );
   acceptanceFixtures.classificationUnmatched = await createPolicyFixture(
     "classification-unmatched",
@@ -1383,10 +1390,10 @@ describe.sequential(
       });
       expect(result.error).toBeNull();
       const rows = await query(
-        "with one_subject as (select distinct on (subject.enrollment_id) subject.enrollment_id, subject.subject_score::text, subject.grade, subject.aggregate_points, student.ranking_metric::text from public.calculated_subject_results subject join public.calculated_student_results student on student.calculation_run_id=subject.calculation_run_id and student.enrollment_id=subject.enrollment_id where subject.calculation_run_id=$1 and subject.subject_score is not null order by subject.enrollment_id, subject.subject_id) select subject_score, grade, aggregate_points, ranking_metric from one_subject order by subject_score, enrollment_id",
+        "with one_subject as (select distinct on (subject.enrollment_id) subject.enrollment_id, person.admission_number, subject.subject_score::text, subject.grade, subject.aggregate_points, result.ranking_metric::text from public.calculated_subject_results subject join public.calculated_student_results result on result.calculation_run_id=subject.calculation_run_id and result.enrollment_id=subject.enrollment_id join public.enrollments enrollment on enrollment.id=subject.enrollment_id join public.students person on person.id=enrollment.student_id where subject.calculation_run_id=$1 and subject.subject_score is not null order by subject.enrollment_id, subject.subject_id) select subject_score, grade, aggregate_points, ranking_metric from one_subject order by admission_number",
         [result.data?.[0]?.calculation_run_id],
       );
-      expect(rows.rows.slice(0, 3)).toEqual([
+      expect(rows.rows).toEqual([
         {
           subject_score: "89.99",
           grade: "A",
@@ -1404,6 +1411,12 @@ describe.sequential(
           grade: "A",
           aggregate_points: 3,
           ranking_metric: "90.00",
+        },
+        {
+          subject_score: "80.00",
+          grade: "A",
+          aggregate_points: 3,
+          ranking_metric: "80.00",
         },
       ]);
     });
@@ -1432,7 +1445,7 @@ describe.sequential(
     it("rejects an unmatched aggregate classification without creating a run or success audit", async () => {
       const fixture = acceptanceFixtures.classificationUnmatched;
       const before = await query(
-        "select count(*)::int as runs, (select count(*)::int from public.audit_logs where action='RESULT_CALCULATION_CREATED' and new_values->>'term_id'=$1) as audits from public.result_calculation_runs where term_id=$1 and grade_level_id=$2",
+        "select count(*)::int as runs, (select count(*)::int from public.audit_logs where action='RESULT_CALCULATION_CREATED' and new_values->>'term_id'=$1::text) as audits from public.result_calculation_runs where term_id=$1 and grade_level_id=$2",
         [fixture.term, fixture.grade],
       );
       const result = await client.rpc("calculate_grade_results", {
@@ -1447,7 +1460,7 @@ describe.sequential(
         "RESULT_CLASSIFICATION_UNMATCHED",
       );
       const after = await query(
-        "select count(*)::int as runs, (select count(*)::int from public.audit_logs where action='RESULT_CALCULATION_CREATED' and new_values->>'term_id'=$1) as audits from public.result_calculation_runs where term_id=$1 and grade_level_id=$2",
+        "select count(*)::int as runs, (select count(*)::int from public.audit_logs where action='RESULT_CALCULATION_CREATED' and new_values->>'term_id'=$1::text) as audits from public.result_calculation_runs where term_id=$1 and grade_level_id=$2",
         [fixture.term, fixture.grade],
       );
       expect(after.rows[0]).toEqual(before.rows[0]);
