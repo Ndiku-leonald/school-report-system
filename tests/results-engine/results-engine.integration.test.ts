@@ -593,16 +593,18 @@ async function createPolicyFixture(
       subjectIndex < subjects.length;
       subjectIndex += 1
     ) {
+      const attendanceStatus =
+        markStatuses?.[studentIndex]?.[subjectIndex] ?? "PRESENT";
       await query(
         "insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$2,$3,$4,$5,$6,$6)",
         [
           sheets[subjectIndex],
           components[subjectIndex],
           enrollments[studentIndex],
-          markStatuses?.[studentIndex]?.[subjectIndex] === "PRESENT"
+          attendanceStatus === "PRESENT"
             ? scoreRows[studentIndex][subjectIndex]
             : null,
-          markStatuses?.[studentIndex]?.[subjectIndex] ?? "PRESENT",
+          attendanceStatus,
           ids.membership,
         ],
       );
