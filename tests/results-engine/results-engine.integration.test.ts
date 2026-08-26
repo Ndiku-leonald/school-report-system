@@ -85,6 +85,8 @@ type PolicyFixture = {
 };
 
 const policyFixtures: Record<string, PolicyFixture> = {};
+const acceptanceFixtures: Record<string, PolicyFixture> = {};
+const acceptanceClassificationScales: Record<string, string> = {};
 let componentFixture: {
   term: string;
   grade: string;
@@ -360,6 +362,70 @@ async function setup() {
       "DENSE",
     );
   }
+  acceptanceFixtures.rounding = await createPolicyFixture(
+    "rounding",
+    "AVERAGE",
+    "DESC",
+    null,
+    "DENSE",
+    [
+      [89.994, 89.994, 89.994],
+      [89.995, 89.995, 89.995],
+      [90, 90, 90],
+      [80, 80, 80],
+    ],
+  );
+  acceptanceFixtures.partial = await createPolicyFixture(
+    "partial",
+    "AGGREGATE",
+    "DESC",
+    null,
+    "DENSE",
+    undefined,
+    [
+      ["PRESENT", "PRESENT", "PRESENT"],
+      ["NOT_ASSESSED", "PRESENT", "PRESENT"],
+      ["EXEMPTED", "PRESENT", "PRESENT"],
+      ["PRESENT", "PRESENT", "PRESENT"],
+    ],
+  );
+  acceptanceFixtures.missingPoints = await createPolicyFixture(
+    "missing-points",
+    "AGGREGATE",
+    "DESC",
+    null,
+    "DENSE",
+    undefined,
+    undefined,
+    true,
+  );
+  acceptanceFixtures.classification = await createPolicyFixture(
+    "classification",
+    "AGGREGATE",
+    "DESC",
+    null,
+  );
+  acceptanceFixtures.classificationUnmatched = await createPolicyFixture(
+    "classification-unmatched",
+    "AGGREGATE",
+    "DESC",
+    null,
+  );
+  acceptanceClassificationScales.valid = await createClassificationScale(
+    acceptanceFixtures.classification,
+    [
+      [0, 8, "Alpha"],
+      [9, 9, "Beta"],
+      [10, 20, "Gamma"],
+    ],
+  );
+  acceptanceClassificationScales.unmatched = await createClassificationScale(
+    acceptanceFixtures.classificationUnmatched,
+    [
+      [0, 8, "Alpha"],
+      [10, 20, "Gamma"],
+    ],
+  );
   for (const [name, tieMethod] of [
     ["dense", "DENSE"],
     ["competition", "COMPETITION"],
@@ -383,6 +449,14 @@ async function createPolicyFixture(
   direction: "ASC" | "DESC",
   configuredMetric: "TOTAL" | "AVERAGE" | "AGGREGATE" | null,
   tieMethod: "DENSE" | "COMPETITION" | "ORDINAL" | "SHARED" = "DENSE",
+  scoreRows: number[][] = [
+    [100, 100, 100],
+    [90, 90, 90],
+    [90, 90, 90],
+    [80, 80, 80],
+  ],
+  markStatuses?: string[][],
+  missingAggregatePoints = false,
 ): Promise<PolicyFixture> {
   const year = randomUUID();
   const term = randomUUID();
@@ -397,7 +471,10 @@ async function createPolicyFixture(
   const sheets = subjects.map(() => randomUUID());
   const scale = randomUUID();
   const rule = randomUUID();
-  const yearNumber = 2050 + Object.keys(policyFixtures).length;
+  const yearNumber =
+    2050 +
+    Object.keys(policyFixtures).length +
+    Object.keys(acceptanceFixtures).length;
   const admissions = [
     `P${yearNumber}-Z-010`,
     `P${yearNumber}-A-002`,
@@ -506,12 +583,6 @@ async function createPolicyFixture(
     [...sheets, term, classSection, ...subjects, ...schemes, ...assignments],
   );
 
-  const scores = [
-    [100, 100, 100],
-    [90, 90, 90],
-    [90, 90, 90],
-    [80, 80, 80],
-  ];
   for (
     let studentIndex = 0;
     studentIndex < enrollments.length;
@@ -523,12 +594,15 @@ async function createPolicyFixture(
       subjectIndex += 1
     ) {
       await query(
-        "insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$2,$3,$4,'PRESENT',$5,$5)",
+        "insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$2,$3,$4,$5,$6,$6)",
         [
           sheets[subjectIndex],
           components[subjectIndex],
           enrollments[studentIndex],
-          scores[studentIndex][subjectIndex],
+          markStatuses?.[studentIndex]?.[subjectIndex] === "PRESENT"
+            ? scoreRows[studentIndex][subjectIndex]
+            : null,
+          markStatuses?.[studentIndex]?.[subjectIndex] ?? "PRESENT",
           ids.membership,
         ],
       );
@@ -547,8 +621,8 @@ async function createPolicyFixture(
     ],
   );
   await query(
-    "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,50,'F',1,false,1),($1,50,80,'C',2,true,2),($1,80,100,'A',3,true,3)",
-    [scale],
+    "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,50,'F',1,false,1),($1,50,80,'C',2,true,2),($1,80,100,'A',$2,true,3)",
+    [scale, missingAggregatePoints ? null : 3],
   );
   await query("update public.grading_scales set is_active=true where id=$1", [
     scale,
@@ -584,6 +658,35 @@ async function createPolicyFixture(
   );
   await query("update public.terms set status='LOCKED' where id=$1", [term]);
   return { term, grade, scale, rule, enrollments, admissions };
+}
+
+async function createClassificationScale(
+  fixture: PolicyFixture,
+  bands: [number, number, string][],
+) {
+  const scale = randomUUID();
+  await query(
+    "insert into public.aggregate_classification_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,created_by) values($1,$2,(select academic_year_id from public.terms where id=$3),$4,$5,1,false,$6)",
+    [
+      scale,
+      ids.school,
+      fixture.term,
+      fixture.grade,
+      `Acceptance ${scale}`,
+      ids.membership,
+    ],
+  );
+  for (const [index, [minimum, maximum, label]] of bands.entries()) {
+    await query(
+      "insert into public.aggregate_classification_bands(scale_id,minimum_aggregate,maximum_aggregate,label,sort_order) values($1,$2,$3,$4,$5)",
+      [scale, minimum, maximum, label, index + 1],
+    );
+  }
+  await query(
+    "update public.aggregate_classification_scales set is_active=true where id=$1",
+    [scale],
+  );
+  return scale;
 }
 
 async function createComponentFixture() {
@@ -1266,6 +1369,166 @@ describe.sequential(
         if (metric === "AGGREGATE")
           expect(Number(row.ranking_metric)).toBe(Number(row.aggregate_total));
       }
+    });
+    it("persists PostgreSQL rounding boundaries consistently across score, grade, aggregate points, and ranking metric", async () => {
+      const fixture = acceptanceFixtures.rounding;
+      const result = await client.rpc("calculate_grade_results", {
+        target_term_id: fixture.term,
+        target_grade_level_id: fixture.grade,
+        target_grading_scale_id: fixture.scale,
+        target_ranking_rule_id: fixture.rule,
+        target_aggregate_classification_scale_id: null,
+      });
+      expect(result.error).toBeNull();
+      const rows = await query(
+        "with one_subject as (select distinct on (subject.enrollment_id) subject.enrollment_id, subject.subject_score::text, subject.grade, subject.aggregate_points, student.ranking_metric::text from public.calculated_subject_results subject join public.calculated_student_results student on student.calculation_run_id=subject.calculation_run_id and student.enrollment_id=subject.enrollment_id where subject.calculation_run_id=$1 and subject.subject_score is not null order by subject.enrollment_id, subject.subject_id) select subject_score, grade, aggregate_points, ranking_metric from one_subject order by subject_score, enrollment_id",
+        [result.data?.[0]?.calculation_run_id],
+      );
+      expect(rows.rows.slice(0, 3)).toEqual([
+        {
+          subject_score: "89.99",
+          grade: "A",
+          aggregate_points: 3,
+          ranking_metric: "89.99",
+        },
+        {
+          subject_score: "90.00",
+          grade: "A",
+          aggregate_points: 3,
+          ranking_metric: "90.00",
+        },
+        {
+          subject_score: "90.00",
+          grade: "A",
+          aggregate_points: 3,
+          ranking_metric: "90.00",
+        },
+      ]);
+    });
+    it("maps valid aggregate totals and exact classification boundaries through the calculation RPC", async () => {
+      const fixture = acceptanceFixtures.classification;
+      const result = await client.rpc("calculate_grade_results", {
+        target_term_id: fixture.term,
+        target_grade_level_id: fixture.grade,
+        target_grading_scale_id: fixture.scale,
+        target_ranking_rule_id: fixture.rule,
+        target_aggregate_classification_scale_id:
+          acceptanceClassificationScales.valid,
+      });
+      expect(result.error).toBeNull();
+      const rows = await query(
+        "select aggregate_total, aggregate_classification from public.calculated_student_results where calculation_run_id=$1 order by aggregate_total",
+        [result.data?.[0]?.calculation_run_id],
+      );
+      expect(rows.rows).toEqual([
+        { aggregate_total: 3, aggregate_classification: "Alpha" },
+        { aggregate_total: 9, aggregate_classification: "Beta" },
+        { aggregate_total: 9, aggregate_classification: "Beta" },
+        { aggregate_total: 9, aggregate_classification: "Beta" },
+      ]);
+    });
+    it("rejects an unmatched aggregate classification without creating a run or success audit", async () => {
+      const fixture = acceptanceFixtures.classificationUnmatched;
+      const before = await query(
+        "select count(*)::int as runs, (select count(*)::int from public.audit_logs where action='RESULT_CALCULATION_CREATED' and new_values->>'term_id'=$1) as audits from public.result_calculation_runs where term_id=$1 and grade_level_id=$2",
+        [fixture.term, fixture.grade],
+      );
+      const result = await client.rpc("calculate_grade_results", {
+        target_term_id: fixture.term,
+        target_grade_level_id: fixture.grade,
+        target_grading_scale_id: fixture.scale,
+        target_ranking_rule_id: fixture.rule,
+        target_aggregate_classification_scale_id:
+          acceptanceClassificationScales.unmatched,
+      });
+      expect(result.error?.message).toContain(
+        "RESULT_CLASSIFICATION_UNMATCHED",
+      );
+      const after = await query(
+        "select count(*)::int as runs, (select count(*)::int from public.audit_logs where action='RESULT_CALCULATION_CREATED' and new_values->>'term_id'=$1) as audits from public.result_calculation_runs where term_id=$1 and grade_level_id=$2",
+        [fixture.term, fixture.grade],
+      );
+      expect(after.rows[0]).toEqual(before.rows[0]);
+      expect(
+        await query(
+          "select count(*)::int as count from public.calculated_student_results where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1 and grade_level_id=$2)",
+          [fixture.term, fixture.grade],
+        ),
+      ).toMatchObject({ rows: [{ count: 0 }] });
+    });
+    it("rejects overlapping classification bands at the database boundary", async () => {
+      const scale = randomUUID();
+      await query(
+        "insert into public.aggregate_classification_scales(id,school_id,name,version,is_active,created_by) values($1,$2,$3,1,false,$4)",
+        [scale, ids.school, `Overlap ${scale}`, ids.membership],
+      );
+      await query(
+        "insert into public.aggregate_classification_bands(scale_id,minimum_aggregate,maximum_aggregate,label,sort_order) values($1,0,5,'Alpha',1)",
+        [scale],
+      );
+      await expect(
+        query(
+          "insert into public.aggregate_classification_bands(scale_id,minimum_aggregate,maximum_aggregate,label,sort_order) values($1,5,10,'Beta',2)",
+          [scale],
+        ),
+      ).rejects.toThrow();
+    });
+    it("does not calculate a partial aggregate for incomplete or exempted contributing subjects", async () => {
+      const fixture = acceptanceFixtures.partial;
+      const result = await client.rpc("calculate_grade_results", {
+        target_term_id: fixture.term,
+        target_grade_level_id: fixture.grade,
+        target_grading_scale_id: fixture.scale,
+        target_ranking_rule_id: fixture.rule,
+        target_aggregate_classification_scale_id: null,
+      });
+      expect(result.error).toBeNull();
+      const rows = await query(
+        "select enrollment_id, aggregate_total, aggregate_classification, is_complete from public.calculated_student_results where calculation_run_id=$1 order by enrollment_id",
+        [result.data?.[0]?.calculation_run_id],
+      );
+      expect(rows.rows).toHaveLength(4);
+      expect(rows.rows.filter((row) => row.aggregate_total === 9)).toHaveLength(
+        2,
+      );
+      expect(
+        rows.rows.filter((row) => row.aggregate_total === null),
+      ).toHaveLength(2);
+      expect(
+        rows.rows.find((row) => row.enrollment_id === fixture.enrollments[1]),
+      ).toMatchObject({
+        aggregate_total: null,
+        aggregate_classification: null,
+        is_complete: false,
+      });
+      expect(
+        rows.rows.find((row) => row.enrollment_id === fixture.enrollments[2]),
+      ).toMatchObject({
+        aggregate_total: null,
+        aggregate_classification: null,
+        is_complete: true,
+      });
+    });
+    it("fails atomically when a complete aggregate-contributing subject has no aggregate points", async () => {
+      const fixture = acceptanceFixtures.missingPoints;
+      const result = await client.rpc("calculate_grade_results", {
+        target_term_id: fixture.term,
+        target_grade_level_id: fixture.grade,
+        target_grading_scale_id: fixture.scale,
+        target_ranking_rule_id: fixture.rule,
+        target_aggregate_classification_scale_id: null,
+      });
+      expect(result.error?.message).toContain("RESULT_GRADING_BAND_MISSING");
+      const runs = await query(
+        "select count(*)::int as count from public.result_calculation_runs where term_id=$1 and grade_level_id=$2",
+        [fixture.term, fixture.grade],
+      );
+      expect(runs.rows[0].count).toBe(0);
+      const audit = await query(
+        "select count(*)::int as count from public.audit_logs where action='RESULT_CALCULATION_CREATED' and new_values->>'term_id'=$1",
+        [fixture.term],
+      );
+      expect(audit.rows[0].count).toBe(0);
     });
     it.each([
       ["dense", [1, 2, 2, 3]],
