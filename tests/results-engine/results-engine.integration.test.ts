@@ -105,6 +105,7 @@ type ResultsActor = { email: string; membershipId: string };
 async function createResultsActor(
   label: string,
   roles: string[] = ["SCHOOL_ADMIN"],
+  schoolId = ids.school,
 ): Promise<ResultsActor> {
   const email = `results-engine.${label}.${Date.now()}@example.invalid`;
   const created = await admin.auth.admin.createUser({
@@ -120,12 +121,7 @@ async function createResultsActor(
   );
   await query(
     "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,$4,'ACTIVE')",
-    [
-      membershipId,
-      ids.school,
-      created.data.user.id,
-      `RI-${label}-${Date.now()}`,
-    ],
+    [membershipId, schoolId, created.data.user.id, `RI-${label}-${Date.now()}`],
   );
   for (const role of roles)
     await query(
@@ -1725,6 +1721,66 @@ describe.sequential(
         grade: null,
         subject_position: null,
       });
+    });
+    it("revalidates result access after role revocation, suspension, and school mismatch", async () => {
+      const reader = await createResultsActor("revocation-reader", [
+        "HEAD_TEACHER",
+      ]);
+      const readerClient = await signInResultsActor(reader);
+      const initial = await readerClient.rpc(
+        "get_results_calculation_readiness",
+        {
+          target_term_id: ids.term,
+          target_grade_level_id: ids.grade,
+        },
+      );
+      expect(initial.error).toBeNull();
+
+      await query(
+        "update public.staff_role_assignments set revoked_at=now() where membership_id=$1",
+        [reader.membershipId],
+      );
+      const revoked = await readerClient.rpc(
+        "get_results_calculation_readiness",
+        { target_term_id: ids.term, target_grade_level_id: ids.grade },
+      );
+      expect(revoked.error).not.toBeNull();
+
+      await query(
+        "update public.staff_role_assignments set revoked_at=null where membership_id=$1",
+        [reader.membershipId],
+      );
+      await query(
+        "update public.school_staff_memberships set status='SUSPENDED' where id=$1",
+        [reader.membershipId],
+      );
+      const suspended = await readerClient.rpc(
+        "get_results_calculation_readiness",
+        { target_term_id: ids.term, target_grade_level_id: ids.grade },
+      );
+      expect(suspended.error).not.toBeNull();
+
+      const otherSchool = randomUUID();
+      await query(
+        "insert into public.schools(id,name,slug,school_code) values($1,$2,$3,$4)",
+        [
+          otherSchool,
+          "Results Engine Other School",
+          `results-other-${Date.now()}`,
+          `RIO-${Date.now()}`,
+        ],
+      );
+      const outsider = await createResultsActor(
+        "cross-school-reader",
+        ["SCHOOL_ADMIN"],
+        otherSchool,
+      );
+      const outsiderClient = await signInResultsActor(outsider);
+      const crossSchool = await outsiderClient.rpc(
+        "get_results_calculation_readiness",
+        { target_term_id: ids.term, target_grade_level_id: ids.grade },
+      );
+      expect(crossSchool.error).not.toBeNull();
     });
     it("invalidates a prior run when its curriculum snapshot drifts", async () => {
       const fixture = policyFixtures.total;
