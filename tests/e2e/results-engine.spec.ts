@@ -30,6 +30,7 @@ const ids = Object.fromEntries(
     "schoolScale",
     "rule",
     "schoolRule",
+    "classification",
   ].map((key) => [key, randomUUID()]),
 ) as Record<string, string>;
 const admin = enabled
