@@ -602,7 +602,7 @@ test.describe.serial("results engine dedicated browser verification", () => {
     page,
   }) => {
     await openLatestCalculation(page);
-    await expect(page.getByText("tied", { exact: true })).toBeVisible();
+    await expect(page.getByText("tied", { exact: true })).toHaveCount(2);
   });
   test("53. browser calculation accepts an explicit classification scale", async ({
     page,
