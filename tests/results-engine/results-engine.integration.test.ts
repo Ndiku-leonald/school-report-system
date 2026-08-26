@@ -100,6 +100,77 @@ async function query(text: string, values: unknown[] = []) {
   return db.query(text, values);
 }
 
+type ResultsActor = { email: string; membershipId: string };
+
+async function createResultsActor(
+  label: string,
+  roles: string[] = ["SCHOOL_ADMIN"],
+): Promise<ResultsActor> {
+  const email = `results-engine.${label}.${Date.now()}@example.invalid`;
+  const created = await admin.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (created.error) throw created.error;
+  const membershipId = randomUUID();
+  await query(
+    "insert into public.profiles(id,first_name,last_name) values($1,$2,'Results Actor')",
+    [created.data.user.id, label],
+  );
+  await query(
+    "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,$4,'ACTIVE')",
+    [
+      membershipId,
+      ids.school,
+      created.data.user.id,
+      `RI-${label}-${Date.now()}`,
+    ],
+  );
+  for (const role of roles)
+    await query(
+      "insert into public.staff_role_assignments(id,membership_id,role,granted_at) values($1,$2,$3,now()-interval '1 day')",
+      [randomUUID(), membershipId, role],
+    );
+  return { email, membershipId };
+}
+
+async function signInResultsActor(actor: ResultsActor) {
+  const actorClient = createClient(url!, anonKey!, {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+  });
+  const login = await actorClient.auth.signInWithPassword({
+    email: actor.email,
+    password,
+  });
+  if (login.error) throw login.error;
+  const selected = await actorClient.rpc("set_my_active_membership", {
+    target_membership_id: actor.membershipId,
+  });
+  if (selected.error) throw selected.error;
+  return actorClient;
+}
+
+async function markSheetUpdatedAt(markSheetId: string) {
+  const result = await query(
+    "select updated_at::text from public.mark_sheets where id=$1",
+    [markSheetId],
+  );
+  return result.rows[0].updated_at as string;
+}
+
+async function termUpdatedAt(termId: string) {
+  const result = await query(
+    "select updated_at::text from public.terms where id=$1",
+    [termId],
+  );
+  return result.rows[0].updated_at as string;
+}
+
 async function setup() {
   await db.connect();
   const user = await admin.auth.admin.createUser({
@@ -1390,33 +1461,37 @@ describe.sequential(
       });
       expect(result.error).toBeNull();
       const rows = await query(
-        "with one_subject as (select distinct on (subject.enrollment_id) subject.enrollment_id, person.admission_number, subject.subject_score::text, subject.grade, subject.aggregate_points, result.ranking_metric::text from public.calculated_subject_results subject join public.calculated_student_results result on result.calculation_run_id=subject.calculation_run_id and result.enrollment_id=subject.enrollment_id join public.enrollments enrollment on enrollment.id=subject.enrollment_id join public.students person on person.id=enrollment.student_id where subject.calculation_run_id=$1 and subject.subject_score is not null order by subject.enrollment_id, subject.subject_id) select subject_score, grade, aggregate_points, ranking_metric from one_subject order by admission_number",
+        "with one_subject as (select distinct on (subject.enrollment_id) subject.enrollment_id, person.admission_number, subject.subject_score::text, subject.grade, subject.aggregate_points, result.ranking_metric::text from public.calculated_subject_results subject join public.calculated_student_results result on result.calculation_run_id=subject.calculation_run_id and result.enrollment_id=subject.enrollment_id join public.enrollments enrollment on enrollment.id=subject.enrollment_id join public.students person on person.id=enrollment.student_id where subject.calculation_run_id=$1 and subject.subject_score is not null order by subject.enrollment_id, subject.subject_id) select admission_number, subject_score, grade, aggregate_points, ranking_metric from one_subject order by admission_number",
         [result.data?.[0]?.calculation_run_id],
       );
       expect(rows.rows).toEqual([
         {
-          subject_score: "89.99",
-          grade: "A",
-          aggregate_points: 3,
-          ranking_metric: "89.99",
-        },
-        {
+          admission_number: fixture.admissions[1],
           subject_score: "90.00",
           grade: "A",
           aggregate_points: 3,
           ranking_metric: "90.00",
         },
         {
-          subject_score: "90.00",
-          grade: "A",
-          aggregate_points: 3,
-          ranking_metric: "90.00",
-        },
-        {
+          admission_number: fixture.admissions[3],
           subject_score: "80.00",
           grade: "A",
           aggregate_points: 3,
           ranking_metric: "80.00",
+        },
+        {
+          admission_number: fixture.admissions[2],
+          subject_score: "90.00",
+          grade: "A",
+          aggregate_points: 3,
+          ranking_metric: "90.00",
+        },
+        {
+          admission_number: fixture.admissions[0],
+          subject_score: "89.99",
+          grade: "A",
+          aggregate_points: 3,
+          ranking_metric: "89.99",
         },
       ]);
     });
@@ -1445,7 +1520,7 @@ describe.sequential(
     it("rejects an unmatched aggregate classification without creating a run or success audit", async () => {
       const fixture = acceptanceFixtures.classificationUnmatched;
       const before = await query(
-        "select count(*)::int as runs, (select count(*)::int from public.audit_logs where action='RESULT_CALCULATION_CREATED' and new_values->>'term_id'=$1::text) as audits from public.result_calculation_runs where term_id=$1 and grade_level_id=$2",
+        "select count(*)::int as runs, (select count(*)::int from public.audit_logs where action='RESULT_CALCULATION_CREATED' and new_values->>'term_id'=$1) as audits from public.result_calculation_runs where term_id::text=$1 and grade_level_id=$2",
         [fixture.term, fixture.grade],
       );
       const result = await client.rpc("calculate_grade_results", {
@@ -1460,7 +1535,7 @@ describe.sequential(
         "RESULT_CLASSIFICATION_UNMATCHED",
       );
       const after = await query(
-        "select count(*)::int as runs, (select count(*)::int from public.audit_logs where action='RESULT_CALCULATION_CREATED' and new_values->>'term_id'=$1::text) as audits from public.result_calculation_runs where term_id=$1 and grade_level_id=$2",
+        "select count(*)::int as runs, (select count(*)::int from public.audit_logs where action='RESULT_CALCULATION_CREATED' and new_values->>'term_id'=$1) as audits from public.result_calculation_runs where term_id::text=$1 and grade_level_id=$2",
         [fixture.term, fixture.grade],
       );
       expect(after.rows[0]).toEqual(before.rows[0]);
@@ -1650,6 +1725,159 @@ describe.sequential(
         grade: null,
         subject_position: null,
       });
+    });
+    it("invalidates a prior run when its curriculum snapshot drifts", async () => {
+      const fixture = policyFixtures.total;
+      const mapping = await query(
+        "select id, is_required from public.grade_level_subjects where grade_level_id=$1 order by id limit 1",
+        [fixture.grade],
+      );
+      const originalRequired = mapping.rows[0].is_required as boolean;
+      await query(
+        "update public.grade_level_subjects set is_required=$2 where id=$1",
+        [mapping.rows[0].id, !originalRequired],
+      );
+      try {
+        const result = await client.rpc("calculate_grade_results", {
+          target_term_id: fixture.term,
+          target_grade_level_id: fixture.grade,
+          target_grading_scale_id: fixture.scale,
+          target_ranking_rule_id: fixture.rule,
+          target_aggregate_classification_scale_id: null,
+        });
+        expect(result.error?.message).toContain("RESULT_RULE_CONTEXT_CHANGED");
+        expect(
+          (
+            await client.rpc("get_results_calculation_readiness", {
+              target_term_id: fixture.term,
+              target_grade_level_id: fixture.grade,
+            })
+          ).data?.[0]?.up_to_date,
+        ).toBe(false);
+      } finally {
+        await query(
+          "update public.grade_level_subjects set is_required=$2 where id=$1",
+          [mapping.rows[0].id, originalRequired],
+        );
+      }
+    });
+    it("carries a Stage 10 correction revision into Stage 11 version two", async () => {
+      const correctionTeacher = await createResultsActor("correction-teacher", [
+        "SUBJECT_TEACHER",
+      ]);
+      const correctionApprover = await createResultsActor(
+        "correction-approver",
+      );
+      const teacherClient = await signInResultsActor(correctionTeacher);
+      const approverClient = await signInResultsActor(correctionApprover);
+      await query(
+        "update public.teaching_assignments set staff_membership_id=$2 where id=$1",
+        [ids.assignmentA1, correctionTeacher.membershipId],
+      );
+      const firstRun = await query(
+        "select id, input_checksum from public.result_calculation_runs where term_id=$1 and grade_level_id=$2 order by version limit 1",
+        [ids.term, ids.grade],
+      );
+      expect(firstRun.rows).toHaveLength(1);
+
+      const reopened = await approverClient.rpc(
+        "reopen_locked_term_for_mark_correction",
+        {
+          target_term_id: ids.term,
+          expected_updated_at: await termUpdatedAt(ids.term),
+          correction_reason: "Results engine acceptance correction",
+        },
+      );
+      expect(reopened.error).toBeNull();
+
+      const created = await approverClient.rpc(
+        "create_mark_sheet_correction_revision",
+        {
+          source_mark_sheet_id: ids.sheetA1,
+          expected_source_updated_at: await markSheetUpdatedAt(ids.sheetA1),
+          correction_reason: "Results engine acceptance correction",
+        },
+      );
+      expect(created.error).toBeNull();
+      const correctionSheetId = created.data?.[0]?.correction_sheet_id;
+      expect(correctionSheetId).toBeTruthy();
+
+      expect(
+        (
+          await teacherClient.rpc("submit_mark_sheet", {
+            target_mark_sheet_id: correctionSheetId,
+            expected_updated_at: await markSheetUpdatedAt(correctionSheetId!),
+          })
+        ).error,
+      ).toBeNull();
+      expect(
+        (
+          await approverClient.rpc("start_mark_sheet_review", {
+            target_mark_sheet_id: correctionSheetId,
+            expected_updated_at: await markSheetUpdatedAt(correctionSheetId!),
+          })
+        ).error,
+      ).toBeNull();
+      expect(
+        (
+          await approverClient.rpc("approve_mark_sheet", {
+            target_mark_sheet_id: correctionSheetId,
+            expected_updated_at: await markSheetUpdatedAt(correctionSheetId!),
+          })
+        ).error,
+      ).toBeNull();
+      expect(
+        (
+          await approverClient.rpc("lock_mark_sheet", {
+            target_mark_sheet_id: correctionSheetId,
+            expected_updated_at: await markSheetUpdatedAt(correctionSheetId!),
+          })
+        ).error,
+      ).toBeNull();
+      expect(
+        (
+          await approverClient.rpc("lock_term_marks", {
+            target_term_id: ids.term,
+            expected_updated_at: await termUpdatedAt(ids.term),
+          })
+        ).error,
+      ).toBeNull();
+
+      const recalculated = await client.rpc("calculate_grade_results", {
+        target_term_id: ids.term,
+        target_grade_level_id: ids.grade,
+        target_grading_scale_id: ids.scale,
+        target_ranking_rule_id: ids.rule,
+        target_aggregate_classification_scale_id: null,
+      });
+      expect(recalculated.error).toBeNull();
+      const secondRun = await query(
+        "select id, version, supersedes_run_id, input_checksum from public.result_calculation_runs where term_id=$1 and grade_level_id=$2 order by version desc",
+        [ids.term, ids.grade],
+      );
+      expect(secondRun.rows[0]).toMatchObject({
+        version: 2,
+        supersedes_run_id: firstRun.rows[0].id,
+      });
+      expect(secondRun.rows[0].input_checksum).not.toBe(
+        firstRun.rows[0].input_checksum,
+      );
+      expect(
+        (
+          await query(
+            "select count(*)::int count from public.result_calculation_sources where calculation_run_id=$1 and mark_sheet_version=2",
+            [secondRun.rows[0].id],
+          )
+        ).rows[0].count,
+      ).toBe(1);
+      expect(
+        (
+          await query(
+            "select count(*)::int count from public.calculated_student_results where calculation_run_id=$1",
+            [firstRun.rows[0].id],
+          )
+        ).rows[0].count,
+      ).toBe(4);
     });
   },
 );

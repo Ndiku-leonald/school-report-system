@@ -261,5 +261,14 @@ select extensions.ok((select count(*) = 3 from public.calculated_grade_subject_p
 select extensions.ok((select count(*) = 1 from public.result_calculation_runs where supersedes_run_id is null), '99. first run has no predecessor');
 select extensions.ok((select count(*) = 0 from public.result_calculation_runs where supersedes_run_id is not null), '100. reuse creates no successor');
 
+select extensions.is(round(89.994::numeric, 2), 89.99::numeric, '101. PostgreSQL rounds 89.994 down at two decimals');
+select extensions.is(round(89.995::numeric, 2), 90.00::numeric, '102. PostgreSQL rounds 89.995 up at two decimals');
+select extensions.is(round(90.00::numeric, 2), 90.00::numeric, '103. PostgreSQL preserves an exact whole score');
+select extensions.ok((select count(*) = 0 from public.calculated_subject_results where subject_status = 'COMPLETE' and subject_score is null), '104. complete result rows never contain an invented null score');
+select extensions.ok((select count(*) = 0 from public.calculated_student_results where aggregate_total is null and is_complete), '105. complete learners do not lose aggregate points');
+select extensions.ok((select count(*) = 6 from public.result_calculation_sources where grade_level_subject_id is not null and curriculum_is_required is not null and curriculum_contributes_to_aggregate is not null), '106. every source snapshots the curriculum contract');
+select extensions.ok((select exists (select 1 from pg_constraint where conname = 'aggregate_classification_band_range_exclusion')), '107. classification bands have a database overlap guard');
+select extensions.ok((select not has_table_privilege('authenticated', 'public.calculated_student_results', 'INSERT,UPDATE,DELETE')), '108. calculated student results remain immutable to authenticated callers');
+
 select * from extensions.finish();
 rollback;
