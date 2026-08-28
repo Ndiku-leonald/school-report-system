@@ -432,7 +432,7 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
   });
   test("24. academic summary preserves aggregate points", async ({ page }) => {
     await openGeneratedReport(page);
-    await expect(page.getByText("Aggregate")).toBeVisible();
+    await expect(page.getByText("Aggregate").first()).toBeVisible();
   });
   test("25. academic summary preserves class position", async ({ page }) => {
     await openGeneratedReport(page);
