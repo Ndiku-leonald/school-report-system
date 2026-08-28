@@ -127,6 +127,7 @@ using (
   )
 );
 grant select on table public.report_snapshot_sources to authenticated;
+grant select on table public.report_batches to authenticated;
 
 -- Rebind the existing report scope guard after the migration-28 function
 -- replacement so legacy rows retain actor and academic-scope validation.
