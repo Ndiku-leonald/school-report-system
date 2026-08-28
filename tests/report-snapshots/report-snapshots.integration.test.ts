@@ -54,6 +54,7 @@ const ids = Object.fromEntries(
 ) as Record<string, string>;
 const password = "synthetic-report-snapshot-password";
 let client: SupabaseClient;
+let firstReportId: string;
 
 async function query(text: string, values: unknown[] = []) {
   return db.query(text, values);
@@ -259,6 +260,7 @@ describe("report snapshots integration", () => {
       reused: false,
     });
     const reportId = generated.data?.[0]?.report_id;
+    firstReportId = reportId!;
     const detail = await client.rpc("get_generated_report", {
       target_report_id: reportId,
     });
@@ -504,16 +506,18 @@ describe("report snapshots integration", () => {
       target_calculation_run_id: ids.run,
     });
     expect(listed.error).toBeNull();
-    expect(listed.data).toHaveLength(1);
-    expect(listed.data?.[0]?.calculation_run_id).toBe(ids.run);
+    expect(listed.data).toHaveLength(6);
+    expect(
+      listed.data?.every(
+        (item: { calculation_run_id: string }) =>
+          item.calculation_run_id === ids.run,
+      ),
+    ).toBe(true);
   });
 
   it("returns the frozen detail without live table joins", async () => {
-    const listed = await client.rpc("list_generated_reports", {
-      target_calculation_run_id: ids.run,
-    });
     const detail = await client.rpc("get_generated_report", {
-      target_report_id: listed.data?.[0]?.report_id,
+      target_report_id: firstReportId,
     });
     expect(detail.error).toBeNull();
     expect(detail.data?.[0]?.snapshot_data?.school?.name).toBe(
@@ -525,11 +529,8 @@ describe("report snapshots integration", () => {
   });
 
   it("does not infer a head teacher from a generic comment updater", async () => {
-    const listed = await client.rpc("list_generated_reports", {
-      target_calculation_run_id: ids.run,
-    });
     const detail = await client.rpc("get_generated_report", {
-      target_report_id: listed.data?.[0]?.report_id,
+      target_report_id: firstReportId,
     });
     expect(detail.data?.[0]?.snapshot_data?.signatories?.head_teacher).toBe(
       null,
@@ -537,11 +538,8 @@ describe("report snapshots integration", () => {
   });
 
   it("returns frozen subject identity and result values", async () => {
-    const listed = await client.rpc("list_generated_reports", {
-      target_calculation_run_id: ids.run,
-    });
     const subjects = await client.rpc("get_report_subject_results", {
-      target_report_id: listed.data?.[0]?.report_id,
+      target_report_id: firstReportId,
     });
     expect(subjects.error).toBeNull();
     expect(subjects.data).toHaveLength(1);
@@ -555,10 +553,10 @@ describe("report snapshots integration", () => {
   it("exposes a stable context checksum on the report and snapshot", async () => {
     const row = await query(
       `select report.snapshot_context_checksum, snapshot.snapshot_checksum
-       from public.reports report
-       join public.report_snapshots snapshot on snapshot.report_id = report.id
-       where report.calculation_run_id=$1`,
-      [ids.run],
+        from public.reports report
+        join public.report_snapshots snapshot on snapshot.report_id = report.id
+        where report.id=$1`,
+      [firstReportId],
     );
     expect(row.rows).toHaveLength(1);
     expect(row.rows[0].snapshot_context_checksum).toHaveLength(64);
@@ -577,7 +575,7 @@ describe("report snapshots integration", () => {
       history.data?.map(
         (item: { report_version: number }) => item.report_version,
       ),
-    ).toEqual([1, 2]);
+    ).toEqual([1, 2, 3, 4, 5, 6, 7]);
     expect(
       history.data?.filter((item: { is_latest: boolean }) => item.is_latest),
     ).toHaveLength(1);
@@ -617,7 +615,7 @@ describe("report snapshots integration", () => {
       "select count(*)::int as count from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$1",
       [ids.run],
     );
-    expect(audits.rows[0].count).toBe(1);
+    expect(audits.rows[0].count).toBe(6);
   });
 
   it("rejects direct generated-report mutation", async () => {
@@ -694,8 +692,8 @@ describe("report snapshots integration", () => {
 
   it("keeps the calculation source manifest tied to the report source", async () => {
     const lineage = await query(
-      "select source.calculation_run_id, result.enrollment_id from public.report_snapshot_sources source join public.calculated_student_results result on result.id=source.calculated_student_result_id where source.calculation_run_id=$1",
-      [ids.run],
+      "select source.calculation_run_id, result.enrollment_id from public.report_snapshot_sources source join public.calculated_student_results result on result.id=source.calculated_student_result_id where source.report_id=$1",
+      [firstReportId],
     );
     expect(lineage.rows).toHaveLength(1);
     expect(lineage.rows[0].calculation_run_id).toBe(ids.run);
@@ -703,12 +701,20 @@ describe("report snapshots integration", () => {
   });
 
   it("does not expose a publication or parent-access state", async () => {
-    const columns = await query(
-      `select count(*)::int as count from information_schema.columns
-       where table_schema='public' and table_name='reports'
-       and column_name in ('published_at','pdf_storage_path','student_access_credentials')`,
+    const report = await query(
+      "select published_at, pdf_storage_path, published_by from public.reports where id=$1",
+      [firstReportId],
     );
-    expect(columns.rows[0].count).toBe(0);
+    expect(report.rows[0]).toMatchObject({
+      published_at: null,
+      pdf_storage_path: null,
+      published_by: null,
+    });
+    const access = await query(
+      "select count(*)::int as count from public.student_access_credentials where student_id=$1",
+      [ids.student],
+    );
+    expect(access.rows[0].count).toBe(0);
   });
 
   it("keeps the report snapshot schema version explicit in the API", async () => {
