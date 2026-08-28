@@ -23,6 +23,7 @@ export default async function ReportsPage() {
       runs.map((term) => getReportGenerationReadiness(term.latest_run_id!)),
     )
   ).filter((item) => item !== null);
+  const currentReports = reports.filter((report) => report.is_latest);
 
   return (
     <div className="space-y-8">
@@ -76,11 +77,11 @@ export default async function ReportsPage() {
             Generated reports
           </h2>
           <p className="text-muted-foreground text-sm">
-            Historical versions remain available; current records are marked
-            latest.
+            Current records are shown here; historical versions remain available
+            from each report&apos;s detail history.
           </p>
         </div>
-        {reports.length ? (
+        {currentReports.length ? (
           <div className="border-border overflow-x-auto rounded-xl border">
             <table className="w-full min-w-[780px] text-left text-sm">
               <thead className="bg-surface-muted text-muted-foreground text-xs uppercase">
@@ -93,7 +94,7 @@ export default async function ReportsPage() {
                 </tr>
               </thead>
               <tbody className="divide-border divide-y">
-                {reports.map((report) => (
+                {currentReports.map((report) => (
                   <tr key={report.report_id}>
                     <td className="px-4 py-3">
                       <Link
