@@ -336,7 +336,8 @@ begin
         from public.reports report
         where report.batch_id = batch.id
           and report.calculation_run_id = run_row.id
-      ) >= batch.total_reports then 'COMPLETED' else 'PROCESSING' end,
+      ) >= batch.total_reports then 'COMPLETED'::public.report_batch_status
+      else 'PROCESSING'::public.report_batch_status end,
       completed_at = case when (
         select count(distinct report.enrollment_id)
         from public.reports report
@@ -451,7 +452,8 @@ begin
         from public.reports report
         where report.batch_id = batch.id
           and report.calculation_run_id = run_row.id
-      ) >= batch.total_reports then 'COMPLETED' else 'PROCESSING' end,
+      ) >= batch.total_reports then 'COMPLETED'::public.report_batch_status
+      else 'PROCESSING'::public.report_batch_status end,
       completed_at = case when (
         select count(distinct report.enrollment_id)
         from public.reports report
