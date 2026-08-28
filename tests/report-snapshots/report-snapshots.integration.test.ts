@@ -143,7 +143,7 @@ async function setup() {
     [ids.year, ids.school],
   );
   await query(
-    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Snapshot Term',1,'2045-01-01','2045-06-30','LOCKED')",
+    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Snapshot Term',1,'2045-01-01','2045-06-30','MARKS_ENTRY')",
     [ids.term, ids.year],
   );
   await query(
@@ -187,16 +187,8 @@ async function setup() {
     [ids.scheme],
   );
   await query(
-    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id,workflow_status,locked_by,locked_at) values($1,$2,$3,$4,$5,$6,'LOCKED',$7,now())",
-    [
-      ids.sheet,
-      ids.term,
-      ids.section,
-      ids.subject,
-      ids.scheme,
-      ids.assignment,
-      ids.membership,
-    ],
+    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id,workflow_status) values($1,$2,$3,$4,$5,$6,'DRAFT')",
+    [ids.sheet, ids.term, ids.section, ids.subject, ids.scheme, ids.assignment],
   );
   await query(
     "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,effective_from,created_by) values($1,$2,$3,$4,'Snapshot Scale','2045-01-02',$5)",

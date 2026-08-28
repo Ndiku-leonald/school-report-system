@@ -76,7 +76,7 @@ async function setup() {
     [fixture.yearId, fixture.schoolId, `Browser Snapshot Year ${nonce}`],
   );
   await database.query(
-    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Browser Snapshot Term',1,'2047-01-01','2047-06-30','LOCKED')",
+    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Browser Snapshot Term',1,'2047-01-01','2047-06-30','MARKS_ENTRY')",
     [fixture.termId, fixture.yearId],
   );
   await database.query(
@@ -137,7 +137,7 @@ async function setup() {
     [fixture.schemeId],
   );
   await database.query(
-    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id,workflow_status,locked_by,locked_at) values($1,$2,$3,$4,$5,$6,'LOCKED',$7,now())",
+    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id,workflow_status) values($1,$2,$3,$4,$5,$6,'DRAFT')",
     [
       fixture.sheetId,
       fixture.termId,
@@ -145,7 +145,6 @@ async function setup() {
       fixture.subjectId,
       fixture.schemeId,
       fixture.assignmentId,
-      fixture.membershipId,
     ],
   );
   await database.query(
