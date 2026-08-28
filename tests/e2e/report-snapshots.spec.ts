@@ -373,11 +373,13 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
   });
   test("13. detail page freezes school identity", async ({ page }) => {
     await openGeneratedReport(page);
-    await expect(page.getByText(/Snapshot Browser School/)).toBeVisible();
+    await expect(
+      page.getByRole("main").getByText(/Snapshot Browser School/),
+    ).toBeVisible();
   });
   test("14. detail page freezes admission identity", async ({ page }) => {
     await openGeneratedReport(page);
-    await expect(page.getByText("SBR-001")).toBeVisible();
+    await expect(page.getByRole("main").getByText("SBR-001")).toBeVisible();
   });
   test("15. detail page freezes placement identity", async ({ page }) => {
     await openGeneratedReport(page);
@@ -387,7 +389,9 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
   });
   test("16. detail page freezes the academic period", async ({ page }) => {
     await openGeneratedReport(page);
-    await expect(page.getByText(/Browser Snapshot Term/)).toBeVisible();
+    await expect(
+      page.getByRole("main").getByText(/Browser Snapshot Term/),
+    ).toBeVisible();
   });
   test("17. detail page displays the latest report version", async ({
     page,
