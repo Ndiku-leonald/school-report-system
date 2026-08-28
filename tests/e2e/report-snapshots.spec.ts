@@ -293,7 +293,9 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
   }) => {
     await login(page);
     await page.goto("/dashboard/reports");
-    await expect(page.getByRole("heading", { name: "Reports" })).toBeVisible();
+    await expect(
+      page.getByRole("heading", { name: "Reports", exact: true }),
+    ).toBeVisible();
     await expect(page.getByText("Immutable report snapshots")).toBeVisible();
   });
 
