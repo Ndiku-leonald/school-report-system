@@ -19,11 +19,20 @@ checksums, schema version 1, and frozen subject display/result fields.
 `report_snapshot_sources` links each snapshot to exactly one calculated student
 result and stores the Stage 11 input and output checksums.
 
-The first report for a student and term is version 1. A later calculation run
-creates the next append-only version and sets the prior report's
-`superseded_by` relationship. The prior snapshot and its source lineage remain
-readable. Repeating a request for the same calculation run and enrollment
-reuses the existing report without a duplicate creation audit.
+Report version and calculation version are separate. The first report for a
+student and term is report version 1. A newer Stage 11 calculation normally
+creates the next report version and sets the prior report's `superseded_by`
+relationship. A legitimate change to frozen report context, such as a
+comment, attendance value, or school identity, may also create the next report
+version from the same calculation run. The prior snapshot and its source
+lineage remain readable.
+
+Idempotence is context-aware: the complete canonical snapshot payload,
+ordered subject rows, and Stage 11 input/output checksums form a context
+checksum. Repeating the same run, enrollment, and context reuses the existing
+immutable report without a new snapshot, subject rows, or creation audit. A
+changed context creates one successor version; the database prevents an exact
+duplicate context.
 
 ## Snapshot payload
 
@@ -32,15 +41,37 @@ identity, student identity, academic period, placement, academic summary,
 attendance, comments, safe signatory display names, and the next configured
 term's opening date when available. Subject rows remain normalized in
 `report_subject_results`, ordered by the immutable Stage 11 curriculum source
-manifest. The checksum is SHA-256 over canonical JSON plus the ordered subject
-row representation, report version, and Stage 11 lineage checksums.
+manifest. The checksum is SHA-256 over canonical JSON, the ordered subject
+row representation, and Stage 11 lineage checksums. It is independent of
+report version so the same context has the same identity even when a version
+number would otherwise change.
 
 Attendance and comments are copied only when records exist. Missing attendance
 or comments are represented as `null`; the preview never substitutes current
 live values or invented zeroes. The current schema has no final subject-report
 comment workflow, so Stage 12 leaves `teacher_comment` unavailable rather than
 concatenating per-assessment mark-entry remarks. It also does not hard-code
-behavior categories.
+behavior categories. `updated_by` is a generic comment editor, not an
+authoritative head-teacher signer, so `signatories.head_teacher` is
+deliberately `null`; the head-teacher comment text is still preserved.
+
+The class-teacher signatory is frozen only from an active, effective,
+same-term, same-class assignment in the selected school, and only its display
+name and role context are included. The next-term row is selected
+chronologically across the same school's academic years and is locked before
+the snapshot is created; it is `null` when no configured later term exists.
+
+Readiness means that a structurally valid, selected-school Stage 11 source has
+at least one calculated student. It does not mean that reports already exist:
+`missing_report_snapshots` can be positive while `ready` is true. Completion
+is represented separately by `missing_report_snapshots = 0`.
+
+The source lock order is selected-membership authority, school, teaching
+assignments, term, academic year, grade, curriculum mappings, class sections,
+mark sheets, calculation run, calculated result, enrollment, student, class,
+attendance/comments, effective class-teacher identity, school settings,
+next-term configuration, and subjects. This extends the Stage 11 order and
+keeps mutable values coherent for checksum construction.
 
 ## Security and later stages
 

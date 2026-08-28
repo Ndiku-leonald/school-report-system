@@ -2108,6 +2108,7 @@ export type Database = {
           reviewed_at: string | null;
           reviewed_by: string | null;
           status: Database["public"]["Enums"]["report_status"];
+          snapshot_context_checksum: string | null;
           superseded_by: string | null;
           template_id: string | null;
           term_id: string;
@@ -2139,6 +2140,7 @@ export type Database = {
           reviewed_at?: string | null;
           reviewed_by?: string | null;
           status?: Database["public"]["Enums"]["report_status"];
+          snapshot_context_checksum?: string | null;
           superseded_by?: string | null;
           template_id: string | null;
           term_id: string;
@@ -2170,6 +2172,7 @@ export type Database = {
           reviewed_at?: string | null;
           reviewed_by?: string | null;
           status?: Database["public"]["Enums"]["report_status"];
+          snapshot_context_checksum?: string | null;
           superseded_by?: string | null;
           template_id?: string | null;
           term_id?: string;

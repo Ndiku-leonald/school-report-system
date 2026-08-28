@@ -23,6 +23,8 @@ function mapError(error: {
     REPORT_SOURCE_NOT_FOUND: "The selected calculation run is unavailable.",
     REPORT_CALCULATION_MISMATCH:
       "The selected student is not part of this calculation run.",
+    REPORT_CALCULATION_LINEAGE_INVALID:
+      "The selected calculation is stale or is not the direct successor of the current report.",
     REPORT_ALREADY_SUPERSEDED:
       "A newer report version already exists for this student.",
     REPORT_SNAPSHOT_CONFLICT:

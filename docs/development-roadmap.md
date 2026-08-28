@@ -273,13 +273,21 @@ Create immutable, versioned report snapshots that decouple approved academic dat
 
 **Implementation evidence (2026-08-28)**
 
-- Migration 28 reuses the existing report tables, adds Stage 11 calculation
-  lineage, schema-versioned JSON, SHA-256 checksums, frozen subject identity,
-  append-only report versioning, guarded single/batch generation RPCs, and
-  forced-RLS lineage storage.
+- Migration 28 (renamed with its original bytes preserved) and additive
+  migration 29 reuse the existing report tables, add Stage 11 calculation
+  lineage, schema-versioned JSON, SHA-256 context checksums, frozen subject
+  identity, append-only report versioning, guarded single/batch generation
+  RPCs, and forced-RLS lineage storage.
+- Readiness is source readiness rather than completion. Same-run exact context
+  requests reuse; changed report context creates a later report version, while
+  Stage 11 calculation successors advance calculation lineage. Generic comment
+  updaters are never labeled as head teachers, and next-term selection is
+  chronological across academic years.
 - `/dashboard/reports` and `/dashboard/reports/[reportId]` provide staff-only
   readiness, generation, historical navigation, and an HTML snapshot preview;
-  PDF rendering and publication remain later stages.
+  PDF rendering and publication remain later stages. Database-backed
+  acceptance is completed by CI only when the Supabase suites pass; local
+  Docker-unavailable runs are not treated as proof.
 
 ## 13. PDF generation
 

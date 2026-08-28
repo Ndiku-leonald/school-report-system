@@ -44,6 +44,7 @@ const ids = Object.fromEntries(
     "scale",
     "rule",
     "run",
+    "run2",
     "source",
     "studentResult",
     "subjectResult",
@@ -241,6 +242,20 @@ describe("report snapshots integration", () => {
   beforeAll(setup);
   afterAll(async () => db.end());
 
+  it("reports a valid populated Stage 11 run as ready before generation", async () => {
+    const readiness = await client.rpc("get_report_generation_readiness", {
+      target_calculation_run_id: ids.run,
+    });
+    expect(readiness.error).toBeNull();
+    expect(readiness.data?.[0]).toMatchObject({
+      student_population: 1,
+      eligible_student_count: 1,
+      existing_report_snapshots: 0,
+      missing_report_snapshots: 1,
+      ready: true,
+    });
+  });
+
   it("generates a frozen, lineaged snapshot from Stage 11 values", async () => {
     const generated = await client.rpc("generate_student_report_snapshot", {
       target_calculation_run_id: ids.run,
@@ -347,8 +362,88 @@ describe("report snapshots integration", () => {
     ).toBe("Snapshot Subject");
   });
 
+  it("creates a new same-run immutable version when the comment changes", async () => {
+    await query(
+      "update public.student_term_comments set class_teacher_comment='Comment B' where id=$1",
+      [ids.comment],
+    );
+    const generated = await client.rpc("generate_student_report_snapshot", {
+      target_calculation_run_id: ids.run,
+      target_enrollment_id: ids.enrollment,
+    });
+    expect(generated.error).toBeNull();
+    expect(generated.data?.[0]).toMatchObject({
+      report_version: 2,
+      reused: false,
+    });
+  });
+
+  it("creates another same-run version when attendance changes", async () => {
+    await query(
+      "update public.term_attendance set days_present=80,days_absent=10 where id=$1",
+      [ids.attendance],
+    );
+    const generated = await client.rpc("generate_student_report_snapshot", {
+      target_calculation_run_id: ids.run,
+      target_enrollment_id: ids.enrollment,
+    });
+    expect(generated.error).toBeNull();
+    expect(generated.data?.[0]).toMatchObject({
+      report_version: 3,
+      reused: false,
+    });
+  });
+
+  it("creates another same-run version when student identity changes", async () => {
+    await query(
+      "update public.students set first_name='Corrected' where id=$1",
+      [ids.student],
+    );
+    const generated = await client.rpc("generate_student_report_snapshot", {
+      target_calculation_run_id: ids.run,
+      target_enrollment_id: ids.enrollment,
+    });
+    expect(generated.error).toBeNull();
+    expect(generated.data?.[0]).toMatchObject({
+      report_version: 4,
+      reused: false,
+    });
+  });
+
+  it("creates another same-run version when school identity changes", async () => {
+    await query(
+      "update public.schools set name='Corrected School' where id=$1",
+      [ids.school],
+    );
+    const generated = await client.rpc("generate_student_report_snapshot", {
+      target_calculation_run_id: ids.run,
+      target_enrollment_id: ids.enrollment,
+    });
+    expect(generated.error).toBeNull();
+    expect(generated.data?.[0]).toMatchObject({
+      report_version: 5,
+      reused: false,
+    });
+  });
+
+  it("creates another same-run version when subject identity changes", async () => {
+    await query(
+      "update public.subjects set name='Corrected Subject' where id=$1",
+      [ids.subject],
+    );
+    const generated = await client.rpc("generate_student_report_snapshot", {
+      target_calculation_run_id: ids.run,
+      target_enrollment_id: ids.enrollment,
+    });
+    expect(generated.error).toBeNull();
+    expect(generated.data?.[0]).toMatchObject({
+      report_version: 6,
+      reused: false,
+    });
+  });
+
   it("creates report version two from a corrected calculation and preserves v1", async () => {
-    const run2 = randomUUID();
+    const run2 = (ids.run2 = randomUUID());
     await createRun(
       run2,
       randomUUID(),
@@ -364,23 +459,23 @@ describe("report snapshots integration", () => {
     });
     expect(generated.error).toBeNull();
     expect(generated.data?.[0]).toMatchObject({
-      report_version: 2,
+      report_version: 7,
       reused: false,
     });
     const history = await client.rpc("get_student_report_history", {
       target_enrollment_id: ids.enrollment,
       target_term_id: ids.term,
     });
-    expect(history.data).toHaveLength(2);
+    expect(history.data).toHaveLength(7);
     expect(
       history.data?.map(
         (item: { report_version: number }) => item.report_version,
       ),
-    ).toEqual([1, 2]);
-    expect(history.data?.[0]?.superseded_by).toBe(
+    ).toEqual([1, 2, 3, 4, 5, 6, 7]);
+    expect(history.data?.[5]?.superseded_by).toBe(
       generated.data?.[0]?.report_id,
     );
-    expect(history.data?.[1]?.is_latest).toBe(true);
+    expect(history.data?.[6]?.is_latest).toBe(true);
   });
 
   it("serializes concurrent batch reuse and exposes readiness counts", async () => {
@@ -389,7 +484,7 @@ describe("report snapshots integration", () => {
     });
     expect(readiness.data?.[0]).toMatchObject({
       student_population: 1,
-      existing_report_snapshots: 1,
+      existing_report_snapshots: 6,
       missing_report_snapshots: 0,
       ready: true,
     });
@@ -409,6 +504,250 @@ describe("report snapshots integration", () => {
           [ids.run],
         )
       ).rows[0].count,
-    ).toBe(1);
+    ).toBe(6);
+  });
+
+  it("keeps the report list scoped to its calculation run", async () => {
+    const listed = await client.rpc("list_generated_reports", {
+      target_calculation_run_id: ids.run,
+    });
+    expect(listed.error).toBeNull();
+    expect(listed.data).toHaveLength(1);
+    expect(listed.data?.[0]?.calculation_run_id).toBe(ids.run);
+  });
+
+  it("returns the frozen detail without live table joins", async () => {
+    const listed = await client.rpc("list_generated_reports", {
+      target_calculation_run_id: ids.run,
+    });
+    const detail = await client.rpc("get_generated_report", {
+      target_report_id: listed.data?.[0]?.report_id,
+    });
+    expect(detail.error).toBeNull();
+    expect(detail.data?.[0]?.snapshot_data?.school?.name).toBe(
+      "Snapshot School",
+    );
+    expect(detail.data?.[0]?.snapshot_data?.student?.display_name).toBe(
+      "Frozen Student",
+    );
+  });
+
+  it("does not infer a head teacher from a generic comment updater", async () => {
+    const listed = await client.rpc("list_generated_reports", {
+      target_calculation_run_id: ids.run,
+    });
+    const detail = await client.rpc("get_generated_report", {
+      target_report_id: listed.data?.[0]?.report_id,
+    });
+    expect(detail.data?.[0]?.snapshot_data?.signatories?.head_teacher).toBe(
+      null,
+    );
+  });
+
+  it("returns frozen subject identity and result values", async () => {
+    const listed = await client.rpc("list_generated_reports", {
+      target_calculation_run_id: ids.run,
+    });
+    const subjects = await client.rpc("get_report_subject_results", {
+      target_report_id: listed.data?.[0]?.report_id,
+    });
+    expect(subjects.error).toBeNull();
+    expect(subjects.data).toHaveLength(1);
+    expect(subjects.data?.[0]).toMatchObject({
+      subject_name: "Snapshot Subject",
+      subject_score: 88,
+      subject_status: "COMPLETE",
+    });
+  });
+
+  it("exposes a stable context checksum on the report and snapshot", async () => {
+    const row = await query(
+      `select report.snapshot_context_checksum, snapshot.snapshot_checksum
+       from public.reports report
+       join public.report_snapshots snapshot on snapshot.report_id = report.id
+       where report.calculation_run_id=$1`,
+      [ids.run],
+    );
+    expect(row.rows).toHaveLength(1);
+    expect(row.rows[0].snapshot_context_checksum).toHaveLength(64);
+    expect(row.rows[0].snapshot_context_checksum).toBe(
+      row.rows[0].snapshot_checksum,
+    );
+  });
+
+  it("keeps version history ordered and marks only the latest report", async () => {
+    const history = await client.rpc("get_student_report_history", {
+      target_enrollment_id: ids.enrollment,
+      target_term_id: ids.term,
+    });
+    expect(history.error).toBeNull();
+    expect(
+      history.data?.map(
+        (item: { report_version: number }) => item.report_version,
+      ),
+    ).toEqual([1, 2]);
+    expect(
+      history.data?.filter((item: { is_latest: boolean }) => item.is_latest),
+    ).toHaveLength(1);
+    expect(history.data?.[1]?.is_latest).toBe(true);
+  });
+
+  it("links the successor report to the direct successor calculation", async () => {
+    const row = await query(
+      "select id, calculation_run_id, superseded_by from public.reports where calculation_run_id=$1",
+      [ids.run2],
+    );
+    expect(row.rows).toHaveLength(1);
+    expect(row.rows[0].calculation_run_id).toBe(ids.run2);
+    expect(row.rows[0].superseded_by).toBeNull();
+    const old = await query(
+      "select id, superseded_by from public.reports where calculation_run_id=$1",
+      [ids.run],
+    );
+    expect(old.rows[0].superseded_by).toBe(row.rows[0].id);
+  });
+
+  it("keeps batch completion bounded by distinct enrollment coverage", async () => {
+    const batch = await query(
+      "select total_reports, completed_reports, failed_reports, status from public.report_batches where calculation_run_id=$1",
+      [ids.run],
+    );
+    expect(batch.rows).toHaveLength(1);
+    expect(batch.rows[0].completed_reports).toBeLessThanOrEqual(
+      batch.rows[0].total_reports,
+    );
+    expect(batch.rows[0].status).toBe("COMPLETED");
+    expect(batch.rows[0].failed_reports).toBe(0);
+  });
+
+  it("does not create an audit event for exact reuse", async () => {
+    const audits = await query(
+      "select count(*)::int as count from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$1",
+      [ids.run],
+    );
+    expect(audits.rows[0].count).toBe(1);
+  });
+
+  it("rejects direct generated-report mutation", async () => {
+    const report = await query(
+      "select id from public.reports where calculation_run_id=$1",
+      [ids.run],
+    );
+    await expect(
+      query("update public.reports set status='DRAFT' where id=$1", [
+        report.rows[0].id,
+      ]),
+    ).rejects.toThrow();
+  });
+
+  it("rejects direct snapshot mutation", async () => {
+    const report = await query(
+      "select id from public.reports where calculation_run_id=$1",
+      [ids.run],
+    );
+    await expect(
+      query(
+        "update public.report_snapshots set snapshot_data='{}' where report_id=$1",
+        [report.rows[0].id],
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("rejects direct subject snapshot mutation", async () => {
+    const report = await query(
+      "select id from public.reports where calculation_run_id=$1",
+      [ids.run],
+    );
+    await expect(
+      query(
+        "update public.report_subject_results set subject_name='Tampered' where report_id=$1",
+        [report.rows[0].id],
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("rejects direct lineage deletion", async () => {
+    await expect(
+      query(
+        "delete from public.report_snapshot_sources where calculation_run_id=$1",
+        [ids.run],
+      ),
+    ).rejects.toThrow();
+  });
+
+  it("preserves historical report identity after live source updates", async () => {
+    const old = await client.rpc("list_generated_reports", {
+      target_calculation_run_id: ids.run,
+    });
+    const newest = await client.rpc("list_generated_reports", {
+      target_calculation_run_id: ids.run2,
+    });
+    expect(old.data?.[0]?.report_id).not.toBe(newest.data?.[0]?.report_id);
+    expect(old.data?.[0]?.snapshot_checksum).not.toBe(
+      newest.data?.[0]?.snapshot_checksum,
+    );
+  });
+
+  it("returns the report snapshot through the dedicated snapshot reader", async () => {
+    const listed = await client.rpc("list_generated_reports", {
+      target_calculation_run_id: ids.run,
+    });
+    const snapshot = await client.rpc("get_report_snapshot", {
+      target_report_id: listed.data?.[0]?.report_id,
+    });
+    expect(snapshot.error).toBeNull();
+    expect(snapshot.data?.[0]?.snapshot_schema_version).toBe(1);
+    expect(snapshot.data?.[0]?.snapshot_checksum).toHaveLength(64);
+  });
+
+  it("keeps the calculation source manifest tied to the report source", async () => {
+    const lineage = await query(
+      "select source.calculation_run_id, result.enrollment_id from public.report_snapshot_sources source join public.calculated_student_results result on result.id=source.calculated_student_result_id where source.calculation_run_id=$1",
+      [ids.run],
+    );
+    expect(lineage.rows).toHaveLength(1);
+    expect(lineage.rows[0].calculation_run_id).toBe(ids.run);
+    expect(lineage.rows[0].enrollment_id).toBe(ids.enrollment);
+  });
+
+  it("does not expose a publication or parent-access state", async () => {
+    const columns = await query(
+      `select count(*)::int as count from information_schema.columns
+       where table_schema='public' and table_name='reports'
+       and column_name in ('published_at','pdf_storage_path','student_access_credentials')`,
+    );
+    expect(columns.rows[0].count).toBe(0);
+  });
+
+  it("keeps the report snapshot schema version explicit in the API", async () => {
+    const listed = await client.rpc("list_generated_reports", {
+      target_calculation_run_id: ids.run2,
+    });
+    const detail = await client.rpc("get_generated_report", {
+      target_report_id: listed.data?.[0]?.report_id,
+    });
+    expect(detail.data?.[0]?.snapshot_schema_version).toBe(1);
+    expect(detail.data?.[0]?.snapshot_checksum).toHaveLength(64);
+  });
+
+  it("keeps the generated report status immutable and readable", async () => {
+    const listed = await client.rpc("list_generated_reports", {
+      target_calculation_run_id: ids.run2,
+    });
+    expect(listed.data?.[0]?.status).toBe("GENERATED");
+    expect(listed.data?.[0]?.is_latest).toBe(true);
+  });
+
+  it("returns no duplicate reports after repeated batch generation", async () => {
+    const count = await query(
+      "select count(*)::int as count from public.reports where enrollment_id=$1 and term_id=$2",
+      [ids.enrollment, ids.term],
+    );
+    expect(count.rows[0].count).toBe(7);
+    const history = await client.rpc("get_student_report_history", {
+      target_enrollment_id: ids.enrollment,
+      target_term_id: ids.term,
+    });
+    expect(history.data).toHaveLength(7);
   });
 });

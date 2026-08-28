@@ -44,12 +44,27 @@ select extensions.ok(exists(select 1 from pg_trigger where tgname = 'report_snap
 select extensions.ok(exists(select 1 from pg_indexes where indexname = 'report_calculation_run_enrollment_unique'), 'one report exists per run and enrollment');
 select extensions.ok(exists(select 1 from pg_indexes where indexname = 'report_one_direct_successor_unique'), 'one direct report successor is enforced');
 select extensions.ok(exists(select 1 from pg_indexes where indexname = 'report_batch_calculation_run_unique'), 'one report batch exists per calculation run');
+select extensions.ok(
+  exists(select 1 from pg_indexes where indexname = 'report_batch_calculation_run_unique' and indexdef !~* 'where'),
+  'batch uniqueness is a normal unique index that supports ON CONFLICT inference'
+);
+select extensions.ok(
+  not exists(select 1 from pg_indexes where indexname = 'report_calculation_run_enrollment_unique'),
+  'legacy run and enrollment uniqueness is removed'
+);
+select extensions.ok(
+  not exists(select 1 from pg_constraint where conname = 'report_snapshot_source_run_student_unique'),
+  'legacy lineage run and student uniqueness is removed'
+);
+select extensions.ok(exists(select 1 from pg_indexes where indexname = 'report_calculation_enrollment_context_unique'), 'context-aware report uniqueness exists');
 
 select extensions.ok(exists(select 1 from pg_attribute where attrelid = 'public.reports'::regclass and attname = 'calculation_run_id'), 'reports link to calculation runs');
+select extensions.ok(exists(select 1 from pg_attribute where attrelid = 'public.reports'::regclass and attname = 'snapshot_context_checksum'), 'reports store context checksum');
 select extensions.ok(exists(select 1 from pg_attribute where attrelid = 'public.report_snapshots'::regclass and attname = 'snapshot_schema_version'), 'snapshots store schema version');
 select extensions.ok(exists(select 1 from pg_attribute where attrelid = 'public.report_snapshots'::regclass and attname = 'snapshot_checksum'), 'snapshots store checksum');
 select extensions.ok(exists(select 1 from pg_attribute where attrelid = 'public.report_subject_results'::regclass and attname = 'subject_name'), 'subject snapshots store subject identity');
 select extensions.ok(exists(select 1 from pg_attribute where attrelid = 'public.report_subject_results'::regclass and attname = 'subject_status'), 'subject snapshots store status');
+select extensions.ok(exists(select 1 from pg_trigger where tgname = 'report_snapshots_generated_prevent_mutation'), 'generated snapshot rows have explicit mutation protection');
 
 select extensions.is((select proconfig[1] from pg_proc where oid = 'public.generate_student_report_snapshot(uuid,uuid)'::regprocedure), 'search_path=pg_catalog, public, internal', 'single generation has fixed search path');
 select extensions.is((select proconfig[1] from pg_proc where oid = 'public.generate_grade_report_snapshots(uuid)'::regprocedure), 'search_path=pg_catalog, public, internal', 'batch generation has fixed search path');
@@ -65,6 +80,13 @@ select extensions.ok(pg_get_functiondef('internal.generate_student_report_snapsh
 select extensions.ok(pg_get_functiondef('internal.generate_student_report_snapshot(uuid,uuid,uuid,uuid,uuid,uuid)'::regprocedure) !~* 'pdf_storage_path|published_at|student_access_credentials', 'generation does not publish or create parent access');
 select extensions.ok(pg_get_functiondef('internal.generate_student_report_snapshot(uuid,uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'previous_report.superseded_by', 'new report versions supersede the prior version');
 select extensions.ok(pg_get_functiondef('internal.generate_student_report_snapshot(uuid,uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'existing_report', 'same source is idempotently reused');
+select extensions.ok(pg_get_functiondef('internal.generate_student_report_snapshot(uuid,uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'snapshot_context_hash', 'context checksum is calculated before idempotence');
+select extensions.ok(pg_get_functiondef('internal.generate_student_report_snapshot(uuid,uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'class_teacher_name is null', 'unverified class teacher identity is not invented');
+select extensions.ok(pg_get_functiondef('internal.generate_student_report_snapshot(uuid,uuid,uuid,uuid,uuid,uuid)'::regprocedure) ~* 'starts_on > current_term.starts_on', 'next term is chronological across school years');
+select extensions.ok(pg_get_functiondef('public.get_report_generation_readiness(uuid)'::regprocedure) ~* 'population > 0 and not invalid_lineage', 'readiness requires a populated valid Stage 11 source');
+select extensions.ok(pg_get_functiondef('public.get_report_generation_readiness(uuid)'::regprocedure) ~* 'count\(distinct report.enrollment_id\)', 'readiness counts persisted snapshots rather than report versions');
+select extensions.ok(pg_get_functiondef('internal.validate_report_calculation_lineage(public.reports,public.result_calculation_runs)'::regprocedure) ~* 'supersedes_run_id', 'report versions require direct calculation lineage');
+select extensions.ok(pg_get_functiondef('internal.validate_report_snapshot_source_scope()'::regprocedure) ~* 'snapshot_checksum', 'lineage validates stored snapshot checksum');
 select extensions.ok(pg_get_functiondef('public.get_generated_report(uuid)'::regprocedure) !~* 'students|subjects|enrollments', 'report detail reads the stored snapshot without live-data fallback');
 
 select * from extensions.finish();
