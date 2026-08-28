@@ -476,7 +476,7 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
   });
   test("34. subject result preserves complete status", async ({ page }) => {
     await openGeneratedReport(page);
-    await expect(page.getByText("COMPLETE")).toBeVisible();
+    await expect(page.getByText("COMPLETE", { exact: true })).toBeVisible();
   });
   test("35. missing attendance is explicit", async ({ page }) => {
     await openGeneratedReport(page);
