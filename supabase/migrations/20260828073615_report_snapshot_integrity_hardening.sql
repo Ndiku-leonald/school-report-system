@@ -129,6 +129,28 @@ using (
 grant select on table public.report_snapshot_sources to authenticated;
 grant select on table public.report_batches to authenticated;
 
+drop policy if exists report_batches_select_authorized on public.report_batches;
+create policy report_batches_select_authorized
+on public.report_batches for select to authenticated
+using (
+  exists (
+    select 1
+    from public.reports report
+    where report.batch_id = report_batches.id
+  )
+  or exists (
+    select 1
+    from public.terms term
+    join public.academic_years academic_year
+      on academic_year.id = term.academic_year_id
+    where term.id = report_batches.term_id
+      and (
+        internal.current_user_has_permission(academic_year.school_id, 'REPORTS_VIEW_ALL')
+        or internal.current_user_has_permission(academic_year.school_id, 'REPORTS_GENERATE')
+      )
+  )
+);
+
 -- Rebind the existing report scope guard after the migration-28 function
 -- replacement so legacy rows retain actor and academic-scope validation.
 drop trigger if exists reports_validate_scope on public.reports;
