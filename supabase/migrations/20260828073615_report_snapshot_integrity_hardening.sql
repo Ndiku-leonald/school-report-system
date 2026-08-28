@@ -88,6 +88,52 @@ create trigger report_snapshots_generated_prevent_mutation
 before update or delete on public.report_snapshots
 for each row execute function internal.prevent_mutation();
 
+-- These child policies intentionally delegate visibility to the report row.
+-- The reports policy already encodes school, role, class, and assignment
+-- scope; duplicating only REPORTS_VIEW_ALL/REPORTS_GENERATE here would hide
+-- snapshots from otherwise authorized class-teacher readers.
+drop policy if exists report_snapshots_select_authorized on public.report_snapshots;
+create policy report_snapshots_select_authorized
+on public.report_snapshots for select to authenticated
+using (
+  exists (
+    select 1
+    from public.reports report
+    where report.id = report_snapshots.report_id
+  )
+);
+
+drop policy if exists report_subject_results_select_authorized
+  on public.report_subject_results;
+create policy report_subject_results_select_authorized
+on public.report_subject_results for select to authenticated
+using (
+  exists (
+    select 1
+    from public.reports report
+    where report.id = report_subject_results.report_id
+  )
+);
+
+drop policy if exists report_snapshot_sources_select_authorized
+  on public.report_snapshot_sources;
+create policy report_snapshot_sources_select_authorized
+on public.report_snapshot_sources for select to authenticated
+using (
+  exists (
+    select 1
+    from public.reports report
+    where report.id = report_snapshot_sources.report_id
+  )
+);
+
+-- Rebind the existing report scope guard after the migration-28 function
+-- replacement so legacy rows retain actor and academic-scope validation.
+drop trigger if exists reports_validate_scope on public.reports;
+create trigger reports_validate_scope
+before insert or update on public.reports
+for each row execute function internal.validate_report_scope();
+
 create or replace function internal.validate_report_snapshot_source_scope()
 returns trigger
 language plpgsql

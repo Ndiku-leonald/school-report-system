@@ -41,7 +41,7 @@ select extensions.ok(exists(select 1 from pg_trigger where tgname = 'reports_gen
 select extensions.ok(exists(select 1 from pg_trigger where tgname = 'report_subject_results_generated_prevent_mutation'), 'subject snapshots have mutation protection');
 select extensions.ok(exists(select 1 from pg_trigger where tgname = 'report_snapshot_sources_prevent_mutation'), 'lineage has mutation protection');
 select extensions.ok(exists(select 1 from pg_trigger where tgname = 'report_snapshot_sources_validate_scope'), 'lineage scope is validated');
-select extensions.ok(exists(select 1 from pg_indexes where indexname = 'report_calculation_run_enrollment_unique'), 'one report exists per run and enrollment');
+select extensions.ok(exists(select 1 from pg_indexes where indexname = 'report_calculation_enrollment_context_unique'), 'report context identity is unique per run and enrollment');
 select extensions.ok(exists(select 1 from pg_indexes where indexname = 'report_one_direct_successor_unique'), 'one direct report successor is enforced');
 select extensions.ok(exists(select 1 from pg_indexes where indexname = 'report_batch_calculation_run_unique'), 'one report batch exists per calculation run');
 select extensions.ok(

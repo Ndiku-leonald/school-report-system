@@ -28,7 +28,7 @@ values ('c1300000-0000-4000-8000-000000000001', 'c1200000-0000-4000-8000-0000000
 insert into public.academic_years (id, school_id, name, starts_on, ends_on, status)
 values ('c1400000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-000000000001', 'Snapshot Behavior Year', '2046-01-01', '2046-12-31', 'ACTIVE');
 insert into public.terms (id, academic_year_id, name, term_number, starts_on, ends_on, status)
-values ('c1500000-0000-4000-8000-000000000001', 'c1400000-0000-4000-8000-000000000001', 'Snapshot Behavior Term', 1, '2046-01-01', '2046-06-30', 'LOCKED');
+values ('c1500000-0000-4000-8000-000000000001', 'c1400000-0000-4000-8000-000000000001', 'Snapshot Behavior Term', 1, '2046-01-01', '2046-06-30', 'MARKS_ENTRY');
 insert into public.grade_levels (id, school_id, code, name, sort_order)
 values ('c1600000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-000000000001', 'SBT', 'Snapshot Behavior Grade', 1);
 insert into public.class_sections (id, academic_year_id, grade_level_id, name, class_code)
@@ -48,8 +48,8 @@ insert into public.enrollments (id, student_id, academic_year_id, class_section_
 values ('c1d00000-0000-4000-8000-000000000001', 'c1c00000-0000-4000-8000-000000000001', 'c1400000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', '2046-01-02');
 insert into public.teaching_assignments (id, term_id, class_section_id, subject_id, staff_membership_id, starts_on)
 values ('c1e00000-0000-4000-8000-000000000001', 'c1500000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 'c1200000-0000-4000-8000-000000000001', '2046-01-02');
-insert into public.mark_sheets (id, term_id, class_section_id, subject_id, assessment_scheme_id, teaching_assignment_id, workflow_status, locked_by, locked_at)
-values ('c1f00000-0000-4000-8000-000000000001', 'c1500000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 'c1a00000-0000-4000-8000-000000000001', 'c1e00000-0000-4000-8000-000000000001', 'LOCKED', 'c1200000-0000-4000-8000-000000000001', now());
+insert into public.mark_sheets (id, term_id, class_section_id, subject_id, assessment_scheme_id, teaching_assignment_id)
+values ('c1f00000-0000-4000-8000-000000000001', 'c1500000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 'c1a00000-0000-4000-8000-000000000001', 'c1e00000-0000-4000-8000-000000000001');
 insert into public.grading_scales (id, school_id, academic_year_id, grade_level_id, name, effective_from, created_by)
 values ('c2000000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-000000000001', 'c1400000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 'Snapshot Behavior Scale', '2046-01-02', 'c1200000-0000-4000-8000-000000000001');
 insert into public.ranking_rules (id, school_id, academic_year_id, grade_level_id, name, ranking_basis, tie_method, configuration, is_active, created_by)
@@ -63,6 +63,15 @@ insert into public.calculated_student_results (id, calculation_run_id, enrollmen
 values ('c2400000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 1, 1, 1, 88, 88, 'A', 3, 'Advanced', true, true, 88, 1, 1, 1, 1, false, false);
 insert into public.calculated_subject_results (id, calculation_run_id, enrollment_id, class_section_id, subject_id, mark_sheet_id, subject_status, subject_score, grade, aggregate_points, is_pass, assessed_weight, has_absence, has_exemption, subject_position, subject_tie_size, subject_is_tied)
 values ('c2500000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 'c1f00000-0000-4000-8000-000000000001', 'COMPLETE', 88, 'A', 3, true, 100, false, false, 1, 1, false);
+
+select set_config('app.marks_workflow_transition', 'allowed', true);
+update public.mark_sheets
+set workflow_status = 'LOCKED', locked_by = 'c1200000-0000-4000-8000-000000000001', locked_at = now()
+where id = 'c1f00000-0000-4000-8000-000000000001';
+select set_config('app.term_marks_workflow_transition', 'allowed', true);
+update public.terms
+set status = 'LOCKED'
+where id = 'c1500000-0000-4000-8000-000000000001';
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"c1100000-0000-4000-8000-000000000001","role":"authenticated","session_id":"c2600000-0000-4000-8000-000000000001"}', true);
