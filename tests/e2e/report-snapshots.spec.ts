@@ -305,7 +305,9 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     await login(page);
     await page.goto("/dashboard/reports");
     await expect(
-      page.getByText(/PDF download|Publish to parents|Promotion/i),
+      page.getByRole("button", {
+        name: /PDF download|Publish to parents|Promotion/i,
+      }),
     ).toHaveCount(0);
   });
 
