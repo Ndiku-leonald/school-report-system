@@ -444,7 +444,7 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
   });
   test("27. academic summary renders completeness", async ({ page }) => {
     await openGeneratedReport(page);
-    await expect(page.getByText("Complete")).toBeVisible();
+    await expect(page.getByText("Complete", { exact: true })).toBeVisible();
   });
   test("28. detail page displays frozen subject results", async ({ page }) => {
     await openGeneratedReport(page);
