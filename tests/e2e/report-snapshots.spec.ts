@@ -470,7 +470,9 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
   });
   test("33. subject result preserves position column", async ({ page }) => {
     await openGeneratedReport(page);
-    await expect(page.getByText("Position")).toBeVisible();
+    await expect(
+      page.getByRole("columnheader", { name: "Position" }),
+    ).toBeVisible();
   });
   test("34. subject result preserves complete status", async ({ page }) => {
     await openGeneratedReport(page);
