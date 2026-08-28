@@ -271,6 +271,16 @@ Create immutable, versioned report snapshots that decouple approved academic dat
 - Corrections create a new version and retain prior audit history.
 - Snapshot access is server-authorized and tested.
 
+**Implementation evidence (2026-08-28)**
+
+- Migration 28 reuses the existing report tables, adds Stage 11 calculation
+  lineage, schema-versioned JSON, SHA-256 checksums, frozen subject identity,
+  append-only report versioning, guarded single/batch generation RPCs, and
+  forced-RLS lineage storage.
+- `/dashboard/reports` and `/dashboard/reports/[reportId]` provide staff-only
+  readiness, generation, historical navigation, and an HTML snapshot preview;
+  PDF rendering and publication remain later stages.
+
 ## 13. PDF generation
 
 Implement report rendering only after the school supplies and approves a real report-card example.

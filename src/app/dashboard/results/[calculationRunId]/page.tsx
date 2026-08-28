@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { getAuthorizationContext } from "@/lib/authorization/context";
 import {
   getCalculatedStudents,
   getGradeSubjectPerformance,
@@ -16,19 +17,33 @@ export default async function ResultCalculationRunPage({
   params: Promise<{ calculationRunId: string }>;
 }) {
   const { calculationRunId } = await params;
-  const [run, students, performance, gradePerformance] = await Promise.all([
-    getResultCalculationRun(calculationRunId),
-    getCalculatedStudents(calculationRunId),
-    getSubjectPerformance(calculationRunId),
-    getGradeSubjectPerformance(calculationRunId),
-  ]);
+  const [run, students, performance, gradePerformance, context] =
+    await Promise.all([
+      getResultCalculationRun(calculationRunId),
+      getCalculatedStudents(calculationRunId),
+      getSubjectPerformance(calculationRunId),
+      getGradeSubjectPerformance(calculationRunId),
+      getAuthorizationContext(),
+    ]);
   return (
     <div className="space-y-8">
       <PageHeader
         eyebrow="Immutable calculation run"
         title={`${run.term_name} · ${run.grade_name}`}
         description={`Version ${run.version} calculated ${new Date(run.created_at).toLocaleString()}.`}
-        actions={<Badge variant="success">Run v{run.version}</Badge>}
+        actions={
+          <div className="flex flex-wrap items-center gap-2">
+            {context.permissions.has("REPORTS_GENERATE") ? (
+              <Link
+                href="/dashboard/reports"
+                className="bg-primary text-primary-foreground hover:bg-primary/90 inline-flex min-h-10 items-center rounded-lg px-3 text-sm font-semibold"
+              >
+                Prepare reports
+              </Link>
+            ) : null}
+            <Badge variant="success">Run v{run.version}</Badge>
+          </div>
+        }
       />
       <Card>
         <CardContent className="grid gap-5 pt-6 sm:grid-cols-2 xl:grid-cols-4">

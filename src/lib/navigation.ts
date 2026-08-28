@@ -61,7 +61,7 @@ export const dashboardNavigation: NavigationItem[] = [
   {
     label: "Reports",
     icon: FileText,
-    href: "/dashboard/results",
+    href: "/dashboard/reports",
     permissions: ["REPORTS_VIEW_ALL", "REPORTS_GENERATE"],
   },
   {

@@ -1774,6 +1774,7 @@ export type Database = {
           class_section_id: string | null;
           completed_at: string | null;
           completed_reports: number;
+          calculation_run_id: string | null;
           created_at: string;
           error_summary: string | null;
           failed_reports: number;
@@ -1789,6 +1790,7 @@ export type Database = {
           class_section_id?: string | null;
           completed_at?: string | null;
           completed_reports?: number;
+          calculation_run_id?: string | null;
           created_at?: string;
           error_summary?: string | null;
           failed_reports?: number;
@@ -1804,6 +1806,7 @@ export type Database = {
           class_section_id?: string | null;
           completed_at?: string | null;
           completed_reports?: number;
+          calculation_run_id?: string | null;
           created_at?: string;
           error_summary?: string | null;
           failed_reports?: number;
@@ -1816,6 +1819,13 @@ export type Database = {
           updated_at?: string;
         };
         Relationships: [
+          {
+            foreignKeyName: "report_batches_calculation_run_id_fkey";
+            columns: ["calculation_run_id"];
+            isOneToOne: false;
+            referencedRelation: "result_calculation_runs";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "report_batches_class_section_id_fkey";
             columns: ["class_section_id"];
@@ -1844,7 +1854,9 @@ export type Database = {
           created_at: string;
           id: string;
           report_id: string;
+          snapshot_checksum: string | null;
           snapshot_data: Json;
+          snapshot_schema_version: number;
           snapshot_version: number;
           source_checksum: string;
         };
@@ -1852,7 +1864,9 @@ export type Database = {
           created_at?: string;
           id?: string;
           report_id: string;
+          snapshot_checksum?: string | null;
           snapshot_data: Json;
+          snapshot_schema_version?: number;
           snapshot_version?: number;
           source_checksum: string;
         };
@@ -1860,7 +1874,9 @@ export type Database = {
           created_at?: string;
           id?: string;
           report_id?: string;
+          snapshot_checksum?: string | null;
           snapshot_data?: Json;
+          snapshot_schema_version?: number;
           snapshot_version?: number;
           source_checksum?: string;
         };
@@ -1874,41 +1890,130 @@ export type Database = {
           },
         ];
       };
+      report_snapshot_sources: {
+        Row: {
+          calculated_student_result_id: string;
+          calculation_run_id: string;
+          created_at: string;
+          input_checksum: string;
+          output_checksum: string;
+          report_id: string;
+          snapshot_id: string;
+        };
+        Insert: {
+          calculated_student_result_id: string;
+          calculation_run_id: string;
+          created_at?: string;
+          input_checksum: string;
+          output_checksum: string;
+          report_id: string;
+          snapshot_id: string;
+        };
+        Update: {
+          calculated_student_result_id?: string;
+          calculation_run_id?: string;
+          created_at?: string;
+          input_checksum?: string;
+          output_checksum?: string;
+          report_id?: string;
+          snapshot_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "report_snapshot_sources_calculated_student_result_id_fkey";
+            columns: ["calculated_student_result_id"];
+            isOneToOne: false;
+            referencedRelation: "calculated_student_results";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "report_snapshot_sources_calculation_run_id_fkey";
+            columns: ["calculation_run_id"];
+            isOneToOne: false;
+            referencedRelation: "result_calculation_runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "report_snapshot_sources_report_id_fkey";
+            columns: ["report_id"];
+            isOneToOne: false;
+            referencedRelation: "reports";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "report_snapshot_sources_snapshot_id_fkey";
+            columns: ["snapshot_id"];
+            isOneToOne: true;
+            referencedRelation: "report_snapshots";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       report_subject_results: {
         Row: {
           aggregate_points: number | null;
+          assessed_weight: number | null;
           created_at: string;
           grade: string | null;
+          has_absence: boolean;
+          has_exemption: boolean;
           id: string;
+          is_pass: boolean | null;
           report_id: string;
           sort_order: number;
+          subject_code: string | null;
+          subject_is_tied: boolean;
+          subject_name: string | null;
           subject_id: string;
           subject_position: number | null;
           subject_score: number | null;
+          subject_status:
+            Database["public"]["Enums"]["calculated_subject_status"] | null;
+          subject_tie_size: number;
           teacher_comment: string | null;
         };
         Insert: {
           aggregate_points?: number | null;
+          assessed_weight?: number | null;
           created_at?: string;
           grade?: string | null;
+          has_absence?: boolean;
+          has_exemption?: boolean;
           id?: string;
+          is_pass?: boolean | null;
           report_id: string;
           sort_order: number;
+          subject_code?: string | null;
+          subject_is_tied?: boolean;
+          subject_name?: string | null;
           subject_id: string;
           subject_position?: number | null;
           subject_score?: number | null;
+          subject_status?:
+            Database["public"]["Enums"]["calculated_subject_status"] | null;
+          subject_tie_size?: number;
           teacher_comment?: string | null;
         };
         Update: {
           aggregate_points?: number | null;
+          assessed_weight?: number | null;
           created_at?: string;
           grade?: string | null;
+          has_absence?: boolean;
+          has_exemption?: boolean;
           id?: string;
+          is_pass?: boolean | null;
           report_id?: string;
           sort_order?: number;
+          subject_code?: string | null;
+          subject_is_tied?: boolean;
+          subject_name?: string | null;
           subject_id?: string;
           subject_position?: number | null;
           subject_score?: number | null;
+          subject_status?:
+            Database["public"]["Enums"]["calculated_subject_status"] | null;
+          subject_tie_size?: number;
           teacher_comment?: string | null;
         };
         Relationships: [
@@ -1984,6 +2089,7 @@ export type Database = {
           aggregate_total: number | null;
           batch_id: string;
           class_position: number | null;
+          calculation_run_id: string | null;
           created_at: string;
           created_by: string | null;
           enrollment_id: string;
@@ -2003,7 +2109,7 @@ export type Database = {
           reviewed_by: string | null;
           status: Database["public"]["Enums"]["report_status"];
           superseded_by: string | null;
-          template_id: string;
+          template_id: string | null;
           term_id: string;
           updated_at: string;
           version: number;
@@ -2014,6 +2120,7 @@ export type Database = {
           aggregate_total?: number | null;
           batch_id: string;
           class_position?: number | null;
+          calculation_run_id?: string | null;
           created_at?: string;
           created_by?: string | null;
           enrollment_id: string;
@@ -2033,7 +2140,7 @@ export type Database = {
           reviewed_by?: string | null;
           status?: Database["public"]["Enums"]["report_status"];
           superseded_by?: string | null;
-          template_id: string;
+          template_id: string | null;
           term_id: string;
           updated_at?: string;
           version?: number;
@@ -2044,6 +2151,7 @@ export type Database = {
           aggregate_total?: number | null;
           batch_id?: string;
           class_position?: number | null;
+          calculation_run_id?: string | null;
           created_at?: string;
           created_by?: string | null;
           enrollment_id?: string;
@@ -2063,7 +2171,7 @@ export type Database = {
           reviewed_by?: string | null;
           status?: Database["public"]["Enums"]["report_status"];
           superseded_by?: string | null;
-          template_id?: string;
+          template_id?: string | null;
           term_id?: string;
           updated_at?: string;
           version?: number;
@@ -2076,6 +2184,13 @@ export type Database = {
             columns: ["batch_id"];
             isOneToOne: false;
             referencedRelation: "report_batches";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "reports_calculation_run_id_fkey";
+            columns: ["calculation_run_id"];
+            isOneToOne: false;
+            referencedRelation: "result_calculation_runs";
             referencedColumns: ["id"];
           },
           {
@@ -3669,6 +3784,113 @@ export type Database = {
           up_to_date: boolean;
         }[];
       };
+      get_generated_report: {
+        Args: { target_report_id: string };
+        Returns: {
+          calculation_run_id: string;
+          calculation_version: number;
+          created_at: string;
+          enrollment_id: string;
+          input_checksum: string;
+          output_checksum: string;
+          report_id: string;
+          report_version: number;
+          snapshot_checksum: string;
+          snapshot_data: Json;
+          snapshot_id: string;
+          snapshot_schema_version: number;
+          status: Database["public"]["Enums"]["report_status"];
+          superseded_by: string;
+        }[];
+      };
+      get_report_generation_readiness: {
+        Args: { target_calculation_run_id: string };
+        Returns: {
+          academic_year_name: string;
+          calculation_run_id: string;
+          calculation_version: number;
+          eligible_student_count: number;
+          existing_report_snapshots: number;
+          grade_level_id: string;
+          grade_name: string;
+          latest_report_versions: Json;
+          missing_report_snapshots: number;
+          ready: boolean;
+          result_input_checksum: string;
+          result_output_checksum: string;
+          student_population: number;
+          term_id: string;
+          term_name: string;
+        }[];
+      };
+      get_report_snapshot: {
+        Args: { target_report_id: string };
+        Returns: {
+          report_id: string;
+          snapshot_checksum: string;
+          snapshot_data: Json;
+          snapshot_id: string;
+          snapshot_schema_version: number;
+        }[];
+      };
+      get_report_subject_results: {
+        Args: { target_report_id: string };
+        Returns: {
+          aggregate_points: number;
+          assessed_weight: number;
+          grade: string;
+          has_absence: boolean;
+          has_exemption: boolean;
+          is_pass: boolean;
+          report_id: string;
+          sort_order: number;
+          subject_code: string;
+          subject_id: string;
+          subject_is_tied: boolean;
+          subject_name: string;
+          subject_position: number;
+          subject_score: number;
+          subject_status: Database["public"]["Enums"]["calculated_subject_status"];
+          subject_tie_size: number;
+          teacher_comment: string;
+        }[];
+      };
+      get_student_report_history: {
+        Args: { target_enrollment_id: string; target_term_id: string };
+        Returns: {
+          calculation_run_id: string;
+          calculation_version: number;
+          generated_at: string;
+          is_latest: boolean;
+          report_id: string;
+          report_version: number;
+          snapshot_checksum: string;
+          status: Database["public"]["Enums"]["report_status"];
+          superseded_by: string;
+        }[];
+      };
+      generate_grade_report_snapshots: {
+        Args: { target_calculation_run_id: string };
+        Returns: {
+          batch_id: string;
+          failed_count: number;
+          generated_count: number;
+          reused_count: number;
+        }[];
+      };
+      generate_student_report_snapshot: {
+        Args: {
+          target_calculation_run_id: string;
+          target_enrollment_id: string;
+        };
+        Returns: {
+          report_id: string;
+          report_version: number;
+          reused: boolean;
+          snapshot_id: string;
+          supersedes_report_id: string;
+        }[];
+      };
       get_student_details: {
         Args: { target_student_id: string };
         Returns: {
@@ -3846,6 +4068,28 @@ export type Database = {
           subject_score: number;
           subject_status: Database["public"]["Enums"]["calculated_subject_status"];
           subject_tie_size: number;
+        }[];
+      };
+      list_generated_reports: {
+        Args: { target_calculation_run_id?: string };
+        Returns: {
+          academic_year_name: string;
+          admission_number: string;
+          calculation_run_id: string;
+          calculation_version: number;
+          class_name: string;
+          created_at: string;
+          enrollment_id: string;
+          grade_name: string;
+          is_latest: boolean;
+          report_id: string;
+          report_version: number;
+          snapshot_checksum: string;
+          status: Database["public"]["Enums"]["report_status"];
+          student_name: string;
+          superseded_by: string;
+          term_name: string;
+          term_number: number;
         }[];
       };
       list_class_teacher_assignments: {
