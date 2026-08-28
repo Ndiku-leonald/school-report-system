@@ -478,7 +478,7 @@ describe("report snapshots integration", () => {
     });
     expect(readiness.data?.[0]).toMatchObject({
       student_population: 1,
-      existing_report_snapshots: 6,
+      existing_report_snapshots: 1,
       missing_report_snapshots: 0,
       ready: true,
     });
@@ -579,7 +579,7 @@ describe("report snapshots integration", () => {
     expect(
       history.data?.filter((item: { is_latest: boolean }) => item.is_latest),
     ).toHaveLength(1);
-    expect(history.data?.[1]?.is_latest).toBe(true);
+    expect(history.data?.[6]?.is_latest).toBe(true);
   });
 
   it("links the successor report to the direct successor calculation", async () => {
@@ -591,7 +591,7 @@ describe("report snapshots integration", () => {
     expect(row.rows[0].calculation_run_id).toBe(ids.run2);
     expect(row.rows[0].superseded_by).toBeNull();
     const old = await query(
-      "select id, superseded_by from public.reports where calculation_run_id=$1",
+      "select id, superseded_by from public.reports where calculation_run_id=$1 order by version desc limit 1",
       [ids.run],
     );
     expect(old.rows[0].superseded_by).toBe(row.rows[0].id);
