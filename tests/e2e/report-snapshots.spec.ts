@@ -346,7 +346,7 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
   test("8. dashboard marks the generated report current", async ({ page }) => {
     await login(page);
     await page.goto("/dashboard/reports");
-    await expect(page.getByText("Current")).toBeVisible();
+    await expect(page.getByText("Current", { exact: true })).toBeVisible();
   });
   test("9. dashboard exposes one student report link", async ({ page }) => {
     await login(page);
