@@ -113,7 +113,7 @@ select extensions.is((select subject_status::text from public.report_subject_res
 select extensions.is((select sort_order from public.report_subject_results where report_id = (select report_id from snapshot_behavior_generation)), 1, 'B31. curriculum order is frozen');
 select extensions.is((select snapshot_data->'school'->>'name' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), 'Snapshot Behavior School', 'B32. school identity is in the payload');
 select extensions.is((select snapshot_data->'student'->>'display_name' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), 'Frozen Behavior Student', 'B33. student identity is in the payload');
-select extensions.is((select snapshot_data->'academic_summary'->>'overall_average' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), '88', 'B34. calculated summary is in the payload');
+select extensions.is((select snapshot_data->'academic_summary'->>'overall_average' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), '88.00', 'B34. calculated summary is in the payload');
 select extensions.is((select snapshot_data->'placement'->>'class_code' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), 'SBT-A', 'B35. placement is in the payload');
 select extensions.is((select snapshot_data->'signatories'->>'head_teacher' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), null, 'B36. head teacher is not falsely inferred');
 select extensions.is((select snapshot_data->>'attendance' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), null, 'B37. missing attendance remains null');
@@ -123,7 +123,8 @@ select extensions.is((select snapshot_data->>'next_term' from public.report_snap
 select extensions.ok((select ready from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 'B40. generated source remains ready');
 select extensions.is((select existing_report_snapshots::integer from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 1, 'B41. readiness counts one persisted snapshot');
 select extensions.is((select missing_report_snapshots::integer from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 0, 'B42. readiness reports no missing snapshot');
-select * from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001') into temporary table snapshot_behavior_reuse;
+select * into temporary table snapshot_behavior_reuse
+from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001');
 select extensions.ok((select reused from snapshot_behavior_reuse), 'B43. exact context is reused');
 select extensions.is((select report_version from snapshot_behavior_reuse), 1, 'B44. reuse returns the original version');
 select extensions.is((select count(*)::integer from public.reports where calculation_run_id = 'c2200000-0000-4000-8000-000000000001'), 1, 'B45. reuse creates no duplicate report');
