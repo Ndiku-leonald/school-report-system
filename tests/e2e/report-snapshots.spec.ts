@@ -325,7 +325,9 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
   test("5. dashboard renders the calculation period", async ({ page }) => {
     await login(page);
     await page.goto("/dashboard/reports");
-    await expect(page.getByText(/Browser Snapshot Year/)).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: /Browser Snapshot Year/ }),
+    ).toBeVisible();
   });
   test("6. dashboard renders the student admission number", async ({
     page,
@@ -337,7 +339,9 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
   test("7. dashboard renders the class placement", async ({ page }) => {
     await login(page);
     await page.goto("/dashboard/reports");
-    await expect(page.getByText(/Browser Snapshot Grade/)).toBeVisible();
+    await expect(
+      page.getByRole("cell", { name: /Browser Snapshot Grade/ }),
+    ).toBeVisible();
   });
   test("8. dashboard marks the generated report current", async ({ page }) => {
     await login(page);
