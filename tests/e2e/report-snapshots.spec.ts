@@ -170,11 +170,21 @@ async function setup() {
   );
   await database.query(
     "insert into public.term_attendance(id,term_id,enrollment_id,days_open,days_present,days_absent,times_late,recorded_by) values($1,$2,$3,90,84,6,2,$4)",
-    [fixture.attendanceId, fixture.termId, fixture.enrollmentId, fixture.membershipId],
+    [
+      fixture.attendanceId,
+      fixture.termId,
+      fixture.enrollmentId,
+      fixture.membershipId,
+    ],
   );
   await database.query(
     "insert into public.student_term_comments(id,term_id,enrollment_id,class_teacher_comment,head_teacher_comment,conduct_grade,created_by,updated_by) values($1,$2,$3,'Browser comment','Browser head comment','A',$4,$4)",
-    [fixture.commentId, fixture.termId, fixture.enrollmentId, fixture.membershipId],
+    [
+      fixture.commentId,
+      fixture.termId,
+      fixture.enrollmentId,
+      fixture.membershipId,
+    ],
   );
   await database.query(
     "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,supersedes_run_id,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,1,null,$4,$5,repeat('a',64),repeat('b',64),$6)",
@@ -372,7 +382,9 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     await openGeneratedReport(page);
     await expect(page.getByText(/Browser Snapshot Term/)).toBeVisible();
   });
-  test("17. detail page displays the latest report version", async ({ page }) => {
+  test("17. detail page displays the latest report version", async ({
+    page,
+  }) => {
     await openGeneratedReport(page);
     await expect(page.getByText("v2").first()).toBeVisible();
   });
@@ -468,7 +480,9 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     await openGeneratedReport(page);
     await expect(page.getByText("Current").last()).toBeVisible();
   });
-  test("38b. historical report version one remains navigable", async ({ page }) => {
+  test("38b. historical report version one remains navigable", async ({
+    page,
+  }) => {
     await openGeneratedReport(page);
     await page.getByText(/Report v1 · calculation v1/).click();
     await expect(page).toHaveURL(/dashboard\/reports\//);

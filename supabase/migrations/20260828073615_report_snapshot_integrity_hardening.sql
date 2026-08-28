@@ -33,41 +33,40 @@ set snapshot_context_checksum = encode(
       run.input_checksum,
       run.output_checksum,
       snapshot.snapshot_data::text,
-      coalesce(subjects.subject_canonical, '')
+      coalesce((
+        select string_agg(
+          concat_ws(
+            '|',
+            result.subject_id,
+            result.subject_code,
+            result.subject_name,
+            result.sort_order,
+            result.subject_status::text,
+            coalesce(result.subject_score::text, ''),
+            coalesce(result.grade, ''),
+            coalesce(result.aggregate_points::text, ''),
+            coalesce(result.is_pass::text, ''),
+            result.assessed_weight,
+            result.has_absence,
+            result.has_exemption,
+            coalesce(result.subject_position::text, ''),
+            result.subject_tie_size,
+            result.subject_is_tied
+          ),
+          ';' order by result.sort_order, result.subject_id
+        )
+        from public.report_subject_results result
+        where result.report_id = report.id
+      ), '')
     ),
     'sha256'
   ),
   'hex'
 )
-from public.report_snapshots snapshot
-join public.result_calculation_runs run
-  on run.id = report.calculation_run_id
-left join lateral (
-  select string_agg(
-    concat_ws(
-      '|',
-      result.subject_id,
-      result.subject_code,
-      result.subject_name,
-      result.sort_order,
-      result.subject_status::text,
-      coalesce(result.subject_score::text, ''),
-      coalesce(result.grade, ''),
-      coalesce(result.aggregate_points::text, ''),
-      coalesce(result.is_pass::text, ''),
-      result.assessed_weight,
-      result.has_absence,
-      result.has_exemption,
-      coalesce(result.subject_position::text, ''),
-      result.subject_tie_size,
-      result.subject_is_tied
-    ),
-    ';' order by result.sort_order, result.subject_id
-  ) as subject_canonical
-  from public.report_subject_results result
-  where result.report_id = report.id
-) subjects on true
+from public.report_snapshots snapshot,
+     public.result_calculation_runs run
 where snapshot.report_id = report.id
+  and run.id = report.calculation_run_id
   and report.calculation_run_id is not null;
 
 drop index if exists public.report_calculation_run_enrollment_unique;
