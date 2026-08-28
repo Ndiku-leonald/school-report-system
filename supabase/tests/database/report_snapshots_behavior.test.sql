@@ -86,7 +86,8 @@ select extensions.ok((select ready from public.get_report_generation_readiness('
 select extensions.is((select result_input_checksum from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), repeat('a', 64), 'B07. readiness exposes the input checksum');
 select extensions.is((select result_output_checksum from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), repeat('b', 64), 'B08. readiness exposes the output checksum');
 
-select * from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001') into temporary table snapshot_behavior_generation;
+select * into temporary table snapshot_behavior_generation
+from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001');
 select extensions.is((select report_version from snapshot_behavior_generation), 1, 'B09. first generation is report version one');
 select extensions.ok(not (select reused from snapshot_behavior_generation), 'B10. first generation is not reuse');
 select extensions.is((select count(*)::integer from public.reports where calculation_run_id = 'c2200000-0000-4000-8000-000000000001'), 1, 'B11. one report is persisted');

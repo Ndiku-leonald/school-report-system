@@ -134,6 +134,50 @@ create trigger reports_validate_scope
 before insert or update on public.reports
 for each row execute function internal.validate_report_scope();
 
+create or replace function internal.validate_report_actor_scope()
+returns trigger
+language plpgsql
+set search_path = pg_catalog, public
+as $$
+declare
+  term_school_id uuid;
+  actor_school_id uuid;
+begin
+  select academic_years.school_id
+    into term_school_id
+  from public.terms term
+  join public.academic_years academic_years
+    on academic_years.id = term.academic_year_id
+  where term.id = new.term_id;
+
+  foreach actor_school_id in array array[
+    new.created_by,
+    new.reviewed_by,
+    new.published_by,
+    new.withdrawn_by
+  ] loop
+    if actor_school_id is not null then
+      if not exists (
+        select 1
+        from public.school_staff_memberships membership
+        where membership.id = actor_school_id
+          and membership.school_id = term_school_id
+      ) then
+        raise exception 'Report actors must belong to the report school.'
+          using errcode = '23514';
+      end if;
+    end if;
+  end loop;
+
+  return new;
+end;
+$$;
+
+drop trigger if exists reports_validate_actor_scope on public.reports;
+create trigger reports_validate_actor_scope
+before insert or update on public.reports
+for each row execute function internal.validate_report_actor_scope();
+
 create or replace function internal.validate_report_snapshot_source_scope()
 returns trigger
 language plpgsql
