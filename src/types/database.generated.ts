@@ -4110,28 +4110,6 @@ export type Database = {
           updated_at: string;
         }[];
       };
-      list_generated_reports: {
-        Args: { target_calculation_run_id?: string };
-        Returns: {
-          academic_year_name: string;
-          admission_number: string;
-          calculation_run_id: string;
-          calculation_version: number;
-          class_name: string;
-          created_at: string;
-          enrollment_id: string;
-          grade_name: string;
-          is_latest: boolean;
-          report_id: string;
-          report_version: number;
-          snapshot_checksum: string;
-          status: Database["public"]["Enums"]["report_status"];
-          student_name: string;
-          superseded_by: string;
-          term_name: string;
-          term_number: number;
-        }[];
-      };
       list_eligible_class_teachers: {
         Args: {
           assignment_ends_on: string;
@@ -4164,6 +4142,28 @@ export type Database = {
           employee_number: string;
           membership_status: Database["public"]["Enums"]["membership_status"];
           staff_membership_id: string;
+        }[];
+      };
+      list_generated_reports: {
+        Args: { target_calculation_run_id?: string };
+        Returns: {
+          academic_year_name: string;
+          admission_number: string;
+          calculation_run_id: string;
+          calculation_version: number;
+          class_name: string;
+          created_at: string;
+          enrollment_id: string;
+          grade_name: string;
+          is_latest: boolean;
+          report_id: string;
+          report_version: number;
+          snapshot_checksum: string;
+          status: Database["public"]["Enums"]["report_status"];
+          student_name: string;
+          superseded_by: string;
+          term_name: string;
+          term_number: number;
         }[];
       };
       list_mark_sheets: {
