@@ -186,6 +186,7 @@ as $$
 declare
   snapshot_report_id uuid;
   snapshot_checksum text;
+  snapshot_source_checksum text;
   report_run_id uuid;
   report_enrollment_id uuid;
   report_context_checksum text;
@@ -194,8 +195,8 @@ declare
   run_input_checksum text;
   run_output_checksum text;
 begin
-  select snapshot.report_id, snapshot.snapshot_checksum
-    into snapshot_report_id, snapshot_checksum
+  select snapshot.report_id, snapshot.snapshot_checksum, snapshot.source_checksum
+    into snapshot_report_id, snapshot_checksum, snapshot_source_checksum
   from public.report_snapshots snapshot
   where snapshot.id = new.snapshot_id;
 
@@ -220,7 +221,7 @@ begin
      or report_enrollment_id is distinct from result_enrollment_id
      or result_run_id is distinct from new.calculation_run_id
      or report_context_checksum is distinct from snapshot_checksum
-     or snapshot_checksum is distinct from new.input_checksum
+     or snapshot_source_checksum is distinct from new.input_checksum
      or new.input_checksum is distinct from run_input_checksum
      or new.output_checksum is distinct from run_output_checksum then
     raise exception 'Report snapshot lineage references do not match the immutable source.'
