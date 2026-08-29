@@ -30,7 +30,7 @@ values ('c1400000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-0000000
 insert into public.terms (id, academic_year_id, name, term_number, starts_on, ends_on, status)
 values ('c1500000-0000-4000-8000-000000000001', 'c1400000-0000-4000-8000-000000000001', 'Snapshot Behavior Term', 1, '2046-01-01', '2046-06-30', 'MARKS_ENTRY');
 insert into public.academic_years (id, school_id, name, starts_on, ends_on, status)
-values ('c1400000-0000-4000-8000-000000000002', 'c1000000-0000-4000-8000-000000000001', 'Snapshot Behavior Following Year', '2047-01-01', '2047-12-31', 'ACTIVE');
+values ('c1400000-0000-4000-8000-000000000002', 'c1000000-0000-4000-8000-000000000001', 'Snapshot Behavior Following Year', '2047-01-01', '2047-12-31', 'DRAFT');
 insert into public.terms (id, academic_year_id, name, term_number, starts_on, ends_on, status)
 values
   ('c1500000-0000-4000-8000-000000000002', 'c1400000-0000-4000-8000-000000000001', 'Snapshot Behavior Term 2', 2, '2046-07-01', '2046-09-30', 'MARKS_ENTRY'),
