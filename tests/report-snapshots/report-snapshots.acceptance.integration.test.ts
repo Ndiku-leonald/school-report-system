@@ -694,18 +694,6 @@ async function waitForBlocked(fragment: string) {
     if (result.rows[0].blocked > 0) return;
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
-  const activity = await query<{
-    pid: number;
-    application_name: string;
-    state: string;
-    wait_event_type: string | null;
-    wait_event: string | null;
-    query_text: string;
-    blockers: string;
-  }>(
-    "select pid,application_name,state,wait_event_type,wait_event,left(query,240) query_text,pg_blocking_pids(pid)::text blockers from pg_stat_activity where pid <> pg_backend_pid() and state <> 'idle'",
-  );
-  console.log(`[stage12-lock-debug:${fragment}]`, activity.rows);
   throw new Error(`Timed out waiting for ${fragment} to block.`);
 }
 
@@ -1092,6 +1080,12 @@ describe.sequential(
       expect(v1.reportId).not.toBe(v3.reportId);
       expect(v1.checksum).toBe(v3.checksum);
       expect(v1.checksum).not.toBe(v2.checksum);
+      console.log("[stage12-same-run-checksums]", {
+        v1: v1.checksum,
+        v2: v2.checksum,
+        v3: v3.checksum,
+        history: [v1.reportId, v2.reportId, v3.reportId],
+      });
       expect(
         (
           (
@@ -1251,10 +1245,6 @@ describe.sequential(
           target_enrollment_id: ids.bEnrollment,
         }),
       ]);
-      console.log(
-        "[stage12-duplicate-results]",
-        results.map((result) => result.error),
-      );
       const after = await query<{
         reports: number;
         snapshots: number;
@@ -1280,20 +1270,25 @@ describe.sequential(
       const source = randomUUID();
       const result = randomUUID();
       const subjectResult = randomUUID();
-      const checksum = await query<{ checksum: string }>(
-        "select input_checksum checksum from public.result_calculation_runs where id=$1",
-        [ids.bRun],
+      const current = await query<{
+        calculation_run_id: string;
+        version: number;
+        input_checksum: string;
+      }>(
+        "select report.calculation_run_id,run.version,run.input_checksum from public.reports report join public.result_calculation_runs run on run.id=report.calculation_run_id where report.term_id=$1 and report.enrollment_id=$2 and report.superseded_by is null",
+        [ids.bTerm, ids.bEnrollment],
       );
       await query(
-        "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,supersedes_run_id,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,2,$4,$5,$6,$7,repeat('d',64),$8)",
+        "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,supersedes_run_id,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,$4,$5,$6,$7,$8,repeat('d',64),$9)",
         [
           run,
           ids.bTerm,
           ids.bGrade,
-          ids.bRun,
+          current.rows[0].version + 1,
+          current.rows[0].calculation_run_id,
           ids.bScale,
           ids.bRule,
-          checksum.rows[0].checksum,
+          current.rows[0].input_checksum,
           actors.get("schoolBAdmin")!.membershipIds[0],
         ],
       );
@@ -1636,10 +1631,6 @@ describe.sequential(
         succeeded = await generation;
         await revocation;
         await revoker.query("commit");
-        await query(
-          "update public.staff_role_assignments set revoked_at=null where membership_id=$1",
-          [membershipId],
-        );
         denied = await clients
           .get("generatorAdmin")!
           .rpc("generate_student_report_snapshot", {
