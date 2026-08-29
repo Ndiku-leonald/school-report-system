@@ -310,6 +310,16 @@ async function setup() {
     ],
   );
   await database.query(
+    "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$2,$3,$4,$5,'2047-01-02')",
+    [
+      fixture.ungeneratedAssignmentId,
+      fixture.termId,
+      fixture.ungeneratedSectionId,
+      fixture.subjectId,
+      fixture.membershipId,
+    ],
+  );
+  await database.query(
     "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$2,$3,$4,'Browser UnGenerated Scheme','DRAFT','2047-01-02',$5)",
     [
       fixture.ungeneratedSchemeId,
@@ -328,13 +338,14 @@ async function setup() {
     [fixture.ungeneratedSchemeId],
   );
   await database.query(
-    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,workflow_status) values($1,$2,$3,$4,$5,'DRAFT')",
+    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id,workflow_status) values($1,$2,$3,$4,$5,$6,'DRAFT')",
     [
       fixture.ungeneratedSheetId,
       fixture.termId,
       fixture.ungeneratedSectionId,
       fixture.subjectId,
       fixture.ungeneratedSchemeId,
+      fixture.ungeneratedAssignmentId,
     ],
   );
   await database.query(
