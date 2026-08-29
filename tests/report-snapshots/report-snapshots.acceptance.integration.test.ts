@@ -259,8 +259,8 @@ async function insertScope(
     [schemeId],
   );
   await query(
-    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,workflow_status) values($1,$2,$3,$4,$5,'DRAFT')",
-    [sheetId, termId, sectionId, subjectId, schemeId],
+    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id,workflow_status) values($1,$2,$3,$4,$5,$6,'DRAFT')",
+    [sheetId, termId, sectionId, subjectId, schemeId, assignmentId],
   );
   await query(
     "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,effective_from,created_by) values($1,$2,$3,$4,$5,current_date-30,$6)",
@@ -320,8 +320,15 @@ async function insertSecondSchoolAStudent() {
     [ids.sectionB, ids.yearA, ids.gradeA],
   );
   await query(
-    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,workflow_status) values($1,$2,$3,$4,$5,'DRAFT')",
-    [ids.sheetB, ids.termA, ids.sectionB, ids.subject, ids.schemeA],
+    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id,workflow_status) values($1,$2,$3,$4,$5,$6,'DRAFT')",
+    [
+      ids.sheetB,
+      ids.termA,
+      ids.sectionB,
+      ids.subject,
+      ids.schemeA,
+      ids.assignmentB,
+    ],
   );
   await query(
     "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date) values($1,$2,'S12A-UNASSIGNED','Unassigned','Student',current_date-60)",
