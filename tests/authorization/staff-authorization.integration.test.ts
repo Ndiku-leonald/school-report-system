@@ -279,7 +279,7 @@ describe.sequential("local school-scoped authorization integration", () => {
             name: "Synthetic Authorization Term",
             term_number: 1,
             starts_on: "2026-05-25",
-            ends_on: "2026-08-28",
+            ends_on: "2026-12-04",
             status: "MARKS_ENTRY",
           },
           {
@@ -288,7 +288,7 @@ describe.sequential("local school-scoped authorization integration", () => {
             name: "Synthetic Authorization Term",
             term_number: 1,
             starts_on: "2026-05-25",
-            ends_on: "2026-08-28",
+            ends_on: "2026-12-04",
             status: "MARKS_ENTRY",
           },
         ])
