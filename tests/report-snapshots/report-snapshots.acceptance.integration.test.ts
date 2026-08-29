@@ -188,6 +188,48 @@ async function signedIn(key: string, membershipId?: string) {
   return client;
 }
 
+async function directRpc(
+  client: SupabaseClient,
+  functionName: string,
+  args: string[],
+) {
+  const session = (await client.auth.getSession()).data.session;
+  if (!session) throw new Error("An authenticated session is required.");
+  const claims = JSON.parse(
+    Buffer.from(session.access_token.split(".")[1], "base64url").toString(
+      "utf8",
+    ),
+  ) as { sub: string; session_id: string };
+  const caller = new Client({ connectionString: databaseUrl! });
+  await caller.connect();
+  try {
+    await caller.query("begin");
+    await caller.query(
+      "select set_config('request.jwt.claim.sub',$1,false),set_config('request.jwt.claims',$2,false)",
+      [claims.sub, JSON.stringify(claims)],
+    );
+    const placeholders = args.map((_, index) => `$${index + 1}::uuid`);
+    const result = await caller.query(
+      `select * from public.${functionName}(${placeholders.join(",")})`,
+      args,
+    );
+    await caller.query("commit");
+    return { data: result.rows, error: null };
+  } catch (error) {
+    await caller.query("rollback").catch(() => undefined);
+    const postgresError = error as { code?: string; message?: string };
+    return {
+      data: null,
+      error: {
+        code: postgresError.code,
+        message: postgresError.message ?? "Database RPC failed.",
+      },
+    };
+  } finally {
+    await caller.end();
+  }
+}
+
 async function insertScope(
   prefix: "a" | "b",
   schoolId: string,
@@ -333,6 +375,7 @@ async function insertRunResults(
   schemeId: string,
   output: string,
   version = 1,
+  supersedesRunId: string | null = null,
 ) {
   const subjectId = prefix === "a" ? ids.subject : ids.bSubject;
   const creatorMembership = actors.get(
@@ -348,12 +391,13 @@ async function insertRunResults(
   );
   const runVersion = Math.max(version, availableVersion.rows[0].version);
   await query(
-    "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,$4,$5,$6,$7,$8,$9)",
+    "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,supersedes_run_id,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
     [
       runId,
       termId,
       gradeId,
       runVersion,
+      supersedesRunId,
       scaleId,
       ruleId,
       checksum.rows[0].checksum,
@@ -1188,7 +1232,8 @@ describe.sequential(
         ids.bMapping,
         ids.bScheme,
         "f",
-        2,
+        Math.floor(Date.now() / 1000),
+        ids.bRun,
       );
       const first = await signedIn("schoolBAdmin");
       const second = await signedIn("schoolBAdmin");
@@ -1434,12 +1479,11 @@ describe.sequential(
         "select session_id from internal.staff_session_active_memberships where profile_id=$1 for update",
         [actors.get("generatorAdmin")!.userId],
       );
-      const pending = clients
-        .get("generatorAdmin")!
-        .rpc("generate_student_report_snapshot", {
-          target_calculation_run_id: ids.runA,
-          target_enrollment_id: ids.enrollmentA,
-        });
+      const pending = directRpc(
+        clients.get("generatorAdmin")!,
+        "generate_student_report_snapshot",
+        [ids.runA, ids.enrollmentA],
+      );
       let result: Awaited<typeof pending>;
       try {
         await waitForBlocked("generate_student_report_snapshot");
@@ -1479,12 +1523,11 @@ describe.sequential(
         "select session_id from internal.staff_session_active_memberships where profile_id=$1 for update",
         [actors.get("generatorAdmin")!.userId],
       );
-      const pending = clients
-        .get("generatorAdmin")!
-        .rpc("generate_student_report_snapshot", {
-          target_calculation_run_id: ids.runA,
-          target_enrollment_id: ids.enrollmentA,
-        });
+      const pending = directRpc(
+        clients.get("generatorAdmin")!,
+        "generate_student_report_snapshot",
+        [ids.runA, ids.enrollmentA],
+      );
       let result: Awaited<typeof pending>;
       try {
         await waitForBlocked("generate_student_report_snapshot");
@@ -1533,13 +1576,13 @@ describe.sequential(
         "select session_id from internal.staff_session_active_memberships where session_id=$1 for update",
         [selection.rows[0].session_id],
       );
-      const switching = client.rpc("set_my_active_membership", {
-        target_membership_id: actor.membershipIds[1],
-      });
-      const generating = client.rpc("generate_student_report_snapshot", {
-        target_calculation_run_id: ids.runA,
-        target_enrollment_id: ids.enrollmentA,
-      });
+      const switching = directRpc(client, "set_my_active_membership", [
+        actor.membershipIds[1],
+      ]);
+      const generating = directRpc(client, "generate_student_report_snapshot", [
+        ids.runA,
+        ids.enrollmentA,
+      ]);
       let result: Awaited<typeof generating> | null = null;
       try {
         await waitForBlocked("set_my_active_membership");
@@ -1570,12 +1613,11 @@ describe.sequential(
         "select id from public.mark_sheets where id=$1 for update",
         [ids.sheetA],
       );
-      const generation = clients
-        .get("generatorAdmin")!
-        .rpc("generate_student_report_snapshot", {
-          target_calculation_run_id: ids.runA,
-          target_enrollment_id: ids.enrollmentA,
-        });
+      const generation = directRpc(
+        clients.get("generatorAdmin")!,
+        "generate_student_report_snapshot",
+        [ids.runA, ids.enrollmentA],
+      );
       let succeeded: Awaited<typeof generation> | null = null;
       let revocation: Promise<unknown> | null = null;
       let denied: Awaited<ReturnType<SupabaseClient["rpc"]>> | null = null;
