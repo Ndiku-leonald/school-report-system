@@ -72,6 +72,9 @@ insert into public.calculated_student_results (id, calculation_run_id, enrollmen
 values ('c2400000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 1, 1, 1, 88, 88, 'A', 3, 'Advanced', true, true, 88, 1, 1, 1, 1, false, false);
 insert into public.calculated_subject_results (id, calculation_run_id, enrollment_id, class_section_id, subject_id, mark_sheet_id, subject_status, subject_score, grade, aggregate_points, is_pass, assessed_weight, has_absence, has_exemption, subject_position, subject_tie_size, subject_is_tied)
 values ('c2500000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 'c1f00000-0000-4000-8000-000000000001', 'COMPLETE', 88, 'A', 3, true, 100, false, false, 1, 1, false);
+select input_checksum into temporary table snapshot_behavior_expected_checksum
+from public.result_calculation_runs
+where id = 'c2200000-0000-4000-8000-000000000001';
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"c1100000-0000-4000-8000-000000000001","role":"authenticated","session_id":"c2600000-0000-4000-8000-000000000001"}', true);
@@ -100,7 +103,7 @@ select extensions.is((select eligible_student_count::integer from public.get_rep
 select extensions.is((select existing_report_snapshots::integer from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 0, 'B04. no report exists before generation');
 select extensions.is((select missing_report_snapshots::integer from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 1, 'B05. readiness reports one missing snapshot');
 select extensions.ok((select ready from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 'B06. a populated valid source is ready');
-select extensions.is((select result_input_checksum from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), (select input_checksum from public.result_calculation_runs where id = 'c2200000-0000-4000-8000-000000000001'), 'B07. readiness exposes the authoritative input checksum');
+select extensions.is((select result_input_checksum from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), (select input_checksum from snapshot_behavior_expected_checksum), 'B07. readiness exposes the authoritative input checksum');
 select extensions.is((select result_output_checksum from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), repeat('b', 64), 'B08. readiness exposes the output checksum');
 
 select * into temporary table snapshot_behavior_generation
@@ -114,13 +117,13 @@ select extensions.is((select count(*)::integer from public.report_snapshot_sourc
 select extensions.is((select report_id from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)), (select report_id from snapshot_behavior_generation), 'B15. lineage points to the generated report');
 select extensions.is((select calculation_run_id from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)), 'c2200000-0000-4000-8000-000000000001'::uuid, 'B16. lineage preserves the calculation run');
 select extensions.is((select calculated_student_result_id from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)), 'c2400000-0000-4000-8000-000000000001'::uuid, 'B17. lineage preserves the calculated learner result');
-select extensions.is((select input_checksum from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)), (select input_checksum from public.result_calculation_runs where id = 'c2200000-0000-4000-8000-000000000001'), 'B18. lineage preserves input checksum');
+select extensions.is((select input_checksum from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)), (select input_checksum from snapshot_behavior_expected_checksum), 'B18. lineage preserves input checksum');
 select extensions.is((select output_checksum from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)), repeat('b', 64), 'B19. lineage preserves output checksum');
 select extensions.is((select snapshot_schema_version from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), 1, 'B20. snapshot schema version is frozen');
 select extensions.is((select length(snapshot_checksum)::integer from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), 64, 'B21. snapshot checksum is SHA-256 length');
 select extensions.is((select length(snapshot_context_checksum)::integer from public.reports where id = (select report_id from snapshot_behavior_generation)), 64, 'B22. report context checksum is stored');
 select extensions.is((select snapshot_checksum from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), (select snapshot_context_checksum from public.reports where id = (select report_id from snapshot_behavior_generation)), 'B23. report and snapshot context checksums agree');
-select extensions.is((select source_checksum from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), (select input_checksum from public.result_calculation_runs where id = 'c2200000-0000-4000-8000-000000000001'), 'B24. snapshot source checksum is the Stage 11 input checksum');
+select extensions.is((select source_checksum from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), (select input_checksum from snapshot_behavior_expected_checksum), 'B24. snapshot source checksum is the Stage 11 input checksum');
 select extensions.is((select status::text from public.reports where id = (select report_id from snapshot_behavior_generation)), 'GENERATED', 'B25. generated report status is explicit');
 select extensions.is((select calculation_run_id from public.reports where id = (select report_id from snapshot_behavior_generation)), 'c2200000-0000-4000-8000-000000000001'::uuid, 'B26. report stores calculation lineage');
 select extensions.is((select version from public.reports where id = (select report_id from snapshot_behavior_generation)), 1, 'B27. report stores its sequence version');
