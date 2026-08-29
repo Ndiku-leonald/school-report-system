@@ -332,6 +332,7 @@ async function insertRunResults(
   mappingId: string,
   schemeId: string,
   output: string,
+  version = 1,
 ) {
   const subjectId = prefix === "a" ? ids.subject : ids.bSubject;
   const creatorMembership = actors.get(
@@ -342,11 +343,12 @@ async function insertRunResults(
     [termId, gradeId, scaleId, ruleId],
   );
   await query(
-    "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,1,$4,$5,$6,$7,$8)",
+    "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,$4,$5,$6,$7,$8,$9)",
     [
       runId,
       termId,
       gradeId,
+      version,
       scaleId,
       ruleId,
       checksum.rows[0].checksum,
@@ -1169,6 +1171,7 @@ describe.sequential(
         ids.bMapping,
         ids.bScheme,
         "f",
+        2,
       );
       const first = await signedIn("schoolBAdmin");
       const second = await signedIn("schoolBAdmin");
