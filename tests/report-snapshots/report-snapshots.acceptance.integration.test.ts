@@ -342,13 +342,18 @@ async function insertRunResults(
     "select internal.results_input_checksum($1,$2,$3,$4,null) checksum",
     [termId, gradeId, scaleId, ruleId],
   );
+  const availableVersion = await query<{ version: number }>(
+    "select coalesce(max(version),0)::int + 1 version from public.result_calculation_runs where term_id=$1 and grade_level_id=$2",
+    [termId, gradeId],
+  );
+  const runVersion = Math.max(version, availableVersion.rows[0].version);
   await query(
     "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,$4,$5,$6,$7,$8,$9)",
     [
       runId,
       termId,
       gradeId,
-      version,
+      runVersion,
       scaleId,
       ruleId,
       checksum.rows[0].checksum,
@@ -645,6 +650,18 @@ async function waitForBlocked(fragment: string) {
     if (result.rows[0].blocked > 0) return;
     await new Promise((resolve) => setTimeout(resolve, 25));
   }
+  const activity = await query<{
+    pid: number;
+    application_name: string;
+    state: string;
+    wait_event_type: string | null;
+    wait_event: string | null;
+    query_text: string;
+    blockers: string;
+  }>(
+    "select pid,application_name,state,wait_event_type,wait_event,left(query,240) query_text,pg_blocking_pids(pid)::text blockers from pg_stat_activity where pid <> pg_backend_pid() and state <> 'idle'",
+  );
+  console.log(`[stage12-lock-debug:${fragment}]`, activity.rows);
   throw new Error(`Timed out waiting for ${fragment} to block.`);
 }
 
