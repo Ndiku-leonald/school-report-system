@@ -638,7 +638,7 @@ async function waitForBlocked(fragment: string) {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
     const result = await query<{ blocked: number }>(
-      "select count(*)::int blocked from pg_stat_activity where pid <> pg_backend_pid() and state='active' and wait_event_type='Lock'",
+      "select count(*)::int blocked from pg_locks where not granted",
     );
     if (result.rows[0].blocked > 0) return;
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -924,6 +924,14 @@ describe.sequential(
       ).toBeNull();
       expect(
         (
+          await client.rpc("generate_student_report_snapshot", {
+            target_calculation_run_id: ids.bRun,
+            target_enrollment_id: ids.bEnrollment,
+          })
+        ).error,
+      ).toBeNull();
+      expect(
+        (
           await client.rpc("list_generated_reports", {
             target_calculation_run_id: ids.bRun,
           })
@@ -939,8 +947,8 @@ describe.sequential(
       expect(
         (
           await client.rpc("generate_student_report_snapshot", {
-            target_calculation_run_id: ids.bRun,
-            target_enrollment_id: ids.bEnrollment,
+            target_calculation_run_id: ids.runA,
+            target_enrollment_id: ids.enrollmentA,
           })
         ).error?.code,
       ).toBe("42501");
@@ -1316,10 +1324,6 @@ describe.sequential(
       });
       const aReportId = current.data?.[0]?.report_id;
       const aChecksum = current.data?.[0]?.snapshot_checksum;
-      const before = await query<{ reports: number }>(
-        "select count(*)::int reports from public.reports where term_id=$1 and enrollment_id=$2",
-        [ids.termA, ids.enrollmentA],
-      );
       await query(
         "update public.student_term_comments set class_teacher_comment='Concurrent B' where id=$1",
         [ids.commentA],
@@ -1328,6 +1332,10 @@ describe.sequential(
         target_calculation_run_id: ids.runA,
         target_enrollment_id: ids.enrollmentA,
       });
+      const beforeRace = await query<{ reports: number }>(
+        "select count(*)::int reports from public.reports where term_id=$1 and enrollment_id=$2",
+        [ids.termA, ids.enrollmentA],
+      );
       await query(
         "update public.student_term_comments set class_teacher_comment='A' where id=$1",
         [ids.commentA],
@@ -1359,7 +1367,7 @@ describe.sequential(
       }[];
       expect(results.every((result) => result.error === null)).toBe(true);
       expect(b.error).toBeNull();
-      expect(rows).toHaveLength(before.rows[0].reports + 2);
+      expect(rows).toHaveLength(beforeRace.rows[0].reports + 1);
       expect(rows.at(-1)?.snapshot_checksum).toBe(aChecksum);
       expect(rows.at(-1)?.report_id).not.toBe(aReportId);
       expect(rows.at(-1)?.report_id).not.toBe(b.data?.[0]?.report_id);

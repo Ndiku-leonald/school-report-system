@@ -7,5 +7,6 @@ export default defineConfig({
   test: {
     ...baseConfig.test,
     include: ["tests/report-snapshots/**/*.test.ts"],
+    fileParallelism: false,
   },
 });
