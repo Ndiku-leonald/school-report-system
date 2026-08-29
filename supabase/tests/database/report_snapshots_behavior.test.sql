@@ -77,16 +77,22 @@ set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"c1100000-0000-4000-8000-000000000001","role":"authenticated","session_id":"c2600000-0000-4000-8000-000000000001"}', true);
 select public.set_my_active_membership('c1200000-0000-4000-8000-000000000001');
 
+reset role;
 select set_config('app.term_marks_workflow_transition', 'allowed', true);
 update public.terms set status = 'MARKS_ENTRY' where id = 'c1500000-0000-4000-8000-000000000001';
+set local role authenticated;
 select extensions.throws_ok($$select * from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001')$$, '55000', 'REPORT_SOURCE_NOT_FINALIZED', 'B00. an open term cannot generate a snapshot');
+reset role;
 select set_config('app.term_marks_workflow_transition', 'allowed', true);
 update public.terms set status = 'LOCKED' where id = 'c1500000-0000-4000-8000-000000000001';
 select set_config('app.marks_workflow_transition', 'allowed', true);
 update public.mark_sheets set workflow_status = 'DRAFT', locked_by = null, locked_at = null where id = 'c1f00000-0000-4000-8000-000000000001';
+set local role authenticated;
 select extensions.throws_ok($$select * from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001')$$, '55000', 'REPORT_SOURCE_NOT_FINALIZED', 'B00b. an unlocked latest sheet cannot generate a snapshot');
+reset role;
 select set_config('app.marks_workflow_transition', 'allowed', true);
 update public.mark_sheets set workflow_status = 'LOCKED', locked_by = 'c1200000-0000-4000-8000-000000000001', locked_at = now() where id = 'c1f00000-0000-4000-8000-000000000001';
+set local role authenticated;
 
 select extensions.lives_ok($$select * from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')$$, 'B01. readiness can inspect a valid Stage 11 run');
 select extensions.is((select student_population::integer from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 1, 'B02. readiness counts the calculated population');
