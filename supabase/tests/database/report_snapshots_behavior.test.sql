@@ -75,6 +75,7 @@ values ('c2500000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-0000000
 select input_checksum into temporary table snapshot_behavior_expected_checksum
 from public.result_calculation_runs
 where id = 'c2200000-0000-4000-8000-000000000001';
+grant select on snapshot_behavior_expected_checksum to authenticated;
 
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"c1100000-0000-4000-8000-000000000001","role":"authenticated","session_id":"c2600000-0000-4000-8000-000000000001"}', true);
