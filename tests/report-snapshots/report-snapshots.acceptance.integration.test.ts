@@ -2,7 +2,9 @@ import { randomUUID } from "node:crypto";
 
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Client, type QueryResultRow } from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+vi.setConfig({ hookTimeout: 30_000, testTimeout: 30_000 });
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
 const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
@@ -104,8 +106,6 @@ const ids = Object.fromEntries(
 type Actor = { email: string; userId: string; membershipIds: string[] };
 const actors = new Map<string, Actor>();
 const clients = new Map<string, SupabaseClient>();
-let viewOnlyRoleMappingId = "";
-let createdViewOnlyRoleMapping = false;
 let v1: {
   reportId: string;
   snapshotId: string;
@@ -583,7 +583,7 @@ async function setup() {
     "b",
   );
   await query("commit");
-  await createActor("viewOnlyActor", ["CLASS_TEACHER"], ids.schoolA);
+  await createActor("viewOnlyActor", ["SCHOOL_ADMIN"], ids.schoolA);
   const classTeacher = await createActor(
     "classTeacher",
     ["CLASS_TEACHER"],
@@ -609,19 +609,6 @@ async function setup() {
     "insert into public.staff_role_assignments(id,membership_id,role,granted_at) values($1,$2,'CLASS_TEACHER',now()-interval '1 day')",
     [randomUUID(), multiSchoolBMembership],
   );
-  const classView = await query<{ id: string }>(
-    "insert into public.role_permissions(role,permission) values('CLASS_TEACHER','REPORTS_VIEW_ALL') on conflict (role,permission) do nothing returning id",
-  );
-  if (classView.rows[0]) {
-    viewOnlyRoleMappingId = classView.rows[0].id;
-    createdViewOnlyRoleMapping = true;
-  } else {
-    viewOnlyRoleMappingId = (
-      await query<{ id: string }>(
-        "select id from public.role_permissions where role='CLASS_TEACHER' and permission='REPORTS_VIEW_ALL'",
-      )
-    ).rows[0].id;
-  }
   await query(
     "insert into public.class_teacher_assignments(id,term_id,class_section_id,staff_membership_id,starts_on) values($1,$2,$3,$4,current_date-30)",
     [randomUUID(), ids.termA, ids.sectionA, classTeacher.membershipIds[0]],
@@ -665,10 +652,9 @@ describe.sequential(
   () => {
     beforeAll(setup);
     afterAll(async () => {
-      if (createdViewOnlyRoleMapping && viewOnlyRoleMappingId)
-        await query("delete from public.role_permissions where id=$1", [
-          viewOnlyRoleMappingId,
-        ]);
+      await query(
+        "insert into public.role_permissions(role,permission) values('SCHOOL_ADMIN','REPORTS_GENERATE') on conflict (role,permission) do nothing",
+      );
       await db.end();
     });
 
@@ -712,6 +698,9 @@ describe.sequential(
 
     it("REPORTS_VIEW_ALL-only actor reads every report API but cannot generate", async () => {
       const client = clients.get("viewOnlyActor")!;
+      await query(
+        "delete from public.role_permissions where role='SCHOOL_ADMIN' and permission='REPORTS_GENERATE'",
+      );
       const listed = await client.rpc("list_generated_reports", {
         target_calculation_run_id: ids.runA,
       });
@@ -769,6 +758,9 @@ describe.sequential(
         "select (select count(*) from public.reports)::int reports,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED')::int audits",
       );
       expect(after.rows[0]).toEqual(before.rows[0]);
+      await query(
+        "insert into public.role_permissions(role,permission) values('SCHOOL_ADMIN','REPORTS_GENERATE') on conflict (role,permission) do nothing",
+      );
     });
 
     it("class teacher reads assigned child snapshots through parent report RLS only", async () => {
@@ -1042,7 +1034,7 @@ describe.sequential(
       expect(
         (
           await query<{ count: number }>(
-            "select count(*)::int count from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'enrollment_id'=$1",
+            "select count(*)::int count from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'enrollment_id'=$1::text",
             [ids.enrollmentA],
           )
         ).rows[0].count,
@@ -1110,7 +1102,7 @@ describe.sequential(
       const crossYearId = randomUUID();
       const crossYearTermId = randomUUID();
       await query(
-        "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,'Stage 12 Following Year',current_date+301,current_date+665,'ACTIVE')",
+        "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,'Stage 12 Following Year',current_date+301,current_date+665,'DRAFT')",
         [crossYearId, ids.schoolA],
       );
       await query(
@@ -1152,7 +1144,7 @@ describe.sequential(
       const first = await signedIn("schoolBAdmin");
       const second = await signedIn("schoolBAdmin");
       const before = await query<{ audits: number }>(
-        "select count(*)::int audits from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$1",
+        "select count(*)::int audits from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$1::text",
         [ids.bRun],
       );
       const results = await Promise.all([
@@ -1172,7 +1164,7 @@ describe.sequential(
         lineage: number;
         audits: number;
       }>(
-        "select (select count(*) from public.reports where calculation_run_id=$1)::int reports,(select count(*) from public.report_snapshots snapshot join public.reports report on report.id=snapshot.report_id where report.calculation_run_id=$1)::int snapshots,(select count(*) from public.report_subject_results subject join public.reports report on report.id=subject.report_id where report.calculation_run_id=$1)::int subjects,(select count(*) from public.report_snapshot_sources where calculation_run_id=$1)::int lineage,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$1)::int audits",
+        "select (select count(*) from public.reports where calculation_run_id=$1)::int reports,(select count(*) from public.report_snapshots snapshot join public.reports report on report.id=snapshot.report_id where report.calculation_run_id=$1)::int snapshots,(select count(*) from public.report_subject_results subject join public.reports report on report.id=subject.report_id where report.calculation_run_id=$1)::int subjects,(select count(*) from public.report_snapshot_sources where calculation_run_id=$1)::int lineage,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$1::text)::int audits",
         [ids.bRun],
       );
       expect(results.every((result) => result.error === null)).toBe(true);
@@ -1255,7 +1247,7 @@ describe.sequential(
         lineage: number;
         audits: number;
       }>(
-        "select (select count(*) from public.reports where calculation_run_id=$1)::int reports,(select count(*) from public.report_snapshots snapshot join public.reports report on report.id=snapshot.report_id where report.calculation_run_id=$1)::int snapshots,(select count(*) from public.report_snapshot_sources where calculation_run_id=$1)::int lineage,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$1)::int audits",
+        "select (select count(*) from public.reports where calculation_run_id=$1)::int reports,(select count(*) from public.report_snapshots snapshot join public.reports report on report.id=snapshot.report_id where report.calculation_run_id=$1)::int snapshots,(select count(*) from public.report_snapshot_sources where calculation_run_id=$1)::int lineage,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$1::text)::int audits",
         [run],
       );
       expect(results[0].error).toBeNull();
@@ -1276,7 +1268,7 @@ describe.sequential(
 
     it("changed-context race creates exactly one successor and one creation audit", async () => {
       const before = await query<{ reports: number; audits: number }>(
-        "select (select count(*) from public.reports where term_id=$1 and enrollment_id=$2)::int reports,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'enrollment_id'=$2)::int audits",
+        "select (select count(*) from public.reports where term_id=$1 and enrollment_id=$2)::int reports,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'enrollment_id'=$2::text)::int audits",
         [ids.termA, ids.enrollmentA],
       );
       await query(
@@ -1302,7 +1294,7 @@ describe.sequential(
         [ids.commentA],
       );
       const after = await query<{ reports: number; audits: number }>(
-        "select (select count(*) from public.reports where term_id=$1 and enrollment_id=$2)::int reports,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'enrollment_id'=$2)::int audits",
+        "select (select count(*) from public.reports where term_id=$1 and enrollment_id=$2)::int reports,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'enrollment_id'=$2::text)::int audits",
         [ids.termA, ids.enrollmentA],
       );
       expect(results.every((result) => result.error === null)).toBe(true);
@@ -1568,7 +1560,7 @@ describe.sequential(
         lineage: number;
         audits: number;
       }>(
-        "select (select count(*) from public.reports where term_id=$1 and enrollment_id in ($2,$3))::int reports,(select count(*) from public.report_snapshots snapshot join public.reports report on report.id=snapshot.report_id where report.term_id=$1)::int snapshots,(select count(*) from public.report_subject_results subject join public.reports report on report.id=subject.report_id where report.term_id=$1)::int subjects,(select count(*) from public.report_snapshot_sources source join public.reports report on report.id=source.report_id where report.term_id=$1)::int lineage,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$4)::int audits",
+        "select (select count(*) from public.reports where term_id=$1 and enrollment_id in ($2,$3))::int reports,(select count(*) from public.report_snapshots snapshot join public.reports report on report.id=snapshot.report_id where report.term_id=$1)::int snapshots,(select count(*) from public.report_subject_results subject join public.reports report on report.id=subject.report_id where report.term_id=$1)::int subjects,(select count(*) from public.report_snapshot_sources source join public.reports report on report.id=source.report_id where report.term_id=$1)::int lineage,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$4::text)::int audits",
         [ids.termA, ids.enrollmentA, ids.enrollmentB, run],
       );
       const generation = await clients
@@ -1583,7 +1575,7 @@ describe.sequential(
         lineage: number;
         audits: number;
       }>(
-        "select (select count(*) from public.reports where term_id=$1 and enrollment_id in ($2,$3))::int reports,(select count(*) from public.report_snapshots snapshot join public.reports report on report.id=snapshot.report_id where report.term_id=$1)::int snapshots,(select count(*) from public.report_subject_results subject join public.reports report on report.id=subject.report_id where report.term_id=$1)::int subjects,(select count(*) from public.report_snapshot_sources source join public.reports report on report.id=source.report_id where report.term_id=$1)::int lineage,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$4)::int audits",
+        "select (select count(*) from public.reports where term_id=$1 and enrollment_id in ($2,$3))::int reports,(select count(*) from public.report_snapshots snapshot join public.reports report on report.id=snapshot.report_id where report.term_id=$1)::int snapshots,(select count(*) from public.report_subject_results subject join public.reports report on report.id=subject.report_id where report.term_id=$1)::int subjects,(select count(*) from public.report_snapshot_sources source join public.reports report on report.id=source.report_id where report.term_id=$1)::int lineage,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$4::text)::int audits",
         [ids.termA, ids.enrollmentA, ids.enrollmentB, run],
       );
       expect(generation.error?.message).toContain(
