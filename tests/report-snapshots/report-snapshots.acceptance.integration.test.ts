@@ -471,10 +471,6 @@ async function setup() {
     [ids.commentA, ids.termA, ids.enrollmentA, generator.membershipIds[0]],
   );
   await query(
-    "insert into public.class_teacher_assignments(id,term_id,class_section_id,staff_membership_id,starts_on) values($1,$2,$3,$4,current_date-30)",
-    [randomUUID(), ids.termA, ids.sectionA, generator.membershipIds[0]],
-  );
-  await query(
     "insert into public.subjects(id,school_id,code,name,sort_order) values($1,$2,'S12B','Stage 12 B Subject',1)",
     [ids.bSubject, ids.schoolB],
   );
