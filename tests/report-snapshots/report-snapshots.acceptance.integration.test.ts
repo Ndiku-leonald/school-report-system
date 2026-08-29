@@ -210,6 +210,7 @@ async function insertScope(
   subjectResultId: string,
   output: string,
   studentName: string,
+  deferRun = false,
 ) {
   const schoolCode = prefix === "a" ? "S12A" : "S12B";
   const subjectId = prefix === "a" ? ids.subject : ids.bSubject;
@@ -286,6 +287,7 @@ async function insertScope(
     "select internal.results_input_checksum($1,$2,$3,$4,null) checksum",
     [termId, gradeId, scaleId, ruleId],
   );
+  if (deferRun) return { checksum: checksum.rows[0].checksum, subjectId };
   await query(
     "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,1,$4,$5,$6,$7,$8)",
     [
@@ -312,6 +314,59 @@ async function insertScope(
     [subjectResultId, runId, enrollmentId, sectionId, subjectId, sheetId],
   );
   return { checksum: checksum.rows[0].checksum, subjectId };
+}
+
+async function insertRunResults(
+  prefix: "a" | "b",
+  termId: string,
+  gradeId: string,
+  scaleId: string,
+  ruleId: string,
+  runId: string,
+  sourceId: string,
+  resultId: string,
+  subjectResultId: string,
+  sheetId: string,
+  sectionId: string,
+  enrollmentId: string,
+  mappingId: string,
+  schemeId: string,
+  output: string,
+) {
+  const subjectId = prefix === "a" ? ids.subject : ids.bSubject;
+  const creatorMembership = actors.get(
+    prefix === "a" ? "generatorAdmin" : "schoolBAdmin",
+  )!.membershipIds[0];
+  const checksum = await query<{ checksum: string }>(
+    "select internal.results_input_checksum($1,$2,$3,$4,null) checksum",
+    [termId, gradeId, scaleId, ruleId],
+  );
+  await query(
+    "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,1,$4,$5,$6,$7,$8)",
+    [
+      runId,
+      termId,
+      gradeId,
+      scaleId,
+      ruleId,
+      checksum.rows[0].checksum,
+      output.repeat(64),
+      creatorMembership,
+    ],
+  );
+  await query(
+    "insert into public.result_calculation_sources(id,calculation_run_id,mark_sheet_id,class_section_id,subject_id,mark_sheet_version,assessment_scheme_id,grade_level_subject_id,curriculum_is_required,curriculum_contributes_to_aggregate,curriculum_sort_order) values($1,$2,$3,$4,$5,1,$6,$7,true,true,1)",
+    [sourceId, runId, sheetId, sectionId, subjectId, schemeId, mappingId],
+  );
+  await query(
+    "insert into public.calculated_student_results(id,calculation_run_id,enrollment_id,class_section_id,subject_count,complete_subject_count,subjects_passed,overall_total,overall_average,overall_grade,aggregate_total,aggregate_classification,is_complete,ranking_eligible,ranking_metric,class_position,grade_level_position,class_tie_size,grade_level_tie_size,class_is_tied,grade_level_is_tied) values($1,$2,$3,$4,1,1,1,88,88,'A',3,'Advanced',true,true,88,1,1,1,1,false,false)",
+    [resultId, runId, enrollmentId, sectionId],
+  );
+  await query(
+    "insert into public.calculated_subject_results(id,calculation_run_id,enrollment_id,class_section_id,subject_id,mark_sheet_id,subject_status,subject_score,grade,aggregate_points,is_pass,assessed_weight,has_absence,has_exemption,subject_position,subject_tie_size,subject_is_tied) values($1,$2,$3,$4,$5,$6,'COMPLETE',88,'A',3,true,100,false,false,1,1,false)",
+    [subjectResultId, runId, enrollmentId, sectionId, subjectId, sheetId],
+  );
+  return checksum.rows[0].checksum;
 }
 
 async function insertSecondSchoolAStudent() {
@@ -347,33 +402,6 @@ async function insertSecondSchoolAStudent() {
   await query(
     "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,enrolled_on) values($1,$2,$3,$4,current_date-50)",
     [ids.enrollmentB, ids.studentB, ids.yearA, ids.sectionB],
-  );
-  await query(
-    "insert into public.result_calculation_sources(id,calculation_run_id,mark_sheet_id,class_section_id,subject_id,mark_sheet_version,assessment_scheme_id,grade_level_subject_id,curriculum_is_required,curriculum_contributes_to_aggregate,curriculum_sort_order) values($1,$2,$3,$4,$5,1,$6,$7,true,true,1)",
-    [
-      ids.sourceB,
-      ids.runA,
-      ids.sheetB,
-      ids.sectionB,
-      ids.subject,
-      ids.schemeA,
-      ids.mappingA,
-    ],
-  );
-  await query(
-    "insert into public.calculated_student_results(id,calculation_run_id,enrollment_id,class_section_id,subject_count,complete_subject_count,subjects_passed,overall_total,overall_average,overall_grade,aggregate_total,aggregate_classification,is_complete,ranking_eligible,ranking_metric,class_position,grade_level_position,class_tie_size,grade_level_tie_size,class_is_tied,grade_level_is_tied) values($1,$2,$3,$4,1,1,1,88,88,'A',3,'Advanced',true,true,88,1,1,1,1,false,false)",
-    [ids.resultB, ids.runA, ids.enrollmentB, ids.sectionB],
-  );
-  await query(
-    "insert into public.calculated_subject_results(id,calculation_run_id,enrollment_id,class_section_id,subject_id,mark_sheet_id,subject_status,subject_score,grade,aggregate_points,is_pass,assessed_weight,has_absence,has_exemption,subject_position,subject_tie_size,subject_is_tied) values($1,$2,$3,$4,$5,$6,'COMPLETE',88,'A',3,true,100,false,false,1,1,false)",
-    [
-      ids.subjectResultB,
-      ids.runA,
-      ids.enrollmentB,
-      ids.sectionB,
-      ids.subject,
-      ids.sheetB,
-    ],
   );
 }
 
@@ -431,6 +459,7 @@ async function setup() {
     ids.subjectResultA,
     "a",
     "Assigned",
+    true,
   );
   await insertSecondSchoolAStudent();
   await query(
@@ -471,6 +500,7 @@ async function setup() {
     ids.bSubjectResult,
     "b",
     "Foreign",
+    true,
   );
   await query(
     "insert into public.student_term_comments(id,term_id,enrollment_id,class_teacher_comment,created_by,updated_by) values($1,$2,$3,'B',$4,$4)",
@@ -495,13 +525,66 @@ async function setup() {
     "update public.mark_sheets set workflow_status='LOCKED',locked_by=$1,locked_at=now() where id=$2",
     [schoolBAdmin.membershipIds[0], ids.bSheet],
   );
-  await query(
-    "update public.result_calculation_runs set input_checksum=internal.results_input_checksum($1,$2,$3,$4,null) where id=$5",
-    [ids.termA, ids.gradeA, ids.scaleA, ids.ruleA, ids.runA],
+  await insertRunResults(
+    "a",
+    ids.termA,
+    ids.gradeA,
+    ids.scaleA,
+    ids.ruleA,
+    ids.runA,
+    ids.sourceA,
+    ids.resultA,
+    ids.subjectResultA,
+    ids.sheetA,
+    ids.sectionA,
+    ids.enrollmentA,
+    ids.mappingA,
+    ids.schemeA,
+    "a",
   );
   await query(
-    "update public.result_calculation_runs set input_checksum=internal.results_input_checksum($1,$2,$3,$4,null) where id=$5",
-    [ids.bTerm, ids.bGrade, ids.bScale, ids.bRule, ids.bRun],
+    "insert into public.result_calculation_sources(id,calculation_run_id,mark_sheet_id,class_section_id,subject_id,mark_sheet_version,assessment_scheme_id,grade_level_subject_id,curriculum_is_required,curriculum_contributes_to_aggregate,curriculum_sort_order) values($1,$2,$3,$4,$5,1,$6,$7,true,true,1)",
+    [
+      ids.sourceB,
+      ids.runA,
+      ids.sheetB,
+      ids.sectionB,
+      ids.subject,
+      ids.schemeA,
+      ids.mappingA,
+    ],
+  );
+  await query(
+    "insert into public.calculated_student_results(id,calculation_run_id,enrollment_id,class_section_id,subject_count,complete_subject_count,subjects_passed,overall_total,overall_average,overall_grade,aggregate_total,aggregate_classification,is_complete,ranking_eligible,ranking_metric,class_position,grade_level_position,class_tie_size,grade_level_tie_size,class_is_tied,grade_level_is_tied) values($1,$2,$3,$4,1,1,1,88,88,'A',3,'Advanced',true,true,88,1,1,1,1,false,false)",
+    [ids.resultB, ids.runA, ids.enrollmentB, ids.sectionB],
+  );
+  await query(
+    "insert into public.calculated_subject_results(id,calculation_run_id,enrollment_id,class_section_id,subject_id,mark_sheet_id,subject_status,subject_score,grade,aggregate_points,is_pass,assessed_weight,has_absence,has_exemption,subject_position,subject_tie_size,subject_is_tied) values($1,$2,$3,$4,$5,$6,'COMPLETE',88,'A',3,true,100,false,false,1,1,false)",
+    [
+      ids.subjectResultB,
+      ids.runA,
+      ids.enrollmentB,
+      ids.sectionB,
+      ids.subject,
+      ids.sheetB,
+    ],
+  );
+  await insertRunResults(
+    "b",
+    ids.bTerm,
+    ids.bGrade,
+    ids.bScale,
+    ids.bRule,
+    ids.bRun,
+    ids.bSource,
+    ids.bResult,
+    ids.bSubjectResult,
+    ids.bSheet,
+    ids.bSection,
+    ids.bEnrollment,
+    ids.bMapping,
+    ids.bScheme,
+    "b",
   );
   await query("commit");
   await createActor("viewOnlyActor", ["CLASS_TEACHER"], ids.schoolA);
