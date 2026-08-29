@@ -1574,20 +1574,21 @@ describe.sequential(
       const switching = directRpc(client, "set_my_active_membership", [
         actor.membershipIds[1],
       ]);
-      const generating = directRpc(client, "generate_student_report_snapshot", [
-        ids.runA,
-        ids.enrollmentA,
-      ]);
-      let result: Awaited<typeof generating> | null = null;
+      let generating: ReturnType<typeof directRpc> | null = null;
+      let result: Awaited<ReturnType<typeof directRpc>> | null = null;
       try {
         await waitForBlocked("set_my_active_membership");
+        generating = directRpc(client, "generate_student_report_snapshot", [
+          ids.runA,
+          ids.enrollmentA,
+        ]);
         await waitForBlocked("generate_student_report_snapshot");
         await blocker.query("commit");
         await switching;
         result = await generating;
       } finally {
         await blocker.query("rollback").catch(() => undefined);
-        await Promise.allSettled([switching, generating]);
+        await Promise.allSettled([switching, generating ?? Promise.resolve()]);
         await client.rpc("set_my_active_membership", {
           target_membership_id: actor.membershipIds[0],
         });
