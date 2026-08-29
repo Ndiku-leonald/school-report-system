@@ -104,3 +104,17 @@ narrow read RPCs.
 listing. `/dashboard/reports/[reportId]` renders an HTML preview from the frozen
 payload and normalized rows. It has no PDF download, parent publication,
 parent access, or promotion controls. PDF rendering starts in Stage 13.
+
+## Acceptance verification
+
+The dedicated acceptance coverage uses isolated authenticated fixtures. It
+covers `REPORTS_GENERATE`, `REPORTS_VIEW_ALL`-only, assigned class-teacher
+child RLS, subject-teacher denial, cross-school scope, selected multi-school
+membership, same-run A-to-B-to-A checksum rules, fresh single/batch duplicate
+races, changed-context races, authority revocation and suspension, selected
+membership switching, generation-wins ordering, batch rollback, readiness
+isolation, next-term selection, frozen history, privacy, and Stage 12 scope
+boundaries. The integration suite contains 55 meaningful scenarios and the
+dedicated Playwright suite contains 61 browser scenarios. Database behavior
+also asserts that A-to-B-to-A v1 and v3 checksums are equal while their report
+IDs differ, and that exact current-context generation reuses v3.

@@ -13,10 +13,20 @@ const password = "synthetic-report-snapshot-browser-password";
 const admin = enabled ? createClient(url, serviceKey) : null;
 const database = new Client({ connectionString: databaseUrl });
 let email = "";
+let viewOnlyEmail = "";
+let subjectTeacherEmail = "";
+let schoolBAdminEmail = "";
+let multiSchoolEmail = "";
+let generatedReportId = "";
 const fixture = Object.fromEntries(
   [
     "schoolId",
+    "schoolBId",
     "membershipId",
+    "subjectMembershipId",
+    "schoolBMembershipId",
+    "multiMembershipAId",
+    "multiMembershipBId",
     "yearId",
     "termId",
     "gradeId",
@@ -37,6 +47,23 @@ const fixture = Object.fromEntries(
     "subjectResultId",
     "attendanceId",
     "commentId",
+    "guardianId",
+    "studentGuardianId",
+    "ungeneratedGradeId",
+    "ungeneratedSectionId",
+    "ungeneratedMappingId",
+    "ungeneratedSchemeId",
+    "ungeneratedComponentId",
+    "ungeneratedSheetId",
+    "ungeneratedScaleId",
+    "ungeneratedRuleId",
+    "ungeneratedStudentId",
+    "ungeneratedEnrollmentId",
+    "ungeneratedAssignmentId",
+    "ungeneratedRunId",
+    "ungeneratedSourceId",
+    "ungeneratedResultId",
+    "ungeneratedSubjectResultId",
   ].map((key) => [key, randomUUID()]),
 ) as Record<string, string>;
 
@@ -56,6 +83,15 @@ async function setup() {
       `Snapshot Browser School ${nonce}`,
       `snapshot-browser-${nonce}`,
       `SBR-${nonce}`,
+    ],
+  );
+  await database.query(
+    "insert into public.schools(id,name,slug,school_code) values($1,$2,$3,$4)",
+    [
+      fixture.schoolBId,
+      `Snapshot Browser School B ${nonce}`,
+      `snapshot-browser-b-${nonce}`,
+      `SBR-B-${nonce}`,
     ],
   );
   await database.query(
@@ -200,6 +236,14 @@ async function setup() {
       fixture.membershipId,
     ],
   );
+  await database.query(
+    "insert into public.guardians(id,school_id,first_name,last_name,email,phone) values($1,$2,'Stage12','Guardian','guardian-stage12@example.invalid','+256700000000')",
+    [fixture.guardianId, fixture.schoolId],
+  );
+  await database.query(
+    "insert into public.student_guardians(id,student_id,guardian_id,relationship,is_primary,can_access_reports) values($1,$2,$3,'Guardian',true,false)",
+    [fixture.studentGuardianId, fixture.studentId, fixture.guardianId],
+  );
   const checksum = await database.query(
     "select internal.results_input_checksum($1,$2,$3,$4,null) as checksum",
     [fixture.termId, fixture.gradeId, fixture.scaleId, fixture.ruleId],
@@ -249,6 +293,190 @@ async function setup() {
     ],
   );
 
+  await database.query(
+    "insert into public.grade_levels(id,school_id,code,name,sort_order) values($1,$2,'SBR-EMPTY','Browser UnGenerated Grade',2)",
+    [fixture.ungeneratedGradeId, fixture.schoolId],
+  );
+  await database.query(
+    "insert into public.class_sections(id,academic_year_id,grade_level_id,name,class_code) values($1,$2,$3,'Browser UnGenerated Class','SBR-EMPTY-A')",
+    [fixture.ungeneratedSectionId, fixture.yearId, fixture.ungeneratedGradeId],
+  );
+  await database.query(
+    "insert into public.grade_level_subjects(id,grade_level_id,subject_id,sort_order) values($1,$2,$3,1)",
+    [
+      fixture.ungeneratedMappingId,
+      fixture.ungeneratedGradeId,
+      fixture.subjectId,
+    ],
+  );
+  await database.query(
+    "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$2,$3,$4,'Browser UnGenerated Scheme','DRAFT','2047-01-02',$5)",
+    [
+      fixture.ungeneratedSchemeId,
+      fixture.termId,
+      fixture.ungeneratedGradeId,
+      fixture.subjectId,
+      fixture.membershipId,
+    ],
+  );
+  await database.query(
+    "insert into public.assessment_components(id,assessment_scheme_id,name,component_code,maximum_score,weight_percentage,sort_order) values($1,$2,'Exam','EXAM',100,100,1)",
+    [fixture.ungeneratedComponentId, fixture.ungeneratedSchemeId],
+  );
+  await database.query(
+    "update public.assessment_schemes set status='ACTIVE' where id=$1",
+    [fixture.ungeneratedSchemeId],
+  );
+  await database.query(
+    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,workflow_status) values($1,$2,$3,$4,$5,'DRAFT')",
+    [
+      fixture.ungeneratedSheetId,
+      fixture.termId,
+      fixture.ungeneratedSectionId,
+      fixture.subjectId,
+      fixture.ungeneratedSchemeId,
+    ],
+  );
+  await database.query(
+    "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,effective_from,created_by) values($1,$2,$3,$4,'Browser UnGenerated Scale','2047-01-02',$5)",
+    [
+      fixture.ungeneratedScaleId,
+      fixture.schoolId,
+      fixture.yearId,
+      fixture.ungeneratedGradeId,
+      fixture.membershipId,
+    ],
+  );
+  await database.query(
+    "insert into public.ranking_rules(id,school_id,academic_year_id,grade_level_id,name,ranking_basis,tie_method,configuration,is_active,created_by) values($1,$2,$3,$4,'Browser UnGenerated Ranking','AVERAGE','DENSE','{}',true,$5)",
+    [
+      fixture.ungeneratedRuleId,
+      fixture.schoolId,
+      fixture.yearId,
+      fixture.ungeneratedGradeId,
+      fixture.membershipId,
+    ],
+  );
+  await database.query(
+    "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date) values($1,$2,'SBR-EMPTY-001','UnGenerated','Student','2047-01-02')",
+    [fixture.ungeneratedStudentId, fixture.schoolId],
+  );
+  await database.query(
+    "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,enrolled_on) values($1,$2,$3,$4,'2047-01-02')",
+    [
+      fixture.ungeneratedEnrollmentId,
+      fixture.ungeneratedStudentId,
+      fixture.yearId,
+      fixture.ungeneratedSectionId,
+    ],
+  );
+  await database.query(
+    "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$2,$3,$4,$5,'2047-01-02')",
+    [
+      fixture.ungeneratedAssignmentId,
+      fixture.termId,
+      fixture.ungeneratedSectionId,
+      fixture.subjectId,
+      fixture.membershipId,
+    ],
+  );
+  const ungeneratedChecksum = await database.query(
+    "select internal.results_input_checksum($1,$2,$3,$4,null) as checksum",
+    [
+      fixture.termId,
+      fixture.ungeneratedGradeId,
+      fixture.ungeneratedScaleId,
+      fixture.ungeneratedRuleId,
+    ],
+  );
+  await database.query(
+    "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,supersedes_run_id,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,1,null,$4,$5,$6,repeat('c',64),$7)",
+    [
+      fixture.ungeneratedRunId,
+      fixture.termId,
+      fixture.ungeneratedGradeId,
+      fixture.ungeneratedScaleId,
+      fixture.ungeneratedRuleId,
+      ungeneratedChecksum.rows[0].checksum,
+      fixture.membershipId,
+    ],
+  );
+  await database.query(
+    "insert into public.result_calculation_sources(id,calculation_run_id,mark_sheet_id,class_section_id,subject_id,mark_sheet_version,assessment_scheme_id,grade_level_subject_id,curriculum_is_required,curriculum_contributes_to_aggregate,curriculum_sort_order) values($1,$2,$3,$4,$5,1,$6,$7,true,true,1)",
+    [
+      fixture.ungeneratedSourceId,
+      fixture.ungeneratedRunId,
+      fixture.ungeneratedSheetId,
+      fixture.ungeneratedSectionId,
+      fixture.subjectId,
+      fixture.ungeneratedSchemeId,
+      fixture.ungeneratedMappingId,
+    ],
+  );
+  await database.query(
+    "insert into public.calculated_student_results(id,calculation_run_id,enrollment_id,class_section_id,subject_count,complete_subject_count,subjects_passed,overall_total,overall_average,overall_grade,aggregate_total,aggregate_classification,is_complete,ranking_eligible,ranking_metric,class_position,grade_level_position,class_tie_size,grade_level_tie_size,class_is_tied,grade_level_is_tied) values($1,$2,$3,$4,1,1,1,88,88,'A',3,'Advanced',true,true,88,1,1,1,1,false,false)",
+    [
+      fixture.ungeneratedResultId,
+      fixture.ungeneratedRunId,
+      fixture.ungeneratedEnrollmentId,
+      fixture.ungeneratedSectionId,
+    ],
+  );
+  await database.query(
+    "insert into public.calculated_subject_results(id,calculation_run_id,enrollment_id,class_section_id,subject_id,mark_sheet_id,subject_status,subject_score,grade,aggregate_points,is_pass,assessed_weight,has_absence,has_exemption,subject_position,subject_tie_size,subject_is_tied) values($1,$2,$3,$4,$5,$6,'COMPLETE',88,'A',3,true,100,false,false,1,1,false)",
+    [
+      fixture.ungeneratedSubjectResultId,
+      fixture.ungeneratedRunId,
+      fixture.ungeneratedEnrollmentId,
+      fixture.ungeneratedSectionId,
+      fixture.subjectId,
+      fixture.ungeneratedSheetId,
+    ],
+  );
+  await database.query("begin");
+  await database.query(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await database.query(
+    "update public.mark_sheets set workflow_status='LOCKED',locked_by=$1,locked_at=now() where id=$2",
+    [fixture.membershipId, fixture.ungeneratedSheetId],
+  );
+  await database.query(
+    "update public.result_calculation_runs set input_checksum=internal.results_input_checksum($1,$2,$3,$4,null) where id=$5",
+    [
+      fixture.termId,
+      fixture.ungeneratedGradeId,
+      fixture.ungeneratedScaleId,
+      fixture.ungeneratedRuleId,
+      fixture.ungeneratedRunId,
+    ],
+  );
+  await database.query("commit");
+
+  viewOnlyEmail = `report-snapshot.browser-view-only.${nonce}@example.invalid`;
+  const viewOnlyAuth = await admin!.auth.admin.createUser({
+    email: viewOnlyEmail,
+    password,
+    email_confirm: true,
+  });
+  if (viewOnlyAuth.error) throw viewOnlyAuth.error;
+  const viewOnlyMembershipId = randomUUID();
+  await database.query(
+    "insert into public.profiles(id,first_name,last_name) values($1,'View','Only')",
+    [viewOnlyAuth.data.user.id],
+  );
+  await database.query(
+    "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,'SBR-VIEW','ACTIVE')",
+    [viewOnlyMembershipId, fixture.schoolId, viewOnlyAuth.data.user.id],
+  );
+  await database.query(
+    "insert into public.staff_role_assignments(membership_id,role,granted_at) values($1,'CLASS_TEACHER',now()-interval '1 day')",
+    [viewOnlyMembershipId],
+  );
+  await database.query(
+    "insert into public.role_permissions(role,permission) values('CLASS_TEACHER','REPORTS_VIEW_ALL') on conflict (role,permission) do nothing",
+  );
+
   const signedIn = createClient(url, anonKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
@@ -265,6 +493,7 @@ async function setup() {
     target_calculation_run_id: fixture.runId,
   });
   if (generated.error) throw generated.error;
+  generatedReportId = generated.data?.[0]?.report_id ?? "";
   await database.query("delete from public.term_attendance where id=$1", [
     fixture.attendanceId,
   ]);
@@ -276,13 +505,88 @@ async function setup() {
     target_enrollment_id: fixture.enrollmentId,
   });
   if (regenerated.error) throw regenerated.error;
+
+  subjectTeacherEmail = `report-snapshot.browser-subject.${nonce}@example.invalid`;
+  const subjectAuth = await admin!.auth.admin.createUser({
+    email: subjectTeacherEmail,
+    password,
+    email_confirm: true,
+  });
+  if (subjectAuth.error) throw subjectAuth.error;
+  await database.query(
+    "insert into public.profiles(id,first_name,last_name) values($1,'Subject','Teacher')",
+    [subjectAuth.data.user.id],
+  );
+  await database.query(
+    "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,'SBR-SUBJECT','ACTIVE')",
+    [fixture.subjectMembershipId, fixture.schoolId, subjectAuth.data.user.id],
+  );
+  await database.query(
+    "insert into public.staff_role_assignments(membership_id,role,granted_at) values($1,'SUBJECT_TEACHER',now()-interval '1 day')",
+    [fixture.subjectMembershipId],
+  );
+
+  schoolBAdminEmail = `report-snapshot.browser-school-b.${nonce}@example.invalid`;
+  const schoolBAuth = await admin!.auth.admin.createUser({
+    email: schoolBAdminEmail,
+    password,
+    email_confirm: true,
+  });
+  if (schoolBAuth.error) throw schoolBAuth.error;
+  await database.query(
+    "insert into public.profiles(id,first_name,last_name) values($1,'School B','Administrator')",
+    [schoolBAuth.data.user.id],
+  );
+  await database.query(
+    "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,'SBR-B-ADMIN','ACTIVE')",
+    [fixture.schoolBMembershipId, fixture.schoolBId, schoolBAuth.data.user.id],
+  );
+  await database.query(
+    "insert into public.staff_role_assignments(membership_id,role,granted_at) values($1,'SCHOOL_ADMIN',now()-interval '1 day')",
+    [fixture.schoolBMembershipId],
+  );
+
+  multiSchoolEmail = `report-snapshot.browser-multi.${nonce}@example.invalid`;
+  const multiAuth = await admin!.auth.admin.createUser({
+    email: multiSchoolEmail,
+    password,
+    email_confirm: true,
+  });
+  if (multiAuth.error) throw multiAuth.error;
+  await database.query(
+    "insert into public.profiles(id,first_name,last_name) values($1,'Multi','School')",
+    [multiAuth.data.user.id],
+  );
+  await database.query(
+    "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,'SBR-MULTI-A','ACTIVE'),($4,$5,$3,'SBR-MULTI-B','ACTIVE')",
+    [
+      fixture.multiMembershipAId,
+      fixture.schoolId,
+      multiAuth.data.user.id,
+      fixture.multiMembershipBId,
+      fixture.schoolBId,
+    ],
+  );
+  await database.query(
+    "insert into public.staff_role_assignments(membership_id,role,granted_at) values($1,'SCHOOL_ADMIN',now()-interval '1 day'),($2,'SCHOOL_ADMIN',now()-interval '1 day')",
+    [fixture.multiMembershipAId, fixture.multiMembershipBId],
+  );
 }
 
-async function login(page: Page) {
+async function login(
+  page: Page,
+  actorEmail = email,
+  membershipId = fixture.membershipId,
+) {
   await page.goto("/staff-login");
-  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Email address").fill(actorEmail);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL(/dashboard|select-school/);
+  if (page.url().includes("/select-school")) {
+    await page.locator(`input[type="radio"][value="${membershipId}"]`).check();
+    await page.getByRole("button", { name: "Continue" }).click();
+  }
   await page.waitForURL(/dashboard/);
 }
 
@@ -545,5 +849,232 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     await expect(
       page.getByText(/parent access|student access credentials/i),
     ).toHaveCount(0);
+  });
+
+  test("43. ungenerated run exposes readiness and a missing report count", async ({
+    page,
+  }) => {
+    await login(page);
+    await page.goto("/dashboard/reports");
+    await expect(page.getByText("Browser UnGenerated Grade")).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Generate reports" }),
+    ).toBeVisible();
+  });
+
+  test("44. generator completes first-generation through the actual UI control", async ({
+    page,
+  }) => {
+    await login(page);
+    await page.goto("/dashboard/reports");
+    await page.getByRole("button", { name: "Generate reports" }).click();
+    await expect(
+      page.getByText(/Report generation complete: 1 reports created\./),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Regenerate from run" }),
+    ).toBeVisible();
+  });
+
+  test("45. first-generation refresh shows the new current student link", async ({
+    page,
+  }) => {
+    await login(page);
+    await page.goto("/dashboard/reports");
+    await expect(
+      page.getByRole("link", { name: /UnGenerated Student/ }),
+    ).toBeVisible();
+    await expect(page.getByText("Current", { exact: true })).toHaveCount(2);
+  });
+
+  test("46. view-only staff can open reports without generation controls", async ({
+    page,
+  }) => {
+    await login(page, viewOnlyEmail);
+    await page.goto("/dashboard/reports");
+    await expect(
+      page.getByRole("heading", { name: "Reports", exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", {
+        name: /Generate reports|Regenerate from run/,
+      }),
+    ).toHaveCount(0);
+  });
+
+  test("47. view-only staff can open generated detail and history", async ({
+    page,
+  }) => {
+    await login(page, viewOnlyEmail);
+    await page.goto("/dashboard/reports");
+    await page.getByRole("link", { name: /Browser Student/ }).click();
+    await page.waitForURL(/dashboard\/reports\//);
+    await expect(page.getByText("Report history")).toBeVisible();
+    await expect(page.getByText(/Report v1/)).toBeVisible();
+  });
+
+  test("48. narrow dashboard keeps report tables in an overflow-safe region", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await login(page);
+    await page.goto("/dashboard/reports");
+    await expect(
+      page.getByRole("heading", { name: "Reports", exact: true }),
+    ).toBeVisible();
+    await expect(page.locator("table")).toHaveCount(1);
+    await expect(page.getByText("Generated reports")).toBeVisible();
+  });
+
+  test("49. narrow report detail keeps the subject table usable", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 390, height: 844 });
+    await openGeneratedReport(page);
+    await expect(page.getByText("Subject results")).toBeVisible();
+    await expect(
+      page.getByRole("columnheader", { name: "Subject" }),
+    ).toBeVisible();
+  });
+
+  test("50. keyboard can reach and activate the report regeneration control", async ({
+    page,
+  }) => {
+    await login(page);
+    await page.goto("/dashboard/reports");
+    const regenerate = page
+      .getByRole("button", { name: "Regenerate from run" })
+      .first();
+    await regenerate.focus();
+    await expect(regenerate).toBeFocused();
+    await regenerate.press("Enter");
+    await expect(page.getByText(/Report generation complete/)).toBeVisible();
+  });
+
+  test("51. keyboard can reach a generated report link", async ({ page }) => {
+    await login(page);
+    await page.goto("/dashboard/reports");
+    const reportLink = page.getByRole("link", { name: /Browser Student/ });
+    await reportLink.focus();
+    await expect(reportLink).toBeFocused();
+    await reportLink.press("Enter");
+    await expect(page).toHaveURL(/dashboard\/reports\//);
+  });
+
+  test("52. detail subject results expose semantic table headers", async ({
+    page,
+  }) => {
+    await openGeneratedReport(page);
+    await expect(
+      page.getByRole("table").getByRole("columnheader", { name: "Subject" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("table").getByRole("columnheader", { name: "Score" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("table").getByRole("columnheader", { name: "Status" }),
+    ).toBeVisible();
+  });
+
+  test("53. every historical version remains independently navigable", async ({
+    page,
+  }) => {
+    await openGeneratedReport(page);
+    const historyLinks = page.getByRole("link", { name: /Report v/ });
+    await expect(historyLinks).toHaveCount(2);
+    await historyLinks.filter({ hasText: "Report v1" }).click();
+    await expect(page).toHaveURL(/dashboard\/reports\//);
+    await expect(page.getByText("Browser comment")).toBeVisible();
+  });
+
+  test("54. authorized report pages do not expose guardian contact fields", async ({
+    page,
+  }) => {
+    await openGeneratedReport(page);
+    await expect(
+      page.getByText(
+        /guardian-stage12@example\.invalid|\+256700000000|Stage12 Guardian Address/,
+      ),
+    ).toHaveCount(0);
+  });
+
+  test("55. browser report routes retain the HTML-only Stage 12 boundary", async ({
+    page,
+  }) => {
+    await openGeneratedReport(page);
+    await expect(page.getByText(/HTML snapshot preview/)).toBeVisible();
+    await expect(
+      page.getByText(/PDF download and publication are not available/),
+    ).toBeVisible();
+    await expect(page.getByText(/parent access|promotion/i)).toHaveCount(0);
+  });
+
+  test("56. subject teacher receives generic report denial without data leakage", async ({
+    page,
+  }) => {
+    await login(page, subjectTeacherEmail, fixture.subjectMembershipId);
+    await page.goto("/dashboard/reports");
+    await expect(page).toHaveURL(/forbidden|reports/);
+    await expect(
+      page.getByText(/Browser Student|SBR-001|checksum/i),
+    ).toHaveCount(0);
+  });
+
+  test("57. School B administrator cannot open a School A report URL", async ({
+    page,
+  }) => {
+    await login(page, schoolBAdminEmail, fixture.schoolBMembershipId);
+    await page.goto(`/dashboard/reports/${generatedReportId}`);
+    await expect(page).toHaveURL(/forbidden|reports/);
+    await expect(
+      page.getByText(/Browser Student|SBR-001|Snapshot Browser School/i),
+    ).toHaveCount(0);
+  });
+
+  test("58. multi-school UI switching removes the old school report scope", async ({
+    page,
+  }) => {
+    await login(page, multiSchoolEmail, fixture.multiMembershipAId);
+    await page.goto("/dashboard/reports");
+    await expect(
+      page.getByRole("link", { name: /Browser Student/ }),
+    ).toBeVisible();
+    await page.goto("/select-school?next=%2Fdashboard%2Freports");
+    const schoolB = page
+      .locator("label")
+      .filter({ hasText: `Snapshot Browser School B ${nonce}` });
+    await schoolB.locator('input[type="radio"]').check();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.waitForURL(/dashboard\/reports/);
+    await expect(
+      page.getByRole("link", { name: /Browser Student/ }),
+    ).toHaveCount(0);
+    await page.goto(`/dashboard/reports/${generatedReportId}`);
+    await expect(page).toHaveURL(/forbidden|reports/);
+    await expect(
+      page.getByText(/Browser Student|SBR-001|Snapshot Browser School/i),
+    ).toHaveCount(0);
+  });
+
+  test("59. guardian contact fixtures never appear in authorized report pages", async ({
+    page,
+  }) => {
+    await openGeneratedReport(page);
+    await expect(
+      page.getByText(
+        /guardian-stage12@example\.invalid|\+256700000000|Stage12 Guardian Address/,
+      ),
+    ).toHaveCount(0);
+  });
+
+  test("60. generated browser history keeps the current report distinct from history URLs", async ({
+    page,
+  }) => {
+    await openGeneratedReport(page);
+    const historyLinks = page.getByRole("link", { name: /Report v/ });
+    const hrefs = await historyLinks.evaluateAll((links) =>
+      links.map((link) => (link as HTMLAnchorElement).href),
+    );
+    expect(new Set(hrefs).size).toBe(hrefs.length);
   });
 });

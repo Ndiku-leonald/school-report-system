@@ -29,6 +29,13 @@ insert into public.academic_years (id, school_id, name, starts_on, ends_on, stat
 values ('c1400000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-000000000001', 'Snapshot Behavior Year', '2046-01-01', '2046-12-31', 'ACTIVE');
 insert into public.terms (id, academic_year_id, name, term_number, starts_on, ends_on, status)
 values ('c1500000-0000-4000-8000-000000000001', 'c1400000-0000-4000-8000-000000000001', 'Snapshot Behavior Term', 1, '2046-01-01', '2046-06-30', 'MARKS_ENTRY');
+insert into public.academic_years (id, school_id, name, starts_on, ends_on, status)
+values ('c1400000-0000-4000-8000-000000000002', 'c1000000-0000-4000-8000-000000000001', 'Snapshot Behavior Following Year', '2047-01-01', '2047-12-31', 'ACTIVE');
+insert into public.terms (id, academic_year_id, name, term_number, starts_on, ends_on, status)
+values
+  ('c1500000-0000-4000-8000-000000000002', 'c1400000-0000-4000-8000-000000000001', 'Snapshot Behavior Term 2', 2, '2046-07-01', '2046-09-30', 'MARKS_ENTRY'),
+  ('c1500000-0000-4000-8000-000000000003', 'c1400000-0000-4000-8000-000000000001', 'Snapshot Behavior Decoy', 9, '2046-06-01', '2046-12-01', 'MARKS_ENTRY'),
+  ('c1500000-0000-4000-8000-000000000004', 'c1400000-0000-4000-8000-000000000002', 'Snapshot Behavior Following Term 1', 1, '2047-01-01', '2047-03-31', 'MARKS_ENTRY');
 insert into public.grade_levels (id, school_id, code, name, sort_order)
 values ('c1600000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-000000000001', 'SBT', 'Snapshot Behavior Grade', 1);
 insert into public.class_sections (id, academic_year_id, grade_level_id, name, class_code)
@@ -72,6 +79,8 @@ insert into public.calculated_student_results (id, calculation_run_id, enrollmen
 values ('c2400000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 1, 1, 1, 88, 88, 'A', 3, 'Advanced', true, true, 88, 1, 1, 1, 1, false, false);
 insert into public.calculated_subject_results (id, calculation_run_id, enrollment_id, class_section_id, subject_id, mark_sheet_id, subject_status, subject_score, grade, aggregate_points, is_pass, assessed_weight, has_absence, has_exemption, subject_position, subject_tie_size, subject_is_tied)
 values ('c2500000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 'c1f00000-0000-4000-8000-000000000001', 'COMPLETE', 88, 'A', 3, true, 100, false, false, 1, 1, false);
+insert into public.student_term_comments (id, term_id, enrollment_id, class_teacher_comment, created_by, updated_by)
+values ('c1e10000-0000-4000-8000-000000000001', 'c1500000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001', 'Comment A', 'c1200000-0000-4000-8000-000000000001', 'c1200000-0000-4000-8000-000000000001');
 select input_checksum into temporary table snapshot_behavior_expected_checksum
 from public.result_calculation_runs
 where id = 'c2200000-0000-4000-8000-000000000001';
@@ -138,8 +147,8 @@ select extensions.is((select snapshot_data->'academic_summary'->>'overall_averag
 select extensions.is((select snapshot_data->'placement'->>'class_code' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), 'SBT-A', 'B35. placement is in the payload');
 select extensions.is((select snapshot_data->'signatories'->>'head_teacher' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), null, 'B36. head teacher is not falsely inferred');
 select extensions.is((select snapshot_data->>'attendance' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), null, 'B37. missing attendance remains null');
-select extensions.is((select snapshot_data->>'comments' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), null, 'B38. missing comments remain null');
-select extensions.is((select snapshot_data->>'next_term' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), null, 'B39. absent next term remains null');
+select extensions.is((select snapshot_data->'comments'->>'class_teacher_comment' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), 'Comment A', 'B38. comments are frozen in the payload');
+select extensions.is((select snapshot_data->'next_term'->>'term_name' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), 'Snapshot Behavior Term 2', 'B39. same-year next term is frozen');
 
 select extensions.ok((select ready from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 'B40. generated source remains ready');
 select extensions.is((select existing_report_snapshots::integer from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 1, 'B41. readiness counts one persisted snapshot');
@@ -153,6 +162,44 @@ select extensions.is((select count(*)::integer from public.report_snapshot_sourc
 select extensions.is((select completed_reports from public.report_batches where calculation_run_id = 'c2200000-0000-4000-8000-000000000001'), 1, 'B47. batch completion counts distinct enrollments');
 select extensions.is((select total_reports from public.report_batches where calculation_run_id = 'c2200000-0000-4000-8000-000000000001'), 1, 'B48. batch total equals source population');
 select extensions.is((select status::text from public.report_batches where calculation_run_id = 'c2200000-0000-4000-8000-000000000001'), 'COMPLETED', 'B49. single generation completes its batch');
+
+reset role;
+update public.student_term_comments
+set class_teacher_comment = 'Comment B'
+where id = 'c1e10000-0000-4000-8000-000000000001';
+set local role authenticated;
+select * into temporary table snapshot_behavior_a_to_b
+from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001');
+reset role;
+update public.student_term_comments
+set class_teacher_comment = 'Comment A'
+where id = 'c1e10000-0000-4000-8000-000000000001';
+set local role authenticated;
+select * into temporary table snapshot_behavior_a_again
+from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001');
+select extensions.is((select report_version from snapshot_behavior_a_to_b), 2, 'B49a. same-run context change appends version two');
+select extensions.is((select report_version from snapshot_behavior_a_again), 3, 'B49b. returning to A appends version three');
+select extensions.ok((select snapshot_checksum from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)) = (select snapshot_checksum from public.report_snapshots where report_id = (select report_id from snapshot_behavior_a_again)), 'B49c. same-run A to B to A repeats the historical checksum');
+select extensions.ok((select report_id from snapshot_behavior_generation) <> (select report_id from snapshot_behavior_a_again), 'B49d. repeated checksum has a distinct immutable report id');
+select * into temporary table snapshot_behavior_a_reuse
+from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001');
+select extensions.ok((select reused from snapshot_behavior_a_reuse), 'B49e. exact current A context reuses version three');
+select extensions.is((select report_version from snapshot_behavior_a_reuse), 3, 'B49f. exact reuse returns version three');
+select extensions.is((select count(*)::integer from public.reports where term_id = 'c1500000-0000-4000-8000-000000000001' and enrollment_id = 'c1d00000-0000-4000-8000-000000000001'), 3, 'B49g. A to B to A history has three reports');
+select extensions.is((select count(*)::integer from public.audit_logs where action = 'REPORT_SNAPSHOT_CREATED' and new_values->>'enrollment_id' = 'c1d00000-0000-4000-8000-000000000001'), 3, 'B49h. exact reuse does not add a fourth creation audit');
+
+reset role;
+delete from public.terms where id = 'c1500000-0000-4000-8000-000000000002';
+set local role authenticated;
+select * into temporary table snapshot_behavior_cross_year
+from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001');
+select extensions.is((select snapshot_data->'next_term'->>'term_name' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_cross_year)), 'Snapshot Behavior Following Term 1', 'B49i. following-year next term is selected after same-year term removal');
+reset role;
+delete from public.terms where id = 'c1500000-0000-4000-8000-000000000004';
+set local role authenticated;
+select * into temporary table snapshot_behavior_no_next_term
+from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001');
+select extensions.is((select snapshot_data->>'next_term' from public.report_snapshots where report_id = (select report_id from snapshot_behavior_no_next_term)), null, 'B49j. absent later term remains null');
 
 reset role;
 update public.schools set name = 'Live School Mutation' where id = 'c1000000-0000-4000-8000-000000000001';
@@ -191,16 +238,16 @@ insert into public.calculated_subject_results (id, calculation_run_id, enrollmen
 values ('c2500000-0000-4000-8000-000000000003', 'c2200000-0000-4000-8000-000000000003', 'c1d00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 'c1f00000-0000-4000-8000-000000000001', 'COMPLETE', 90, 'A', 3, true, 100, false, false, 1, 1, false);
 set local role authenticated;
 select extensions.lives_ok($$select * from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000003', 'c1d00000-0000-4000-8000-000000000001')$$, 'B60. direct successor calculation can create the next report');
-select extensions.is((select count(*)::integer from public.reports where term_id = 'c1500000-0000-4000-8000-000000000001'), 2, 'B61. direct successor creates one new version');
-select extensions.is((select max(version) from public.reports where term_id = 'c1500000-0000-4000-8000-000000000001'), 2, 'B62. successor report version increments');
-select extensions.is((select count(*)::integer from public.reports where superseded_by is not null), 1, 'B63. prior report is superseded exactly once');
-select extensions.is((select count(*)::integer from public.get_student_report_history('c1d00000-0000-4000-8000-000000000001', 'c1500000-0000-4000-8000-000000000001')), 2, 'B64. history returns both immutable versions');
+select extensions.is((select count(*)::integer from public.reports where term_id = 'c1500000-0000-4000-8000-000000000001'), 6, 'B61. direct successor creates one new version');
+select extensions.is((select max(version) from public.reports where term_id = 'c1500000-0000-4000-8000-000000000001'), 6, 'B62. successor report version increments');
+select extensions.is((select count(*)::integer from public.reports where superseded_by is not null), 5, 'B63. prior report is superseded exactly once');
+select extensions.is((select count(*)::integer from public.get_student_report_history('c1d00000-0000-4000-8000-000000000001', 'c1500000-0000-4000-8000-000000000001')), 6, 'B64. history returns all immutable versions');
 select extensions.is((select count(*)::integer from public.report_snapshot_sources where calculation_run_id = 'c2200000-0000-4000-8000-000000000003'), 1, 'B65. successor has one source lineage row');
 select extensions.is((select count(*)::integer from public.report_subject_results where report_id = (select id from public.reports where calculation_run_id = 'c2200000-0000-4000-8000-000000000003')), 1, 'B66. successor freezes its subject rows');
 select extensions.ok((select report_id = (select id from public.reports where calculation_run_id = 'c2200000-0000-4000-8000-000000000003') from public.report_snapshot_sources where calculation_run_id = 'c2200000-0000-4000-8000-000000000003'), 'B67. successor lineage points to successor report');
 select extensions.ok((select snapshot_checksum is distinct from (select snapshot_checksum from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)) from public.report_snapshots where report_id = (select id from public.reports where calculation_run_id = 'c2200000-0000-4000-8000-000000000003')), 'B68. distinct calculation output has a distinct context checksum');
-select extensions.is((select count(*)::integer from public.audit_logs where action = 'REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id' in ('c2200000-0000-4000-8000-000000000001','c2200000-0000-4000-8000-000000000003')), 2, 'B69. only real creations emit snapshot audits');
-select extensions.is((select latest_report_versions->>'c1d00000-0000-4000-8000-000000000001' from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000003')), '2', 'B70. readiness exposes latest report version');
+select extensions.is((select count(*)::integer from public.audit_logs where action = 'REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id' in ('c2200000-0000-4000-8000-000000000001','c2200000-0000-4000-8000-000000000003')), 6, 'B69. only real creations emit snapshot audits');
+select extensions.is((select latest_report_versions->>'c1d00000-0000-4000-8000-000000000001' from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000003')), '6', 'B70. readiness exposes latest report version');
 select extensions.is((select count(*)::integer from public.list_generated_reports('c2200000-0000-4000-8000-000000000003')), 1, 'B71. report list is scoped to the selected run');
 select extensions.is((select count(*)::integer from public.get_report_subject_results((select id from public.reports where calculation_run_id = 'c2200000-0000-4000-8000-000000000003'))), 1, 'B72. subject reader returns the frozen successor row');
 
