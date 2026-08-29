@@ -1206,6 +1206,10 @@ describe.sequential(
           target_enrollment_id: ids.bEnrollment,
         }),
       ]);
+      console.log(
+        "[stage12-duplicate-results]",
+        results.map((result) => result.error),
+      );
       const after = await query<{
         reports: number;
         snapshots: number;
@@ -1427,8 +1431,8 @@ describe.sequential(
       await blocker.connect();
       await blocker.query("begin");
       await blocker.query(
-        "select id from public.staff_role_assignments where membership_id=$1 for update",
-        [membershipId],
+        "select session_id from internal.staff_session_active_memberships where profile_id=$1 for update",
+        [actors.get("generatorAdmin")!.userId],
       );
       const pending = clients
         .get("generatorAdmin")!
@@ -1472,8 +1476,8 @@ describe.sequential(
       await blocker.connect();
       await blocker.query("begin");
       await blocker.query(
-        "select id from public.school_staff_memberships where id=$1 for update",
-        [membershipId],
+        "select session_id from internal.staff_session_active_memberships where profile_id=$1 for update",
+        [actors.get("generatorAdmin")!.userId],
       );
       const pending = clients
         .get("generatorAdmin")!
