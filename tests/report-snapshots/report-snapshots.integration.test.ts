@@ -256,7 +256,7 @@ describe("report snapshots integration", () => {
 
   it("reports a valid populated Stage 11 run as ready before generation", async () => {
     const readiness = await client.rpc("get_report_generation_readiness", {
-      target_calculation_run_id: ids.run2,
+      target_calculation_run_id: ids.run,
     });
     expect(readiness.error).toBeNull();
     expect(readiness.data?.[0]).toMatchObject({
@@ -542,7 +542,7 @@ describe("report snapshots integration", () => {
 
   it("serializes concurrent batch reuse and exposes readiness counts", async () => {
     const readiness = await client.rpc("get_report_generation_readiness", {
-      target_calculation_run_id: ids.run,
+      target_calculation_run_id: ids.run2,
     });
     expect(readiness.data?.[0]).toMatchObject({
       student_population: 1,
