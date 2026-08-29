@@ -638,7 +638,7 @@ async function waitForBlocked(fragment: string) {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
     const result = await query<{ blocked: number }>(
-      "select count(*)::int blocked from pg_stat_activity where pid <> pg_backend_pid() and state='active' and wait_event_type='Lock'",
+      "select count(*)::int blocked from pg_stat_activity activity where activity.pid <> pg_backend_pid() and cardinality(pg_blocking_pids(activity.pid)) > 0",
     );
     if (result.rows[0].blocked > 0) return;
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -1168,7 +1168,7 @@ describe.sequential(
         ids.bEnrollment,
         ids.bMapping,
         ids.bScheme,
-        "fresh-duplicate",
+        "f",
       );
       const first = await signedIn("schoolBAdmin");
       const second = await signedIn("schoolBAdmin");
