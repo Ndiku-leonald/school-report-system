@@ -606,7 +606,7 @@ async function setup() {
     [multiSchoolBMembership, ids.schoolB, multi.userId],
   );
   await query(
-    "insert into public.staff_role_assignments(id,membership_id,role,granted_at) values($1,$2,'CLASS_TEACHER',now()-interval '1 day')",
+    "insert into public.staff_role_assignments(id,membership_id,role,granted_at) values($1,$2,'SCHOOL_ADMIN',now()-interval '1 day')",
     [randomUUID(), multiSchoolBMembership],
   );
   await query(
@@ -638,8 +638,7 @@ async function waitForBlocked(fragment: string) {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
     const result = await query<{ blocked: number }>(
-      "select count(*)::int blocked from pg_stat_activity where wait_event_type='Lock' and (query ilike '%' || $1 || '%' or application_name=$1)",
-      [fragment],
+      "select count(*)::int blocked from pg_stat_activity where pid <> pg_backend_pid() and state='active' and wait_event_type='Lock'",
     );
     if (result.rows[0].blocked > 0) return;
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -812,7 +811,7 @@ describe.sequential(
           await client.rpc("get_generated_report", {
             target_report_id: foreign.rows[0].report_id,
           })
-        ).data,
+        ).data ?? [],
       ).toEqual([]);
     });
 
@@ -823,7 +822,7 @@ describe.sequential(
           await client.rpc("list_generated_reports", {
             target_calculation_run_id: ids.runA,
           })
-        ).data,
+        ).data ?? [],
       ).toEqual([]);
       expect(
         (
@@ -835,10 +834,11 @@ describe.sequential(
               )
             ).rows[0].id,
           })
-        ).data,
+        ).data ?? [],
       ).toEqual([]);
       expect(
-        (await client.from("report_snapshot_sources").select("report_id")).data,
+        (await client.from("report_snapshot_sources").select("report_id"))
+          .data ?? [],
       ).toEqual([]);
       expect(
         (
@@ -927,7 +927,7 @@ describe.sequential(
           await client.rpc("list_generated_reports", {
             target_calculation_run_id: ids.bRun,
           })
-        ).data,
+        ).data ?? [],
       ).toHaveLength(1);
       expect(
         (
@@ -1305,9 +1305,32 @@ describe.sequential(
     });
 
     it("A-B-A race appends one checksum-repeating successor rather than reusing v1", async () => {
+      const client = clients.get("generatorAdmin")!;
+      const current = await client.rpc("get_generated_report", {
+        target_report_id: (
+          await query<{ id: string }>(
+            "select id from public.reports where term_id=$1 and enrollment_id=$2 and superseded_by is null",
+            [ids.termA, ids.enrollmentA],
+          )
+        ).rows[0].id,
+      });
+      const aReportId = current.data?.[0]?.report_id;
+      const aChecksum = current.data?.[0]?.snapshot_checksum;
       const before = await query<{ reports: number }>(
         "select count(*)::int reports from public.reports where term_id=$1 and enrollment_id=$2",
         [ids.termA, ids.enrollmentA],
+      );
+      await query(
+        "update public.student_term_comments set class_teacher_comment='Concurrent B' where id=$1",
+        [ids.commentA],
+      );
+      const b = await client.rpc("generate_student_report_snapshot", {
+        target_calculation_run_id: ids.runA,
+        target_enrollment_id: ids.enrollmentA,
+      });
+      await query(
+        "update public.student_term_comments set class_teacher_comment='A' where id=$1",
+        [ids.commentA],
       );
       const results = await Promise.all([
         signedIn("generatorAdmin").then((client) =>
@@ -1332,13 +1355,18 @@ describe.sequential(
       const rows = history.data as {
         report_id: string;
         snapshot_checksum: string;
+        superseded_by: string | null;
       }[];
       expect(results.every((result) => result.error === null)).toBe(true);
-      expect(rows).toHaveLength(before.rows[0].reports + 1);
-      expect(rows.at(-1)?.snapshot_checksum).toBe(
-        rows.find((row) => row.report_id === v3.reportId)?.snapshot_checksum,
-      );
-      expect(rows.at(-1)?.report_id).not.toBe(v3.reportId);
+      expect(b.error).toBeNull();
+      expect(rows).toHaveLength(before.rows[0].reports + 2);
+      expect(rows.at(-1)?.snapshot_checksum).toBe(aChecksum);
+      expect(rows.at(-1)?.report_id).not.toBe(aReportId);
+      expect(rows.at(-1)?.report_id).not.toBe(b.data?.[0]?.report_id);
+      expect(
+        rows.find((row) => row.report_id === b.data?.[0]?.report_id)
+          ?.superseded_by,
+      ).toBe(rows.at(-1)?.report_id);
     });
 
     it("role revocation wins the authority lock and fails generation closed", async () => {
@@ -1356,18 +1384,24 @@ describe.sequential(
           target_calculation_run_id: ids.runA,
           target_enrollment_id: ids.enrollmentA,
         });
-      await waitForBlocked("generate_student_report_snapshot");
-      await blocker.query(
-        "update public.staff_role_assignments set revoked_at=now() where membership_id=$1",
-        [membershipId],
-      );
-      await blocker.query("commit");
-      const result = await pending;
-      await query(
-        "update public.staff_role_assignments set revoked_at=null where membership_id=$1",
-        [membershipId],
-      );
-      await blocker.end();
+      let result: Awaited<typeof pending>;
+      try {
+        await waitForBlocked("generate_student_report_snapshot");
+        await blocker.query(
+          "update public.staff_role_assignments set revoked_at=now() where membership_id=$1",
+          [membershipId],
+        );
+        await blocker.query("commit");
+        result = await pending;
+      } finally {
+        await blocker.query("rollback").catch(() => undefined);
+        await Promise.allSettled([pending]);
+        await query(
+          "update public.staff_role_assignments set revoked_at=null where membership_id=$1",
+          [membershipId],
+        );
+        await blocker.end().catch(() => undefined);
+      }
       expect(result.error?.code).toBe("42501");
     });
 
@@ -1395,18 +1429,24 @@ describe.sequential(
           target_calculation_run_id: ids.runA,
           target_enrollment_id: ids.enrollmentA,
         });
-      await waitForBlocked("generate_student_report_snapshot");
-      await blocker.query(
-        "update public.school_staff_memberships set status='SUSPENDED' where id=$1",
-        [membershipId],
-      );
-      await blocker.query("commit");
-      const result = await pending;
-      await query(
-        "update public.school_staff_memberships set status='ACTIVE' where id=$1",
-        [membershipId],
-      );
-      await blocker.end();
+      let result: Awaited<typeof pending>;
+      try {
+        await waitForBlocked("generate_student_report_snapshot");
+        await blocker.query(
+          "update public.school_staff_memberships set status='SUSPENDED' where id=$1",
+          [membershipId],
+        );
+        await blocker.query("commit");
+        result = await pending;
+      } finally {
+        await blocker.query("rollback").catch(() => undefined);
+        await Promise.allSettled([pending]);
+        await query(
+          "update public.school_staff_memberships set status='ACTIVE' where id=$1",
+          [membershipId],
+        );
+        await blocker.end().catch(() => undefined);
+      }
       const after = await query<{
         reports: number;
         snapshots: number;
@@ -1440,21 +1480,27 @@ describe.sequential(
       const switching = client.rpc("set_my_active_membership", {
         target_membership_id: actor.membershipIds[1],
       });
-      await waitForBlocked("set_my_active_membership");
       const generating = client.rpc("generate_student_report_snapshot", {
         target_calculation_run_id: ids.runA,
         target_enrollment_id: ids.enrollmentA,
       });
-      await waitForBlocked("generate_student_report_snapshot");
-      await blocker.query("commit");
-      await switching;
-      const result = await generating;
-      await client.rpc("set_my_active_membership", {
-        target_membership_id: actor.membershipIds[0],
-      });
-      await blocker.end();
-      expect(result.error).not.toBeNull();
-      expect(result.error?.message).not.toContain(ids.schoolA);
+      let result: Awaited<typeof generating> | null = null;
+      try {
+        await waitForBlocked("set_my_active_membership");
+        await waitForBlocked("generate_student_report_snapshot");
+        await blocker.query("commit");
+        await switching;
+        result = await generating;
+      } finally {
+        await blocker.query("rollback").catch(() => undefined);
+        await Promise.allSettled([switching, generating]);
+        await client.rpc("set_my_active_membership", {
+          target_membership_id: actor.membershipIds[0],
+        });
+        await blocker.end().catch(() => undefined);
+      }
+      expect(result?.error).not.toBeNull();
+      expect(result?.error?.message).not.toContain(ids.schoolA);
     });
 
     it("generation owns authority first, then a waiting revocation commits and the next request is denied", async () => {
@@ -1474,32 +1520,45 @@ describe.sequential(
           target_calculation_run_id: ids.runA,
           target_enrollment_id: ids.enrollmentA,
         });
-      await waitForBlocked("generate_student_report_snapshot");
-      await revoker.query("begin");
-      await revoker.query(
-        "select set_config('application_name','stage12-generation-wins-revoker',false)",
-      );
-      const revocation = revoker.query(
-        "update public.staff_role_assignments set revoked_at=now() where membership_id=$1",
-        [membershipId],
-      );
-      await waitForBlocked("stage12-generation-wins-revoker");
-      await sourceBlocker.query("commit");
-      const succeeded = await generation;
-      await revocation;
-      await revoker.query("commit");
-      await query(
-        "update public.staff_role_assignments set revoked_at=null where membership_id=$1",
-        [membershipId],
-      );
-      const denied = await clients
-        .get("generatorAdmin")!
-        .rpc("generate_student_report_snapshot", {
-          target_calculation_run_id: ids.runA,
-          target_enrollment_id: ids.enrollmentA,
-        });
-      await sourceBlocker.end();
-      await revoker.end();
+      let succeeded: Awaited<typeof generation> | null = null;
+      let revocation: Promise<unknown> | null = null;
+      let denied: Awaited<ReturnType<SupabaseClient["rpc"]>> | null = null;
+      try {
+        await waitForBlocked("generate_student_report_snapshot");
+        await revoker.query("begin");
+        await revoker.query(
+          "select set_config('application_name','stage12-generation-wins-revoker',false)",
+        );
+        revocation = revoker.query(
+          "update public.staff_role_assignments set revoked_at=now() where membership_id=$1",
+          [membershipId],
+        );
+        await waitForBlocked("stage12-generation-wins-revoker");
+        await sourceBlocker.query("commit");
+        succeeded = await generation;
+        await revocation;
+        await revoker.query("commit");
+        await query(
+          "update public.staff_role_assignments set revoked_at=null where membership_id=$1",
+          [membershipId],
+        );
+        denied = await clients
+          .get("generatorAdmin")!
+          .rpc("generate_student_report_snapshot", {
+            target_calculation_run_id: ids.runA,
+            target_enrollment_id: ids.enrollmentA,
+          });
+      } finally {
+        await sourceBlocker.query("rollback").catch(() => undefined);
+        await revoker.query("rollback").catch(() => undefined);
+        await Promise.allSettled([generation, revocation ?? Promise.resolve()]);
+        await query(
+          "update public.staff_role_assignments set revoked_at=null where membership_id=$1",
+          [membershipId],
+        );
+        await sourceBlocker.end().catch(() => undefined);
+        await revoker.end().catch(() => undefined);
+      }
       expect(succeeded.error).toBeNull();
       expect(denied.error?.code).toBe("42501");
     });

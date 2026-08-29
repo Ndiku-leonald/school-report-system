@@ -22,6 +22,8 @@ result and stores the Stage 11 input and output checksums.
 Migration 28 is `20260828055808_28_report_snapshot_generation.sql`, migration
 29 is `20260828073615_29_report_snapshot_integrity_hardening.sql`, and
 migration 30 is the additive authoritative-source/history hardening migration.
+Migration 31 is the additive acceptance hardening migration for selected-
+membership, assigned class-teacher report reads.
 
 Report version and calculation version are separate. The first report for a
 student and term is report version 1. A newer Stage 11 calculation normally
@@ -91,11 +93,11 @@ term/grade serialization prefix to avoid lock inversion.
 ## Security and later stages
 
 Generation requires `REPORTS_GENERATE`; schoolwide reads require
-`REPORTS_VIEW_ALL` or `REPORTS_GENERATE`. `REPORTS_VIEW_ASSIGNED` remains a
-database/RLS report visibility permission for currently assigned classes; it
-does not grant schoolwide Stage 12 dashboard access or generation. Subject
-teachers do not gain report access through marks permissions. The database
-repeats selected-membership checks and locks authority before source rows.
+`REPORTS_VIEW_ALL` or `REPORTS_GENERATE`. `REPORTS_VIEW_ASSIGNED` permits only
+currently assigned class-teacher report reads through the selected membership;
+it does not grant schoolwide visibility or generation. Subject teachers do not
+gain report access through marks permissions. The database repeats
+selected-membership checks and locks authority before source rows.
 Direct browser table writes are revoked, new lineage storage uses forced RLS,
 and anonymous access is denied. Snapshot payloads are available only through
 narrow read RPCs.
