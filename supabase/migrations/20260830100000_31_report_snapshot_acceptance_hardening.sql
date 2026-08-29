@@ -2,6 +2,112 @@
 -- report rows covered by their selected membership and class assignment.
 -- Generation remains restricted to REPORTS_GENERATE.
 
+-- A valid run in another school is an authorization failure, not a missing
+-- source. Keep that distinction at the generation boundary so cross-school
+-- callers cannot receive a misleading source-not-found result.
+create or replace function internal.lock_report_source_scope(
+  target_calculation_run_id uuid,
+  target_school_id uuid
+)
+returns public.result_calculation_runs
+language plpgsql
+security definer
+set search_path = pg_catalog, public, internal
+as $$
+declare
+  run_row public.result_calculation_runs%rowtype;
+  term_row public.terms%rowtype;
+  year_row public.academic_years%rowtype;
+  grade_row public.grade_levels%rowtype;
+begin
+  if exists (
+    select 1
+    from public.result_calculation_runs run
+    join public.terms term on term.id = run.term_id
+    join public.academic_years year on year.id = term.academic_year_id
+    where run.id = target_calculation_run_id
+      and year.school_id <> target_school_id
+  ) then
+    raise exception 'REPORT_GENERATION_FORBIDDEN' using errcode = '42501';
+  end if;
+
+  select run.term_id, run.grade_level_id
+    into run_row.term_id, run_row.grade_level_id
+  from public.result_calculation_runs run
+  join public.terms term on term.id = run.term_id
+  join public.academic_years year on year.id = term.academic_year_id
+  where run.id = target_calculation_run_id
+    and year.school_id = target_school_id;
+  if not found then
+    raise exception 'REPORT_SOURCE_NOT_FOUND' using errcode = 'P0001';
+  end if;
+
+  perform assignment.id
+  from public.teaching_assignments assignment
+  where assignment.term_id = run_row.term_id
+  order by assignment.id
+  for update;
+
+  select term.* into term_row
+  from public.terms term
+  where term.id = run_row.term_id
+  for update;
+  if not found then
+    raise exception 'REPORT_SOURCE_NOT_FOUND' using errcode = 'P0001';
+  end if;
+
+  select year.* into year_row
+  from public.academic_years year
+  where year.id = term_row.academic_year_id
+    and year.school_id = target_school_id
+  for update;
+  if not found then
+    raise exception 'REPORT_GENERATION_FORBIDDEN' using errcode = '42501';
+  end if;
+
+  select grade.* into grade_row
+  from public.grade_levels grade
+  where grade.id = run_row.grade_level_id
+    and grade.school_id = target_school_id
+  for update;
+  if not found then
+    raise exception 'REPORT_SOURCE_INVALID' using errcode = '23514';
+  end if;
+
+  perform mapping.id
+  from public.grade_level_subjects mapping
+  where mapping.grade_level_id = grade_row.id
+  order by mapping.id
+  for update;
+
+  perform section.id
+  from public.class_sections section
+  where section.academic_year_id = year_row.id
+    and section.grade_level_id = grade_row.id
+    and section.is_active
+  order by section.id
+  for update;
+
+  perform sheet.id
+  from public.mark_sheets sheet
+  join public.class_sections section on section.id = sheet.class_section_id
+  where sheet.term_id = term_row.id
+    and section.academic_year_id = year_row.id
+    and section.grade_level_id = grade_row.id
+  order by sheet.id
+  for update;
+
+  select run.* into run_row
+  from public.result_calculation_runs run
+  where run.id = target_calculation_run_id
+  for update;
+  if not found then
+    raise exception 'REPORT_SOURCE_NOT_FOUND' using errcode = 'P0001';
+  end if;
+  return run_row;
+end;
+$$;
+
 create or replace function internal.current_user_can_read_report(
   target_term_id uuid,
   target_class_section_id uuid

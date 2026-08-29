@@ -638,7 +638,7 @@ async function waitForBlocked(fragment: string) {
   const deadline = Date.now() + 10_000;
   while (Date.now() < deadline) {
     const result = await query<{ blocked: number }>(
-      "select count(*)::int blocked from pg_locks where not granted",
+      "select count(*)::int blocked from pg_stat_activity where pid <> pg_backend_pid() and state='active' and wait_event_type='Lock'",
     );
     if (result.rows[0].blocked > 0) return;
     await new Promise((resolve) => setTimeout(resolve, 25));
@@ -1149,19 +1149,40 @@ describe.sequential(
     });
 
     it("fresh duplicate-first-generation race leaves one report, snapshot, subject set, lineage, and audit", async () => {
+      const run = randomUUID();
+      const source = randomUUID();
+      const result = randomUUID();
+      const subjectResult = randomUUID();
+      await insertRunResults(
+        "b",
+        ids.bTerm,
+        ids.bGrade,
+        ids.bScale,
+        ids.bRule,
+        run,
+        source,
+        result,
+        subjectResult,
+        ids.bSheet,
+        ids.bSection,
+        ids.bEnrollment,
+        ids.bMapping,
+        ids.bScheme,
+        "fresh-duplicate",
+      );
       const first = await signedIn("schoolBAdmin");
       const second = await signedIn("schoolBAdmin");
       const before = await query<{ audits: number }>(
         "select count(*)::int audits from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$1::text",
-        [ids.bRun],
+        [run],
       );
       const results = await Promise.all([
         first.rpc("generate_student_report_snapshot", {
-          target_calculation_run_id: ids.bRun,
+          target_calculation_run_id: run,
           target_enrollment_id: ids.bEnrollment,
         }),
         second.rpc("generate_student_report_snapshot", {
-          target_calculation_run_id: ids.bRun,
+          target_calculation_run_id: run,
           target_enrollment_id: ids.bEnrollment,
         }),
       ]);
@@ -1173,7 +1194,7 @@ describe.sequential(
         audits: number;
       }>(
         "select (select count(*) from public.reports where calculation_run_id=$1)::int reports,(select count(*) from public.report_snapshots snapshot join public.reports report on report.id=snapshot.report_id where report.calculation_run_id=$1)::int snapshots,(select count(*) from public.report_subject_results subject join public.reports report on report.id=subject.report_id where report.calculation_run_id=$1)::int subjects,(select count(*) from public.report_snapshot_sources where calculation_run_id=$1)::int lineage,(select count(*) from public.audit_logs where action='REPORT_SNAPSHOT_CREATED' and new_values->>'calculation_run_id'=$1::text)::int audits",
-        [ids.bRun],
+        [run],
       );
       expect(results.every((result) => result.error === null)).toBe(true);
       expect(after.rows[0]).toEqual({
@@ -1314,16 +1335,19 @@ describe.sequential(
 
     it("A-B-A race appends one checksum-repeating successor rather than reusing v1", async () => {
       const client = clients.get("generatorAdmin")!;
-      const current = await client.rpc("get_generated_report", {
-        target_report_id: (
-          await query<{ id: string }>(
-            "select id from public.reports where term_id=$1 and enrollment_id=$2 and superseded_by is null",
-            [ids.termA, ids.enrollmentA],
-          )
-        ).rows[0].id,
+      await query(
+        "update public.student_term_comments set class_teacher_comment='A' where id=$1",
+        [ids.commentA],
+      );
+      const baseline = await client.rpc("generate_student_report_snapshot", {
+        target_calculation_run_id: ids.runA,
+        target_enrollment_id: ids.enrollmentA,
       });
-      const aReportId = current.data?.[0]?.report_id;
-      const aChecksum = current.data?.[0]?.snapshot_checksum;
+      const aReportId = baseline.data?.[0]?.report_id;
+      const aDetail = await client.rpc("get_generated_report", {
+        target_report_id: aReportId,
+      });
+      const aChecksum = aDetail.data?.[0]?.snapshot_checksum;
       await query(
         "update public.student_term_comments set class_teacher_comment='Concurrent B' where id=$1",
         [ids.commentA],
