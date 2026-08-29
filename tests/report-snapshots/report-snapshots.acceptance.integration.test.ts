@@ -402,7 +402,7 @@ async function setup() {
     [ids.yearA, ids.schoolA, ids.bYear, ids.schoolB],
   );
   await query(
-    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Term A',1,current_date-30,current_date+30,'LOCKED'),($3,$4,'Next Term A',2,current_date+31,current_date+90,'MARKS_ENTRY'),($5,$6,'Term B',1,current_date-30,current_date+30,'LOCKED')",
+    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Term A',1,current_date-30,current_date+30,'MARKS_ENTRY'),($3,$4,'Next Term A',2,current_date+31,current_date+90,'MARKS_ENTRY'),($5,$6,'Term B',1,current_date-30,current_date+30,'MARKS_ENTRY')",
     [ids.termA, ids.yearA, ids.nextTermA, ids.yearA, ids.bTerm, ids.bYear],
   );
   await query(
@@ -480,6 +480,13 @@ async function setup() {
   await query(
     "select set_config('app.marks_workflow_transition','allowed',true)",
   );
+  await query(
+    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+  );
+  await query("update public.terms set status='LOCKED' where id in ($1,$2)", [
+    ids.termA,
+    ids.bTerm,
+  ]);
   await query(
     "update public.mark_sheets set workflow_status='LOCKED',locked_by=$1,locked_at=now() where id in ($2,$3)",
     [generator.membershipIds[0], ids.sheetA, ids.sheetB],
