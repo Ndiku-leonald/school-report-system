@@ -240,6 +240,10 @@ async function insertScope(
     [mappingId, gradeId, subjectId],
   );
   await query(
+    "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$2,$3,$4,$5,current_date-30)",
+    [assignmentId, termId, sectionId, subjectId, creatorMembership],
+  );
+  await query(
     "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$2,$3,$4,$5,'DRAFT',current_date-30,$6)",
     [
       schemeId,
@@ -277,10 +281,6 @@ async function insertScope(
   await query(
     "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,enrolled_on) values($1,$2,$3,$4,current_date-50)",
     [enrollmentId, studentId, yearId, sectionId],
-  );
-  await query(
-    "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$2,$3,$4,$5,current_date-30)",
-    [assignmentId, termId, sectionId, subjectId, creatorMembership],
   );
   const checksum = await query<{ checksum: string }>(
     "select internal.results_input_checksum($1,$2,$3,$4,null) checksum",
