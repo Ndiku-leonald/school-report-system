@@ -55,15 +55,6 @@ values ('c2000000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-0000000
 insert into public.ranking_rules (id, school_id, academic_year_id, grade_level_id, name, ranking_basis, tie_method, configuration, is_active, created_by)
 values ('c2100000-0000-4000-8000-000000000001', 'c1000000-0000-4000-8000-000000000001', 'c1400000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 'Snapshot Behavior Ranking', 'AVERAGE', 'DENSE', '{}', true, 'c1200000-0000-4000-8000-000000000001');
 
-insert into public.result_calculation_runs (id, term_id, grade_level_id, version, supersedes_run_id, grading_scale_id, ranking_rule_id, input_checksum, output_checksum, created_by)
-values ('c2200000-0000-4000-8000-000000000001', 'c1500000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 1, null, 'c2000000-0000-4000-8000-000000000001', 'c2100000-0000-4000-8000-000000000001', repeat('a', 64), repeat('b', 64), 'c1200000-0000-4000-8000-000000000001');
-insert into public.result_calculation_sources (id, calculation_run_id, mark_sheet_id, class_section_id, subject_id, mark_sheet_version, assessment_scheme_id, grade_level_subject_id, curriculum_is_required, curriculum_contributes_to_aggregate, curriculum_sort_order)
-values ('c2300000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-000000000001', 'c1f00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 1, 'c1a00000-0000-4000-8000-000000000001', 'c1900000-0000-4000-8000-000000000001', true, true, 1);
-insert into public.calculated_student_results (id, calculation_run_id, enrollment_id, class_section_id, subject_count, complete_subject_count, subjects_passed, overall_total, overall_average, overall_grade, aggregate_total, aggregate_classification, is_complete, ranking_eligible, ranking_metric, class_position, grade_level_position, class_tie_size, grade_level_tie_size, class_is_tied, grade_level_is_tied)
-values ('c2400000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 1, 1, 1, 88, 88, 'A', 3, 'Advanced', true, true, 88, 1, 1, 1, 1, false, false);
-insert into public.calculated_subject_results (id, calculation_run_id, enrollment_id, class_section_id, subject_id, mark_sheet_id, subject_status, subject_score, grade, aggregate_points, is_pass, assessed_weight, has_absence, has_exemption, subject_position, subject_tie_size, subject_is_tied)
-values ('c2500000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 'c1f00000-0000-4000-8000-000000000001', 'COMPLETE', 88, 'A', 3, true, 100, false, false, 1, 1, false);
-
 select set_config('app.marks_workflow_transition', 'allowed', true);
 update public.mark_sheets
 set workflow_status = 'LOCKED', locked_by = 'c1200000-0000-4000-8000-000000000001', locked_at = now()
@@ -73,9 +64,29 @@ update public.terms
 set status = 'LOCKED'
 where id = 'c1500000-0000-4000-8000-000000000001';
 
+insert into public.result_calculation_runs (id, term_id, grade_level_id, version, supersedes_run_id, grading_scale_id, ranking_rule_id, input_checksum, output_checksum, created_by)
+values ('c2200000-0000-4000-8000-000000000001', 'c1500000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 1, null, 'c2000000-0000-4000-8000-000000000001', 'c2100000-0000-4000-8000-000000000001', internal.results_input_checksum('c1500000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 'c2000000-0000-4000-8000-000000000001', 'c2100000-0000-4000-8000-000000000001', null), repeat('b', 64), 'c1200000-0000-4000-8000-000000000001');
+insert into public.result_calculation_sources (id, calculation_run_id, mark_sheet_id, class_section_id, subject_id, mark_sheet_version, assessment_scheme_id, grade_level_subject_id, curriculum_is_required, curriculum_contributes_to_aggregate, curriculum_sort_order)
+values ('c2300000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-000000000001', 'c1f00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 1, 'c1a00000-0000-4000-8000-000000000001', 'c1900000-0000-4000-8000-000000000001', true, true, 1);
+insert into public.calculated_student_results (id, calculation_run_id, enrollment_id, class_section_id, subject_count, complete_subject_count, subjects_passed, overall_total, overall_average, overall_grade, aggregate_total, aggregate_classification, is_complete, ranking_eligible, ranking_metric, class_position, grade_level_position, class_tie_size, grade_level_tie_size, class_is_tied, grade_level_is_tied)
+values ('c2400000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 1, 1, 1, 88, 88, 'A', 3, 'Advanced', true, true, 88, 1, 1, 1, 1, false, false);
+insert into public.calculated_subject_results (id, calculation_run_id, enrollment_id, class_section_id, subject_id, mark_sheet_id, subject_status, subject_score, grade, aggregate_points, is_pass, assessed_weight, has_absence, has_exemption, subject_position, subject_tie_size, subject_is_tied)
+values ('c2500000-0000-4000-8000-000000000001', 'c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 'c1f00000-0000-4000-8000-000000000001', 'COMPLETE', 88, 'A', 3, true, 100, false, false, 1, 1, false);
+
 set local role authenticated;
 select set_config('request.jwt.claims', '{"sub":"c1100000-0000-4000-8000-000000000001","role":"authenticated","session_id":"c2600000-0000-4000-8000-000000000001"}', true);
 select public.set_my_active_membership('c1200000-0000-4000-8000-000000000001');
+
+select set_config('app.term_marks_workflow_transition', 'allowed', true);
+update public.terms set status = 'MARKS_ENTRY' where id = 'c1500000-0000-4000-8000-000000000001';
+select extensions.throws_ok($$select * from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001')$$, '55000', 'REPORT_SOURCE_NOT_FINALIZED', 'B00. an open term cannot generate a snapshot');
+select set_config('app.term_marks_workflow_transition', 'allowed', true);
+update public.terms set status = 'LOCKED' where id = 'c1500000-0000-4000-8000-000000000001';
+select set_config('app.marks_workflow_transition', 'allowed', true);
+update public.mark_sheets set workflow_status = 'DRAFT', locked_by = null, locked_at = null where id = 'c1f00000-0000-4000-8000-000000000001';
+select extensions.throws_ok($$select * from public.generate_student_report_snapshot('c2200000-0000-4000-8000-000000000001', 'c1d00000-0000-4000-8000-000000000001')$$, '55000', 'REPORT_SOURCE_NOT_FINALIZED', 'B00b. an unlocked latest sheet cannot generate a snapshot');
+select set_config('app.marks_workflow_transition', 'allowed', true);
+update public.mark_sheets set workflow_status = 'LOCKED', locked_by = 'c1200000-0000-4000-8000-000000000001', locked_at = now() where id = 'c1f00000-0000-4000-8000-000000000001';
 
 select extensions.lives_ok($$select * from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')$$, 'B01. readiness can inspect a valid Stage 11 run');
 select extensions.is((select student_population::integer from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 1, 'B02. readiness counts the calculated population');
@@ -83,7 +94,7 @@ select extensions.is((select eligible_student_count::integer from public.get_rep
 select extensions.is((select existing_report_snapshots::integer from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 0, 'B04. no report exists before generation');
 select extensions.is((select missing_report_snapshots::integer from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 1, 'B05. readiness reports one missing snapshot');
 select extensions.ok((select ready from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), 'B06. a populated valid source is ready');
-select extensions.is((select result_input_checksum from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), repeat('a', 64), 'B07. readiness exposes the input checksum');
+select extensions.is((select result_input_checksum from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), internal.results_input_checksum('c1500000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 'c2000000-0000-4000-8000-000000000001', 'c2100000-0000-4000-8000-000000000001', null), 'B07. readiness exposes the authoritative input checksum');
 select extensions.is((select result_output_checksum from public.get_report_generation_readiness('c2200000-0000-4000-8000-000000000001')), repeat('b', 64), 'B08. readiness exposes the output checksum');
 
 select * into temporary table snapshot_behavior_generation
@@ -97,13 +108,13 @@ select extensions.is((select count(*)::integer from public.report_snapshot_sourc
 select extensions.is((select report_id from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)), (select report_id from snapshot_behavior_generation), 'B15. lineage points to the generated report');
 select extensions.is((select calculation_run_id from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)), 'c2200000-0000-4000-8000-000000000001'::uuid, 'B16. lineage preserves the calculation run');
 select extensions.is((select calculated_student_result_id from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)), 'c2400000-0000-4000-8000-000000000001'::uuid, 'B17. lineage preserves the calculated learner result');
-select extensions.is((select input_checksum from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)), repeat('a', 64), 'B18. lineage preserves input checksum');
+select extensions.is((select input_checksum from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)), internal.results_input_checksum('c1500000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 'c2000000-0000-4000-8000-000000000001', 'c2100000-0000-4000-8000-000000000001', null), 'B18. lineage preserves input checksum');
 select extensions.is((select output_checksum from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)), repeat('b', 64), 'B19. lineage preserves output checksum');
 select extensions.is((select snapshot_schema_version from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), 1, 'B20. snapshot schema version is frozen');
 select extensions.is((select length(snapshot_checksum)::integer from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), 64, 'B21. snapshot checksum is SHA-256 length');
 select extensions.is((select length(snapshot_context_checksum)::integer from public.reports where id = (select report_id from snapshot_behavior_generation)), 64, 'B22. report context checksum is stored');
 select extensions.is((select snapshot_checksum from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), (select snapshot_context_checksum from public.reports where id = (select report_id from snapshot_behavior_generation)), 'B23. report and snapshot context checksums agree');
-select extensions.is((select source_checksum from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), repeat('a', 64), 'B24. snapshot source checksum is the Stage 11 input checksum');
+select extensions.is((select source_checksum from public.report_snapshots where report_id = (select report_id from snapshot_behavior_generation)), internal.results_input_checksum('c1500000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 'c2000000-0000-4000-8000-000000000001', 'c2100000-0000-4000-8000-000000000001', null), 'B24. snapshot source checksum is the Stage 11 input checksum');
 select extensions.is((select status::text from public.reports where id = (select report_id from snapshot_behavior_generation)), 'GENERATED', 'B25. generated report status is explicit');
 select extensions.is((select calculation_run_id from public.reports where id = (select report_id from snapshot_behavior_generation)), 'c2200000-0000-4000-8000-000000000001'::uuid, 'B26. report stores calculation lineage');
 select extensions.is((select version from public.reports where id = (select report_id from snapshot_behavior_generation)), 1, 'B27. report stores its sequence version');
@@ -146,7 +157,7 @@ select extensions.throws_ok($$update public.report_subject_results set subject_n
 select extensions.throws_ok($$delete from public.report_snapshot_sources where report_id = (select report_id from snapshot_behavior_generation)$$, '55000', null, 'B56. lineage deletion is rejected');
 
 insert into public.result_calculation_runs (id, term_id, grade_level_id, version, supersedes_run_id, grading_scale_id, ranking_rule_id, input_checksum, output_checksum, created_by)
-values ('c2200000-0000-4000-8000-000000000002', 'c1500000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 2, null, 'c2000000-0000-4000-8000-000000000001', 'c2100000-0000-4000-8000-000000000001', repeat('c', 64), repeat('d', 64), 'c1200000-0000-4000-8000-000000000001');
+values ('c2200000-0000-4000-8000-000000000002', 'c1500000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 2, null, 'c2000000-0000-4000-8000-000000000001', 'c2100000-0000-4000-8000-000000000001', internal.results_input_checksum('c1500000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 'c2000000-0000-4000-8000-000000000001', 'c2100000-0000-4000-8000-000000000001', null), repeat('d', 64), 'c1200000-0000-4000-8000-000000000001');
 insert into public.result_calculation_sources (id, calculation_run_id, mark_sheet_id, class_section_id, subject_id, mark_sheet_version, assessment_scheme_id, grade_level_subject_id, curriculum_is_required, curriculum_contributes_to_aggregate, curriculum_sort_order)
 values ('c2300000-0000-4000-8000-000000000002', 'c2200000-0000-4000-8000-000000000002', 'c1f00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 1, 'c1a00000-0000-4000-8000-000000000001', 'c1900000-0000-4000-8000-000000000001', true, true, 1);
 insert into public.calculated_student_results (id, calculation_run_id, enrollment_id, class_section_id, subject_count, complete_subject_count, subjects_passed, overall_total, overall_average, overall_grade, aggregate_total, aggregate_classification, is_complete, ranking_eligible, ranking_metric, class_position, grade_level_position, class_tie_size, grade_level_tie_size, class_is_tied, grade_level_is_tied)
@@ -161,7 +172,7 @@ select extensions.is((select count(*)::integer from public.report_batches where 
 
 reset role;
 insert into public.result_calculation_runs (id, term_id, grade_level_id, version, supersedes_run_id, grading_scale_id, ranking_rule_id, input_checksum, output_checksum, created_by)
-values ('c2200000-0000-4000-8000-000000000003', 'c1500000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 3, 'c2200000-0000-4000-8000-000000000001', 'c2000000-0000-4000-8000-000000000001', 'c2100000-0000-4000-8000-000000000001', repeat('e', 64), repeat('f', 64), 'c1200000-0000-4000-8000-000000000001');
+values ('c2200000-0000-4000-8000-000000000003', 'c1500000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 3, 'c2200000-0000-4000-8000-000000000001', 'c2000000-0000-4000-8000-000000000001', 'c2100000-0000-4000-8000-000000000001', internal.results_input_checksum('c1500000-0000-4000-8000-000000000001', 'c1600000-0000-4000-8000-000000000001', 'c2000000-0000-4000-8000-000000000001', 'c2100000-0000-4000-8000-000000000001', null), repeat('f', 64), 'c1200000-0000-4000-8000-000000000001');
 insert into public.result_calculation_sources (id, calculation_run_id, mark_sheet_id, class_section_id, subject_id, mark_sheet_version, assessment_scheme_id, grade_level_subject_id, curriculum_is_required, curriculum_contributes_to_aggregate, curriculum_sort_order)
 values ('c2300000-0000-4000-8000-000000000003', 'c2200000-0000-4000-8000-000000000003', 'c1f00000-0000-4000-8000-000000000001', 'c1700000-0000-4000-8000-000000000001', 'c1800000-0000-4000-8000-000000000001', 1, 'c1a00000-0000-4000-8000-000000000001', 'c1900000-0000-4000-8000-000000000001', true, true, 1);
 insert into public.calculated_student_results (id, calculation_run_id, enrollment_id, class_section_id, subject_count, complete_subject_count, subjects_passed, overall_total, overall_average, overall_grade, aggregate_total, aggregate_classification, is_complete, ranking_eligible, ranking_metric, class_position, grade_level_position, class_tie_size, grade_level_tie_size, class_is_tied, grade_level_is_tied)

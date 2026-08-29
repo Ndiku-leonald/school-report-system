@@ -167,6 +167,21 @@ async function setup() {
       fixture.membershipId,
     ],
   );
+  await database.query("begin");
+  await database.query(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await database.query(
+    "update public.mark_sheets set workflow_status='LOCKED', locked_by=$1, locked_at=now() where id=$2",
+    [fixture.membershipId, fixture.sheetId],
+  );
+  await database.query(
+    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+  );
+  await database.query("update public.terms set status='LOCKED' where id=$1", [
+    fixture.termId,
+  ]);
+  await database.query("commit");
   await database.query(
     "insert into public.term_attendance(id,term_id,enrollment_id,days_open,days_present,days_absent,times_late,recorded_by) values($1,$2,$3,90,84,6,2,$4)",
     [
@@ -185,14 +200,19 @@ async function setup() {
       fixture.membershipId,
     ],
   );
+  const checksum = await database.query(
+    "select internal.results_input_checksum($1,$2,$3,$4,null) as checksum",
+    [fixture.termId, fixture.gradeId, fixture.scaleId, fixture.ruleId],
+  );
   await database.query(
-    "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,supersedes_run_id,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,1,null,$4,$5,repeat('a',64),repeat('b',64),$6)",
+    "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,supersedes_run_id,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,1,null,$4,$5,$6,repeat('b',64),$7)",
     [
       fixture.runId,
       fixture.termId,
       fixture.gradeId,
       fixture.scaleId,
       fixture.ruleId,
+      checksum.rows[0].checksum,
       fixture.membershipId,
     ],
   );

@@ -69,6 +69,10 @@ async function createRun(
   supersedesRunId: string | null,
   score: number,
 ) {
+  const checksum = await query(
+    "select internal.results_input_checksum($1,$2,$3,$4,null) as checksum",
+    [ids.term, ids.grade, ids.scale, ids.rule],
+  );
   await query(
     "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,supersedes_run_id,grading_scale_id,ranking_rule_id,input_checksum,output_checksum,created_by) values($1,$2,$3,$4,$5,$6,$7,$8,$9,$10)",
     [
@@ -79,7 +83,7 @@ async function createRun(
       supersedesRunId,
       ids.scale,
       ids.rule,
-      String.fromCharCode(96 + version).repeat(64),
+      checksum.rows[0].checksum,
       String.fromCharCode(97 + version).repeat(64),
       ids.membership,
     ],
@@ -191,6 +195,21 @@ async function setup() {
     "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id,workflow_status) values($1,$2,$3,$4,$5,$6,'DRAFT')",
     [ids.sheet, ids.term, ids.section, ids.subject, ids.scheme, ids.assignment],
   );
+  await query("begin");
+  await query(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await query(
+    "update public.mark_sheets set workflow_status='LOCKED', locked_by=$1, locked_at=now() where id=$2",
+    [ids.membership, ids.sheet],
+  );
+  await query(
+    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+  );
+  await query("update public.terms set status='LOCKED' where id=$1", [
+    ids.term,
+  ]);
+  await query("commit");
   await query(
     "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,effective_from,created_by) values($1,$2,$3,$4,'Snapshot Scale','2045-01-02',$5)",
     [ids.scale, ids.school, ids.year, ids.grade, ids.membership],
@@ -237,7 +256,7 @@ describe("report snapshots integration", () => {
 
   it("reports a valid populated Stage 11 run as ready before generation", async () => {
     const readiness = await client.rpc("get_report_generation_readiness", {
-      target_calculation_run_id: ids.run,
+      target_calculation_run_id: ids.run2,
     });
     expect(readiness.error).toBeNull();
     expect(readiness.data?.[0]).toMatchObject({
@@ -247,6 +266,55 @@ describe("report snapshots integration", () => {
       missing_report_snapshots: 1,
       ready: true,
     });
+  });
+
+  it("denies an open term and an unlocked latest source", async () => {
+    await query("begin");
+    await query(
+      "select set_config('app.term_marks_workflow_transition','allowed',true)",
+    );
+    await query("update public.terms set status='MARKS_ENTRY' where id=$1", [
+      ids.term,
+    ]);
+    await query("commit");
+    const openTerm = await client.rpc("generate_student_report_snapshot", {
+      target_calculation_run_id: ids.run,
+      target_enrollment_id: ids.enrollment,
+    });
+    expect(openTerm.error?.message).toContain("REPORT_SOURCE_NOT_FINALIZED");
+
+    await query("begin");
+    await query(
+      "select set_config('app.term_marks_workflow_transition','allowed',true)",
+    );
+    await query("update public.terms set status='LOCKED' where id=$1", [
+      ids.term,
+    ]);
+    await query(
+      "select set_config('app.marks_workflow_transition','allowed',true)",
+    );
+    await query(
+      "update public.mark_sheets set workflow_status='DRAFT', locked_by=null, locked_at=null where id=$1",
+      [ids.sheet],
+    );
+    await query("commit");
+    const unlockedSheet = await client.rpc("generate_student_report_snapshot", {
+      target_calculation_run_id: ids.run,
+      target_enrollment_id: ids.enrollment,
+    });
+    expect(unlockedSheet.error?.message).toContain(
+      "REPORT_SOURCE_NOT_FINALIZED",
+    );
+
+    await query("begin");
+    await query(
+      "select set_config('app.marks_workflow_transition','allowed',true)",
+    );
+    await query(
+      "update public.mark_sheets set workflow_status='LOCKED', locked_by=$1, locked_at=now() where id=$2",
+      [ids.membership, ids.sheet],
+    );
+    await query("commit");
   });
 
   it("generates a frozen, lineaged snapshot from Stage 11 values", async () => {
@@ -484,10 +552,10 @@ describe("report snapshots integration", () => {
     });
     const results = await Promise.all([
       client.rpc("generate_grade_report_snapshots", {
-        target_calculation_run_id: ids.run,
+        target_calculation_run_id: ids.run2,
       }),
       client.rpc("generate_grade_report_snapshots", {
-        target_calculation_run_id: ids.run,
+        target_calculation_run_id: ids.run2,
       }),
     ]);
     expect(results.every((result) => result.error === null)).toBe(true);
@@ -495,7 +563,7 @@ describe("report snapshots integration", () => {
       (
         await query(
           "select count(*)::int as count from public.reports where calculation_run_id=$1",
-          [ids.run],
+          [ids.run2],
         )
       ).rows[0].count,
     ).toBe(6);
@@ -503,14 +571,14 @@ describe("report snapshots integration", () => {
 
   it("keeps the report list scoped to its calculation run", async () => {
     const listed = await client.rpc("list_generated_reports", {
-      target_calculation_run_id: ids.run,
+      target_calculation_run_id: ids.run2,
     });
     expect(listed.error).toBeNull();
-    expect(listed.data).toHaveLength(6);
+    expect(listed.data).toHaveLength(1);
     expect(
       listed.data?.every(
         (item: { calculation_run_id: string }) =>
-          item.calculation_run_id === ids.run,
+          item.calculation_run_id === ids.run2,
       ),
     ).toBe(true);
   });
@@ -595,6 +663,23 @@ describe("report snapshots integration", () => {
       [ids.run],
     );
     expect(old.rows[0].superseded_by).toBe(row.rows[0].id);
+  });
+
+  it("rejects an older calculation after a newer current run exists", async () => {
+    const before = await query(
+      "select count(*)::int as count from public.reports where term_id=$1 and enrollment_id=$2",
+      [ids.term, ids.enrollment],
+    );
+    const denied = await client.rpc("generate_student_report_snapshot", {
+      target_calculation_run_id: ids.run,
+      target_enrollment_id: ids.enrollment,
+    });
+    expect(denied.error?.message).toContain("REPORT_SOURCE_STALE");
+    const after = await query(
+      "select count(*)::int as count from public.reports where term_id=$1 and enrollment_id=$2",
+      [ids.term, ids.enrollment],
+    );
+    expect(after.rows[0].count).toBe(before.rows[0].count);
   });
 
   it("keeps batch completion bounded by distinct enrollment coverage", async () => {
@@ -747,5 +832,45 @@ describe("report snapshots integration", () => {
       target_term_id: ids.term,
     });
     expect(history.data).toHaveLength(7);
+  });
+
+  it("does not reuse a historical checksum when context returns to A", async () => {
+    await query(
+      "update public.schools set name='Snapshot School' where id=$1",
+      [ids.school],
+    );
+    await query("update public.students set first_name='Frozen' where id=$1", [
+      ids.student,
+    ]);
+    await query(
+      "update public.subjects set name='Snapshot Subject' where id=$1",
+      [ids.subject],
+    );
+    await query(
+      "update public.term_attendance set days_present=84,days_absent=6 where id=$1",
+      [ids.attendance],
+    );
+    await query(
+      "update public.student_term_comments set class_teacher_comment='Comment A' where id=$1",
+      [ids.comment],
+    );
+    const generated = await client.rpc("generate_student_report_snapshot", {
+      target_calculation_run_id: ids.run2,
+      target_enrollment_id: ids.enrollment,
+    });
+    expect(generated.error).toBeNull();
+    expect(generated.data?.[0]).toMatchObject({
+      report_version: 8,
+      reused: false,
+    });
+    const rerun = await client.rpc("generate_student_report_snapshot", {
+      target_calculation_run_id: ids.run2,
+      target_enrollment_id: ids.enrollment,
+    });
+    expect(rerun.error).toBeNull();
+    expect(rerun.data?.[0]).toMatchObject({
+      report_version: 8,
+      reused: true,
+    });
   });
 });
