@@ -19,6 +19,10 @@ checksums, schema version 1, and frozen subject display/result fields.
 `report_snapshot_sources` links each snapshot to exactly one calculated student
 result and stores the Stage 11 input and output checksums.
 
+Migration 28 is `20260828055808_28_report_snapshot_generation.sql`, migration
+29 is `20260828073615_29_report_snapshot_integrity_hardening.sql`, and
+migration 30 is the additive authoritative-source/history hardening migration.
+
 Report version and calculation version are separate. The first report for a
 student and term is report version 1. A newer Stage 11 calculation normally
 creates the next report version and sets the prior report's `superseded_by`
@@ -27,12 +31,14 @@ comment, attendance value, or school identity, may also create the next report
 version from the same calculation run. The prior snapshot and its source
 lineage remain readable.
 
-Idempotence is context-aware: the complete canonical snapshot payload,
+Idempotence is current-report-only: the complete canonical snapshot payload,
 ordered subject rows, and Stage 11 input/output checksums form a context
-checksum. Repeating the same run, enrollment, and context reuses the existing
+checksum. Repeating the same run, enrollment, and context reuses the current
 immutable report without a new snapshot, subject rows, or creation audit. A
-changed context creates one successor version; the database prevents an exact
-duplicate context.
+changed context creates one successor version. A later return to an earlier
+context is a new historical version: A -> B -> A produces v1 -> v2 -> v3 even
+when the content checksum of v1 and v3 is equal. History identity is the
+term/enrollment/version constraint, not the content checksum.
 
 ## Snapshot payload
 
@@ -58,29 +64,41 @@ deliberately `null`; the head-teacher comment text is still preserved.
 The class-teacher signatory is frozen only from an active, effective,
 same-term, same-class assignment in the selected school, and only its display
 name and role context are included. The next-term row is selected
-chronologically across the same school's academic years and is locked before
-the snapshot is created; it is `null` when no configured later term exists.
+chronologically across the same school's academic years only when
+`candidate.starts_on > current_term.ends_on`, then by earliest date and UUID.
+It is `null` when no genuinely later term exists.
 
-Readiness means that a structurally valid, selected-school Stage 11 source has
-at least one calculated student. It does not mean that reports already exist:
+Only the latest Stage 11 run whose stored rule IDs reproduce the current
+authoritative input checksum may create a new snapshot. The term and every
+latest required mark-sheet scope must be locked. A reopened term, unlocked
+latest sheet, stale checksum, or older calculation is rejected with a stable
+`REPORT_SOURCE_NOT_FINALIZED` or `REPORT_SOURCE_STALE` error. Historical
+snapshots remain readable after their source becomes stale.
+
+Readiness means that a structurally valid, selected-school, current Stage 11
+source has at least one calculated student. It does not mean that reports already exist:
 `missing_report_snapshots` can be positive while `ready` is true. Completion
 is represented separately by `missing_report_snapshots = 0`.
 
-The source lock order is selected-membership authority, school, teaching
-assignments, term, academic year, grade, curriculum mappings, class sections,
-mark sheets, calculation run, calculated result, enrollment, student, class,
-attendance/comments, effective class-teacher identity, school settings,
-next-term configuration, and subjects. This extends the Stage 11 order and
-keeps mutable values coherent for checksum construction.
+The final source lock order is selected Auth session, selected membership,
+selected school, live role grants, permission mappings, teaching assignments,
+term, academic year, grade, curriculum mappings, class sections, mark sheets,
+latest calculation run, term/enrollment report-history advisory lock,
+enrollment, student, attendance, comments, class-teacher context, school
+settings, next-term row, and subjects. Stage 11 and Stage 12 use the same
+term/grade serialization prefix to avoid lock inversion.
 
 ## Security and later stages
 
-Generation requires `REPORTS_GENERATE`; reads require `REPORTS_VIEW_ALL` or
-`REPORTS_GENERATE`. The database repeats those checks against the selected
-session membership and locks authority before source rows. Direct browser
-table writes are revoked, new lineage storage uses forced RLS, and anonymous
-access is denied. Snapshot payloads are available only through narrow read
-RPCs.
+Generation requires `REPORTS_GENERATE`; schoolwide reads require
+`REPORTS_VIEW_ALL` or `REPORTS_GENERATE`. `REPORTS_VIEW_ASSIGNED` remains a
+database/RLS report visibility permission for currently assigned classes; it
+does not grant schoolwide Stage 12 dashboard access or generation. Subject
+teachers do not gain report access through marks permissions. The database
+repeats selected-membership checks and locks authority before source rows.
+Direct browser table writes are revoked, new lineage storage uses forced RLS,
+and anonymous access is denied. Snapshot payloads are available only through
+narrow read RPCs.
 
 `/dashboard/reports` provides readiness, batch generation, and historical report
 listing. `/dashboard/reports/[reportId]` renders an HTML preview from the frozen

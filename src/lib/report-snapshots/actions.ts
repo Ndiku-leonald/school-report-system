@@ -20,6 +20,10 @@ function mapError(error: {
   const messages: Record<string, string> = {
     REPORT_SOURCE_INVALID:
       "These locked results are not ready for report generation.",
+    REPORT_SOURCE_NOT_FINALIZED:
+      "The term and latest mark sheets must be locked before reports can be generated.",
+    REPORT_SOURCE_STALE:
+      "These results are stale. Recalculate the current locked academic state before generating reports.",
     REPORT_SOURCE_NOT_FOUND: "The selected calculation run is unavailable.",
     REPORT_CALCULATION_MISMATCH:
       "The selected student is not part of this calculation run.",
