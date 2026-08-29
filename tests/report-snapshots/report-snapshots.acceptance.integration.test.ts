@@ -240,7 +240,7 @@ async function insertScope(
     [mappingId, gradeId, subjectId],
   );
   await query(
-    "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$2,$3,$4,$5,'ACTIVE',current_date-30,$6)",
+    "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$2,$3,$4,$5,'DRAFT',current_date-30,$6)",
     [
       schemeId,
       termId,
@@ -253,6 +253,10 @@ async function insertScope(
   await query(
     "insert into public.assessment_components(id,assessment_scheme_id,name,component_code,maximum_score,weight_percentage,sort_order) values($1,$2,'Exam','EXAM',100,100,1)",
     [componentId, schemeId],
+  );
+  await query(
+    "update public.assessment_schemes set status='ACTIVE' where id=$1",
+    [schemeId],
   );
   await query(
     "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,workflow_status) values($1,$2,$3,$4,$5,'DRAFT')",
