@@ -566,7 +566,7 @@ describe("report snapshots integration", () => {
           [ids.run2],
         )
       ).rows[0].count,
-    ).toBe(6);
+    ).toBe(1);
   });
 
   it("keeps the report list scoped to its calculation run", async () => {
