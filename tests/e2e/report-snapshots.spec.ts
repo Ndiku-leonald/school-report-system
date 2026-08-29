@@ -366,6 +366,15 @@ async function setup() {
       fixture.ungeneratedSectionId,
     ],
   );
+  await database.query("begin");
+  await database.query(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await database.query(
+    "update public.mark_sheets set workflow_status='LOCKED',locked_by=$1,locked_at=now() where id=$2",
+    [fixture.membershipId, fixture.ungeneratedSheetId],
+  );
+  await database.query("commit");
   const ungeneratedChecksum = await database.query(
     "select internal.results_input_checksum($1,$2,$3,$4,null) as checksum",
     [
@@ -419,25 +428,6 @@ async function setup() {
       fixture.ungeneratedSheetId,
     ],
   );
-  await database.query("begin");
-  await database.query(
-    "select set_config('app.marks_workflow_transition','allowed',true)",
-  );
-  await database.query(
-    "update public.mark_sheets set workflow_status='LOCKED',locked_by=$1,locked_at=now() where id=$2",
-    [fixture.membershipId, fixture.ungeneratedSheetId],
-  );
-  await database.query(
-    "update public.result_calculation_runs set input_checksum=internal.results_input_checksum($1,$2,$3,$4,null) where id=$5",
-    [
-      fixture.termId,
-      fixture.ungeneratedGradeId,
-      fixture.ungeneratedScaleId,
-      fixture.ungeneratedRuleId,
-      fixture.ungeneratedRunId,
-    ],
-  );
-  await database.query("commit");
   await database.query("begin");
   await database.query(
     "select set_config('app.marks_workflow_transition','allowed',true)",
