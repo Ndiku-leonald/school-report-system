@@ -203,21 +203,6 @@ async function setup() {
       fixture.membershipId,
     ],
   );
-  await database.query("begin");
-  await database.query(
-    "select set_config('app.marks_workflow_transition','allowed',true)",
-  );
-  await database.query(
-    "update public.mark_sheets set workflow_status='LOCKED', locked_by=$1, locked_at=now() where id=$2",
-    [fixture.membershipId, fixture.sheetId],
-  );
-  await database.query(
-    "select set_config('app.term_marks_workflow_transition','allowed',true)",
-  );
-  await database.query("update public.terms set status='LOCKED' where id=$1", [
-    fixture.termId,
-  ]);
-  await database.query("commit");
   await database.query(
     "insert into public.term_attendance(id,term_id,enrollment_id,days_open,days_present,days_absent,times_late,recorded_by) values($1,$2,$3,90,84,6,2,$4)",
     [
@@ -381,16 +366,6 @@ async function setup() {
       fixture.ungeneratedSectionId,
     ],
   );
-  await database.query(
-    "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$2,$3,$4,$5,'2047-01-02')",
-    [
-      fixture.ungeneratedAssignmentId,
-      fixture.termId,
-      fixture.ungeneratedSectionId,
-      fixture.subjectId,
-      fixture.membershipId,
-    ],
-  );
   const ungeneratedChecksum = await database.query(
     "select internal.results_input_checksum($1,$2,$3,$4,null) as checksum",
     [
@@ -462,6 +437,21 @@ async function setup() {
       fixture.ungeneratedRunId,
     ],
   );
+  await database.query("commit");
+  await database.query("begin");
+  await database.query(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await database.query(
+    "update public.mark_sheets set workflow_status='LOCKED', locked_by=$1, locked_at=now() where id=$2",
+    [fixture.membershipId, fixture.sheetId],
+  );
+  await database.query(
+    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+  );
+  await database.query("update public.terms set status='LOCKED' where id=$1", [
+    fixture.termId,
+  ]);
   await database.query("commit");
 
   viewOnlyEmail = `report-snapshot.browser-view-only.${nonce}@example.invalid`;
