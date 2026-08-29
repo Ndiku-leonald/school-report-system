@@ -205,4 +205,5 @@ select extensions.is((select count(*)::integer from public.list_generated_report
 select extensions.is((select count(*)::integer from public.get_report_subject_results((select id from public.reports where calculation_run_id = 'c2200000-0000-4000-8000-000000000003'))), 1, 'B72. subject reader returns the frozen successor row');
 
 select * from extensions.finish();
+reset role;
 rollback;
