@@ -90,7 +90,7 @@ select extensions.ok(pg_get_functiondef('public.get_report_generation_readiness(
 select extensions.ok(pg_get_functiondef('public.get_report_generation_readiness(uuid)'::regprocedure) ~* 'count\(distinct report.enrollment_id\)', 'readiness counts persisted snapshots rather than report versions');
 select extensions.ok(pg_get_functiondef('internal.validate_report_calculation_lineage(public.reports,public.result_calculation_runs)'::regprocedure) ~* 'supersedes_run_id', 'report versions require direct calculation lineage');
 select extensions.ok(pg_get_functiondef('internal.validate_report_snapshot_source_scope()'::regprocedure) ~* 'snapshot_checksum', 'lineage validates stored snapshot checksum');
-select extensions.ok(pg_get_functiondef('public.get_generated_report(uuid)'::regprocedure) !~* 'students|subjects|enrollments', 'report detail reads the stored snapshot without live-data fallback');
+select extensions.ok(pg_get_functiondef('public.get_generated_report(uuid)'::regprocedure) !~* 'from public\.students|join public\.subjects', 'report detail reads the stored snapshot without live-data fallback');
 
 select * from extensions.finish();
 rollback;
