@@ -320,6 +320,16 @@ async function insertSecondSchoolAStudent() {
     [ids.sectionB, ids.yearA, ids.gradeA],
   );
   await query(
+    "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$2,$3,$4,$5,current_date-30)",
+    [
+      ids.assignmentB,
+      ids.termA,
+      ids.sectionB,
+      ids.subject,
+      actors.get("generatorAdmin")!.membershipIds[0],
+    ],
+  );
+  await query(
     "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id,workflow_status) values($1,$2,$3,$4,$5,$6,'DRAFT')",
     [
       ids.sheetB,
@@ -337,16 +347,6 @@ async function insertSecondSchoolAStudent() {
   await query(
     "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,enrolled_on) values($1,$2,$3,$4,current_date-50)",
     [ids.enrollmentB, ids.studentB, ids.yearA, ids.sectionB],
-  );
-  await query(
-    "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$2,$3,$4,$5,current_date-30)",
-    [
-      ids.assignmentB,
-      ids.termA,
-      ids.sectionB,
-      ids.subject,
-      actors.get("generatorAdmin")!.membershipIds[0],
-    ],
   );
   await query(
     "insert into public.result_calculation_sources(id,calculation_run_id,mark_sheet_id,class_section_id,subject_id,mark_sheet_version,assessment_scheme_id,grade_level_subject_id,curriculum_is_required,curriculum_contributes_to_aggregate,curriculum_sort_order) values($1,$2,$3,$4,$5,1,$6,$7,true,true,1)",
