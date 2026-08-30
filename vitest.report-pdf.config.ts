@@ -17,6 +17,7 @@ export default defineConfig({
     conditions: ["node"],
   },
   ssr: {
+    noExternal: ["pdfkit"],
     resolve: {
       conditions: ["node"],
     },
