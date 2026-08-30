@@ -24,6 +24,7 @@ export default defineConfig({
   },
   test: {
     ...baseConfig.test,
+    environment: "node",
     include: ["tests/report-pdf/**/*.integration.test.ts"],
     fileParallelism: false,
   },
