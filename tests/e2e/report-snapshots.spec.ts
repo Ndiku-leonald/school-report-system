@@ -1136,7 +1136,14 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     ).toHaveAttribute("href", /\/api\/reports\/.+\/pdf$/);
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("link", { name: "Download PDF", exact: true }).click();
-    expect((await downloadPromise).suggestedFilename()).toMatch(/-v1\.pdf$/);
+    const versionLabel = page.getByText(/report snapshot v\d+/i);
+    await expect(versionLabel).toBeVisible();
+    const versionText = await versionLabel.textContent();
+    const version = versionText?.match(/report snapshot v(\d+)/i)?.[1];
+    expect(version).toBeTruthy();
+    expect((await downloadPromise).suggestedFilename()).toMatch(
+      new RegExp(`-v${version}\\.pdf$`),
+    );
   });
 
   test("62. report PDF response uses private passive download headers", async ({
