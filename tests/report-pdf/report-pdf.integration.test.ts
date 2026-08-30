@@ -1,6 +1,8 @@
 import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Client } from "pg";
-import { afterAll, beforeAll, describe, expect, it } from "vitest";
+import { afterAll, beforeAll, describe, expect, it, vi } from "vitest";
+
+vi.mock("server-only", () => ({}));
 
 import { renderReportCardPdf } from "../../src/lib/report-pdf/render";
 import { reportSnapshotDataSchema } from "../../src/lib/report-snapshots/schemas";
