@@ -1032,6 +1032,12 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     page,
   }) => {
     await login(page, multiSchoolEmail, fixture.multiMembershipAId);
+    await page.goto("/select-school?next=%2Fdashboard%2Freports");
+    await page
+      .locator(`input[type="radio"][value="${fixture.multiMembershipAId}"]`)
+      .check();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.waitForURL(/dashboard\/reports/);
     await page.goto("/dashboard/reports");
     await expect(
       page.getByRole("link", { name: /Browser Student/ }),
