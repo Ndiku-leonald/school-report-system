@@ -101,6 +101,9 @@ jobs:
       - name: Run local results-engine integration tests
         run: npm run test:results-engine
 
+      - name: Run local report-snapshot integration tests
+        run: npm run test:report-snapshots
+
       - name: Verify generated database types
         run: |
           npm run db:types
@@ -133,6 +136,9 @@ jobs:
 
       - name: Run local results-engine browser tests
         run: npm run test:e2e:results-engine
+
+      - name: Run local report-snapshot browser tests
+        run: npm run test:e2e:report-snapshots
 
       - name: Stop local Supabase
         if: always()

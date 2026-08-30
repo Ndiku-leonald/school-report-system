@@ -271,6 +271,33 @@ Create immutable, versioned report snapshots that decouple approved academic dat
 - Corrections create a new version and retain prior audit history.
 - Snapshot access is server-authorized and tested.
 
+**Implementation evidence (2026-08-29)**
+
+- Migration 28 (renamed with its original bytes preserved) and additive
+  migration 29 reuse the existing report tables, add Stage 11 calculation
+  lineage, schema-versioned JSON, SHA-256 context checksums, frozen subject
+  identity, append-only report versioning, guarded single/batch generation
+  RPCs, and forced-RLS lineage storage.
+- Migration 30 is the additive final correction: only a current, up-to-date
+  Stage 11 run with a locked term and locked latest source sheets may create
+  new snapshots. Reopened terms, unlocked sources, stale checksums, and older
+  calculation runs are rejected, while historical reports remain readable.
+- Readiness is source readiness rather than completion. Idempotence compares
+  only with the current report; A -> B -> A creates v1 -> v2 -> v3 even when
+  v1 and v3 have the same content checksum. Report history serialization is
+  scoped to term plus enrollment, report version remains independent of
+  calculation version, and `latest_report_versions` is scoped to the target
+  run's calculated population.
+- Generic comment updaters are never labeled as head teachers, next-term
+  selection requires a start date after the current term end (including
+  cross-year terms), and `REPORTS_VIEW_ASSIGNED` remains an RLS visibility
+  rule distinct from the schoolwide Stage 12 dashboard.
+- `/dashboard/reports` and `/dashboard/reports/[reportId]` provide staff-only
+  readiness, generation, historical navigation, and an HTML snapshot preview;
+  PDF rendering and publication remain later stages. Database-backed
+  acceptance is completed by CI only when the Supabase suites pass; local
+  Docker-unavailable runs are not treated as proof.
+
 ## 13. PDF generation
 
 Implement report rendering only after the school supplies and approves a real report-card example.
