@@ -52,7 +52,7 @@ jobs:
 
       - name: Install Poppler for PDF visual regression
         env:
-          POPPLER_VERSION: 24.02.0-1ubuntu9.1
+          POPPLER_VERSION: 24.02.0-1ubuntu9.8
         run: |
           sudo apt-get update
           sudo apt-get install -y "poppler-utils=${POPPLER_VERSION}"
@@ -144,7 +144,7 @@ jobs:
 
       - name: Install pinned Poppler for PDF browser extraction
         env:
-          POPPLER_VERSION: 24.02.0-1ubuntu9.1
+          POPPLER_VERSION: 24.02.0-1ubuntu9.8
         run: |
           sudo apt-get update
           sudo apt-get install -y "poppler-utils=${POPPLER_VERSION}"
