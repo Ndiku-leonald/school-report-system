@@ -17,6 +17,12 @@ import type {
   ReportSubjectSnapshot,
 } from "./types";
 
+const REPORT_READ_PERMISSIONS = [
+  "REPORTS_VIEW_ALL",
+  "REPORTS_GENERATE",
+  "REPORTS_VIEW_ASSIGNED",
+] as const;
+
 type RpcClient = {
   rpc(
     name: string,
@@ -43,7 +49,7 @@ export async function getReportGenerationReadiness(runId: string) {
 }
 
 export async function getGeneratedReports(runId?: string) {
-  await requireAnyPermission(["REPORTS_VIEW_ALL", "REPORTS_GENERATE"]);
+  await requireAnyPermission(REPORT_READ_PERMISSIONS);
   const result = await (
     await rpcClient()
   ).rpc("list_generated_reports", {
@@ -54,7 +60,7 @@ export async function getGeneratedReports(runId?: string) {
 }
 
 export async function getGeneratedReport(reportId: string) {
-  await requireAnyPermission(["REPORTS_VIEW_ALL", "REPORTS_GENERATE"]);
+  await requireAnyPermission(REPORT_READ_PERMISSIONS);
   const result = await (
     await rpcClient()
   ).rpc("get_generated_report", {
@@ -69,7 +75,7 @@ export async function getGeneratedReport(reportId: string) {
 }
 
 export async function getReportSubjects(reportId: string) {
-  await requireAnyPermission(["REPORTS_VIEW_ALL", "REPORTS_GENERATE"]);
+  await requireAnyPermission(REPORT_READ_PERMISSIONS);
   const result = await (
     await rpcClient()
   ).rpc("get_report_subject_results", {
@@ -81,7 +87,7 @@ export async function getReportSubjects(reportId: string) {
 }
 
 export async function getReportHistory(enrollmentId: string, termId: string) {
-  await requireAnyPermission(["REPORTS_VIEW_ALL", "REPORTS_GENERATE"]);
+  await requireAnyPermission(REPORT_READ_PERMISSIONS);
   const result = await (
     await rpcClient()
   ).rpc("get_student_report_history", {

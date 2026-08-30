@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
@@ -27,6 +27,14 @@ jobs:
       - name: Install dependencies
         run: npm ci
 
+      - name: Check patch whitespace
+        run: git diff --check
+
+      - name: Report dependency audit
+        run: |
+          npm audit --audit-level=critical
+          npm audit --omit=dev --audit-level=critical
+
       - name: Check formatting
         run: npm run format:check
 
@@ -39,8 +47,29 @@ jobs:
       - name: Run unit and component tests
         run: npm test
 
+      - name: Run report-card PDF renderer tests
+        run: npm run test:report-pdf
+
+      - name: Install Poppler for PDF visual regression
+        env:
+          POPPLER_VERSION: 24.02.0-1ubuntu9.9
+        run: |
+          sudo apt-get update
+          mkdir -p "$RUNNER_TEMP/poppler"
+          curl -fsSL "https://security.ubuntu.com/ubuntu/pool/main/p/poppler/poppler-utils_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/poppler-utils.deb"
+          curl -fsSL "https://security.ubuntu.com/ubuntu/pool/main/p/poppler/libpoppler134_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/libpoppler134.deb"
+          sudo apt-get install -y "$RUNNER_TEMP/poppler/libpoppler134.deb" "$RUNNER_TEMP/poppler/poppler-utils.deb"
+          pdftoppm -v
+          pdfinfo -v
+
+      - name: Run report-card PDF visual regression
+        run: npm run test:visual:report-pdf
+
       - name: Build production application
         run: npm run build
+
+      - name: Verify traced report-card font assets
+        run: npm run verify:report-pdf-trace
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
@@ -49,7 +78,7 @@ jobs:
         run: npm run test:e2e
 
   database:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
@@ -104,6 +133,9 @@ jobs:
       - name: Run local report-snapshot integration tests
         run: npm run test:report-snapshots
 
+      - name: Run report-card PDF renderer tests
+        run: npm run test:report-pdf
+
       - name: Verify generated database types
         run: |
           npm run db:types
@@ -112,6 +144,18 @@ jobs:
 
       - name: Install Chromium for authentication tests
         run: npx playwright install --with-deps chromium
+
+      - name: Install pinned Poppler for PDF browser extraction
+        env:
+          POPPLER_VERSION: 24.02.0-1ubuntu9.9
+        run: |
+          sudo apt-get update
+          mkdir -p "$RUNNER_TEMP/poppler"
+          curl -fsSL "https://security.ubuntu.com/ubuntu/pool/main/p/poppler/poppler-utils_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/poppler-utils.deb"
+          curl -fsSL "https://security.ubuntu.com/ubuntu/pool/main/p/poppler/libpoppler134_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/libpoppler134.deb"
+          sudo apt-get install -y "$RUNNER_TEMP/poppler/libpoppler134.deb" "$RUNNER_TEMP/poppler/poppler-utils.deb"
+          pdftoppm -v
+          pdfinfo -v
 
       - name: Run local authentication browser tests
         run: npm run test:e2e:auth
@@ -139,6 +183,9 @@ jobs:
 
       - name: Run local report-snapshot browser tests
         run: npm run test:e2e:report-snapshots
+
+      - name: Run local report-card PDF browser tests
+        run: npm run test:e2e:report-pdf
 
       - name: Stop local Supabase
         if: always()

@@ -3,6 +3,7 @@ import Link from "next/link";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportPreview } from "@/components/report-snapshots/report-preview";
 import { Badge } from "@/components/ui/badge";
+import { buttonStyles } from "@/components/ui/button";
 import {
   getGeneratedReport,
   getReportHistory,
@@ -30,9 +31,18 @@ export default async function ReportDetailPage({
         title={report.snapshot_data.student.display_name}
         description={`${report.snapshot_data.student.admission_number} · ${report.snapshot_data.placement.class_name} · ${report.snapshot_data.academic_period.term_name}`}
         actions={
-          <Badge variant={report.superseded_by ? "neutral" : "success"}>
-            {report.superseded_by ? "Historical" : "Current"}
-          </Badge>
+          <div className="flex flex-wrap items-center gap-3">
+            <Badge variant={report.superseded_by ? "neutral" : "success"}>
+              {report.superseded_by ? "Historical" : "Current"}
+            </Badge>
+            <a
+              href={`/api/reports/${report.report_id}/pdf`}
+              className={buttonStyles({ size: "sm", variant: "secondary" })}
+              download
+            >
+              Download PDF
+            </a>
+          </div>
         }
       />
       <p className="text-muted-foreground text-sm">

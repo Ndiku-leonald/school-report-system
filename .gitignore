@@ -4,6 +4,8 @@ node_modules/
 # Next.js and build output
 .next/
 out/
+tmp/
+tmp-test-report-pdf.mjs
 
 # Test and coverage output
 coverage/

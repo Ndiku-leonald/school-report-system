@@ -5,6 +5,12 @@ const storageOrigin = supabaseUrl ? new URL(supabaseUrl) : null;
 
 const nextConfig: NextConfig = {
   reactStrictMode: true,
+  outputFileTracingIncludes: {
+    "/api/reports/[reportId]/pdf": [
+      "./assets/fonts/report-noto-sans-400.ttf",
+      "./assets/fonts/report-noto-sans-700.ttf",
+    ],
+  },
   experimental: {
     serverActions: {
       // Permit the application to receive a 5 MiB candidate and reject it
