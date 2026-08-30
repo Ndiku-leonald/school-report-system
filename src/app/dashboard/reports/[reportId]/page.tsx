@@ -42,6 +42,9 @@ export default async function ReportDetailPage({
             >
               {report.status}
             </Badge>
+            <Badge variant={report.superseded_by ? "neutral" : "success"}>
+              {report.superseded_by ? "Historical" : "Current"}
+            </Badge>
             <a
               href={`/api/reports/${report.report_id}/pdf`}
               className={buttonStyles({ size: "sm", variant: "secondary" })}
