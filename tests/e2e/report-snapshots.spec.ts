@@ -498,6 +498,30 @@ async function setup() {
     target_enrollment_id: fixture.enrollmentId,
   });
   if (regenerated.error) throw regenerated.error;
+  await database.query(
+    "insert into public.term_attendance(id,term_id,enrollment_id,days_open,days_present,days_absent,times_late,recorded_by) values($1,$2,$3,90,84,6,2,$4)",
+    [
+      fixture.attendanceId,
+      fixture.termId,
+      fixture.enrollmentId,
+      fixture.membershipId,
+    ],
+  );
+  await database.query(
+    "insert into public.student_term_comments(id,term_id,enrollment_id,class_teacher_comment,head_teacher_comment,conduct_grade,created_by,updated_by) values($1,$2,$3,'Browser comment','Browser head comment','A',$4,$4)",
+    [
+      fixture.commentId,
+      fixture.termId,
+      fixture.enrollmentId,
+      fixture.membershipId,
+    ],
+  );
+  const restored = await signedIn.rpc("generate_student_report_snapshot", {
+    target_calculation_run_id: fixture.runId,
+    target_enrollment_id: fixture.enrollmentId,
+  });
+  if (restored.error) throw restored.error;
+  generatedReportId = restored.data?.[0]?.report_id ?? generatedReportId;
 
   subjectTeacherEmail = `report-snapshot.browser-subject.${nonce}@example.invalid`;
   const subjectAuth = await admin!.auth.admin.createUser({
@@ -797,12 +821,16 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
   });
   test("35. missing attendance is explicit", async ({ page }) => {
     await openGeneratedReport(page);
+    await page.getByRole("link", { name: /Report v2/ }).click();
+    await page.waitForURL(/dashboard\/reports\//);
     await expect(
       page.getByText("Attendance unavailable for this snapshot."),
     ).toBeVisible();
   });
   test("36. missing comments are explicit", async ({ page }) => {
     await openGeneratedReport(page);
+    await page.getByRole("link", { name: /Report v2/ }).click();
+    await page.waitForURL(/dashboard\/reports\//);
     await expect(
       page.getByText("Comments unavailable for this snapshot."),
     ).toBeVisible();
@@ -974,7 +1002,7 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
   }) => {
     await openGeneratedReport(page);
     const historyLinks = page.getByRole("link", { name: /Report v/ });
-    await expect(historyLinks).toHaveCount(2);
+    await expect(historyLinks).toHaveCount(3);
     await historyLinks.filter({ hasText: "Report v1" }).click();
     await expect(page).toHaveURL(/dashboard\/reports\//);
     await expect(page.getByText("Browser comment")).toBeVisible();
