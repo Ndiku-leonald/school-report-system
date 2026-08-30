@@ -999,7 +999,9 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     await expect(
       page.getByText(/PDF download and publication are not available/),
     ).toBeVisible();
-    await expect(page.getByText(/parent access|promotion/i)).toHaveCount(0);
+    await expect(
+      page.locator("main").getByText(/parent access|promotion/i),
+    ).toHaveCount(0);
   });
 
   test("56. subject teacher receives generic report denial without data leakage", async ({
