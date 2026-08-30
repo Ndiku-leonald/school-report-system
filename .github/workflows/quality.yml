@@ -54,9 +54,11 @@ jobs:
         env:
           POPPLER_VERSION: 24.02.0-1ubuntu9.8
         run: |
-          sudo add-apt-repository -y universe
           sudo apt-get update
-          sudo apt-get install -y "poppler-utils=${POPPLER_VERSION}"
+          mkdir -p "$RUNNER_TEMP/poppler"
+          curl -fsSL "https://archive.ubuntu.com/ubuntu/pool/main/p/poppler/poppler-utils_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/poppler-utils.deb"
+          curl -fsSL "https://archive.ubuntu.com/ubuntu/pool/main/p/poppler/libpoppler134_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/libpoppler134.deb"
+          sudo apt-get install -y "$RUNNER_TEMP/poppler/libpoppler134.deb" "$RUNNER_TEMP/poppler/poppler-utils.deb"
           pdftoppm -v
           pdfinfo -v
 
@@ -147,9 +149,11 @@ jobs:
         env:
           POPPLER_VERSION: 24.02.0-1ubuntu9.8
         run: |
-          sudo add-apt-repository -y universe
           sudo apt-get update
-          sudo apt-get install -y "poppler-utils=${POPPLER_VERSION}"
+          mkdir -p "$RUNNER_TEMP/poppler"
+          curl -fsSL "https://archive.ubuntu.com/ubuntu/pool/main/p/poppler/poppler-utils_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/poppler-utils.deb"
+          curl -fsSL "https://archive.ubuntu.com/ubuntu/pool/main/p/poppler/libpoppler134_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/libpoppler134.deb"
+          sudo apt-get install -y "$RUNNER_TEMP/poppler/libpoppler134.deb" "$RUNNER_TEMP/poppler/poppler-utils.deb"
           pdftoppm -v
           pdfinfo -v
 
