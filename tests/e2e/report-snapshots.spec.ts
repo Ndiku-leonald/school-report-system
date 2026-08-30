@@ -863,8 +863,10 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("link", { name: "Download PDF", exact: true }).click();
     const download = await downloadPromise;
-    const currentReport = await page.locator("body").innerText();
-    const version = currentReport.match(/Report snapshot v(\d+)/)?.[1];
+    const versionLabel = page.getByText(/report snapshot v\d+/i);
+    await expect(versionLabel).toBeVisible();
+    const versionText = await versionLabel.textContent();
+    const version = versionText?.match(/report snapshot v(\d+)/i)?.[1];
     expect(version).toBeTruthy();
     expect(download.suggestedFilename()).toMatch(
       new RegExp(`-v${version}\\.pdf$`),
