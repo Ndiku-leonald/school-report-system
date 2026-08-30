@@ -106,9 +106,6 @@ jobs:
       - name: Run database tests
         run: npm run db:test
 
-      - name: Run report publication integration tests
-        run: npm run test:report-publication
-
       - name: Run local authentication integration tests
         run: npm run test:auth
 
@@ -138,6 +135,9 @@ jobs:
 
       - name: Run report-card PDF renderer tests
         run: npm run test:report-pdf
+
+      - name: Run report publication integration tests
+        run: npm run test:report-publication
 
       - name: Verify generated database types
         run: |
