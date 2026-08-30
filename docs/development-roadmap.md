@@ -326,7 +326,7 @@ focused renderer tests, a 25-case signed-in integration suite, a dedicated
 rows use measured heights and repeat headers across pages; comments paginate
 sequentially, and buffered pages render `Page X of Y`. `next.config.ts` traces
 both font files into the PDF route deployment output. CI uses the fixed
-`ubuntu-24.04` runner and Poppler package `24.02.0-1ubuntu9.8`, logging both
+`ubuntu-24.04` runner and Poppler package `24.02.0-1ubuntu9.9`, logging both
 `pdftoppm` and `pdfinfo` versions. No remote Supabase project or database
 migration is part of Stage 13.
 

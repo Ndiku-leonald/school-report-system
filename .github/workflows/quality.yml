@@ -52,12 +52,12 @@ jobs:
 
       - name: Install Poppler for PDF visual regression
         env:
-          POPPLER_VERSION: 24.02.0-1ubuntu9.8
+          POPPLER_VERSION: 24.02.0-1ubuntu9.9
         run: |
           sudo apt-get update
           mkdir -p "$RUNNER_TEMP/poppler"
-          curl -fsSL "https://archive.ubuntu.com/ubuntu/pool/main/p/poppler/poppler-utils_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/poppler-utils.deb"
-          curl -fsSL "https://archive.ubuntu.com/ubuntu/pool/main/p/poppler/libpoppler134_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/libpoppler134.deb"
+          curl -fsSL "https://security.ubuntu.com/ubuntu/pool/main/p/poppler/poppler-utils_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/poppler-utils.deb"
+          curl -fsSL "https://security.ubuntu.com/ubuntu/pool/main/p/poppler/libpoppler134_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/libpoppler134.deb"
           sudo apt-get install -y "$RUNNER_TEMP/poppler/libpoppler134.deb" "$RUNNER_TEMP/poppler/poppler-utils.deb"
           pdftoppm -v
           pdfinfo -v
@@ -147,12 +147,12 @@ jobs:
 
       - name: Install pinned Poppler for PDF browser extraction
         env:
-          POPPLER_VERSION: 24.02.0-1ubuntu9.8
+          POPPLER_VERSION: 24.02.0-1ubuntu9.9
         run: |
           sudo apt-get update
           mkdir -p "$RUNNER_TEMP/poppler"
-          curl -fsSL "https://archive.ubuntu.com/ubuntu/pool/main/p/poppler/poppler-utils_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/poppler-utils.deb"
-          curl -fsSL "https://archive.ubuntu.com/ubuntu/pool/main/p/poppler/libpoppler134_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/libpoppler134.deb"
+          curl -fsSL "https://security.ubuntu.com/ubuntu/pool/main/p/poppler/poppler-utils_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/poppler-utils.deb"
+          curl -fsSL "https://security.ubuntu.com/ubuntu/pool/main/p/poppler/libpoppler134_${POPPLER_VERSION}_amd64.deb" -o "$RUNNER_TEMP/poppler/libpoppler134.deb"
           sudo apt-get install -y "$RUNNER_TEMP/poppler/libpoppler134.deb" "$RUNNER_TEMP/poppler/poppler-utils.deb"
           pdftoppm -v
           pdfinfo -v

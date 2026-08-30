@@ -55,7 +55,7 @@ snapshot rejection, safe filenames, and forbidden active actions/URI entries.
 Visual regression rasterizes every stress page and the representative first
 page, comparing committed PNG baselines by exact SHA-256 equality (zero pixel
 tolerance). CI fixes the runner to `ubuntu-24.04`, installs Poppler
-`24.02.0-1ubuntu9.8`, and records `pdftoppm`/`pdfinfo` versions. The Next
+`24.02.0-1ubuntu9.9`, and records `pdftoppm`/`pdfinfo` versions. The Next
 output-file trace is checked for both bundled TTF files.
 
 `tests/report-pdf/report-pdf.integration.test.ts` runs 25 signed-in,
