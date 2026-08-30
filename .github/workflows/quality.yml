@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   validate:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
 
     steps:
@@ -51,13 +51,22 @@ jobs:
         run: npm run test:report-pdf
 
       - name: Install Poppler for PDF visual regression
-        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+        env:
+          POPPLER_VERSION: 24.02.0-1ubuntu9.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y "poppler-utils=${POPPLER_VERSION}"
+          pdftoppm -v
+          pdfinfo -v
 
       - name: Run report-card PDF visual regression
         run: npm run test:visual:report-pdf
 
       - name: Build production application
         run: npm run build
+
+      - name: Verify traced report-card font assets
+        run: npm run verify:report-pdf-trace
 
       - name: Install Chromium
         run: npx playwright install --with-deps chromium
@@ -66,7 +75,7 @@ jobs:
         run: npm run test:e2e
 
   database:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 30
 
     steps:
@@ -132,6 +141,15 @@ jobs:
 
       - name: Install Chromium for authentication tests
         run: npx playwright install --with-deps chromium
+
+      - name: Install pinned Poppler for PDF browser extraction
+        env:
+          POPPLER_VERSION: 24.02.0-1ubuntu9.1
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y "poppler-utils=${POPPLER_VERSION}"
+          pdftoppm -v
+          pdfinfo -v
 
       - name: Run local authentication browser tests
         run: npm run test:e2e:auth

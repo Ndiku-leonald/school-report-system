@@ -19,7 +19,9 @@
     "test:marks-workflow": "tsx scripts/run-local-marks-workflow-tests.ts",
     "test:results-engine": "tsx scripts/run-local-results-engine-tests.ts",
     "test:report-snapshots": "tsx scripts/run-local-report-snapshot-tests.ts",
-    "test:report-pdf": "tsx --conditions=react-server scripts/test-report-pdf.ts",
+    "test:report-pdf": "tsx --conditions=react-server scripts/run-local-report-pdf-tests.ts",
+    "test:report-pdf:unit": "tsx --conditions=react-server scripts/test-report-pdf.ts",
+    "verify:report-pdf-trace": "tsx scripts/verify-report-pdf-trace.ts",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "test:e2e:auth": "tsx scripts/run-local-auth-e2e.ts",
@@ -50,7 +52,6 @@
   },
   "packageManager": "npm@11.13.0",
   "dependencies": {
-    "@fontsource/noto-sans": "^5.3.0",
     "@hookform/resolvers": "^5.5.7",
     "@supabase/ssr": "^0.12.4",
     "@supabase/supabase-js": "^2.111.0",

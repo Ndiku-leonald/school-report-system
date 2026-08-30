@@ -25,11 +25,27 @@ export function pdfSubjectStatus(
   hasAbsence: boolean,
   hasExemption: boolean,
 ) {
-  if (hasExemption || status === "EXEMPTED") return "Exempted";
-  if (hasAbsence) return "Absent";
-  if (status === "COMPLETE") return "Complete";
+  // The frozen Stage 11 status is authoritative. The flags explain that
+  // status; they must not turn a valid COMPLETE result into a different
+  // academic state.
+  if (status === "EXEMPTED") return "Exempted";
   if (status === "INCOMPLETE") return "Incomplete";
+  if (status === "COMPLETE") {
+    return hasAbsence ? "Complete · absence recorded" : "Complete";
+  }
+  if (hasExemption) return "Exemption recorded";
+  if (hasAbsence) return "Absence recorded";
   return pdfText(status);
+}
+
+export function pdfPosition(
+  position: number | null | undefined,
+  isTied: boolean,
+  tieSize: number,
+) {
+  const value = pdfNumber(position);
+  if (value === "Unavailable" || !isTied) return value;
+  return tieSize > 1 ? `${value} (tie of ${tieSize})` : `${value} (tie)`;
 }
 
 export function safeReportFilename(report: GeneratedReport) {

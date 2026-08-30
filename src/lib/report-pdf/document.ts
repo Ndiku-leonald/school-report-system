@@ -4,10 +4,16 @@ import PDFDocument from "pdfkit";
 
 import type { ReportSnapshotData } from "@/lib/report-snapshots/types";
 
-import { pdfDate, pdfNumber, pdfSubjectStatus, pdfText } from "./format";
+import {
+  pdfDate,
+  pdfNumber,
+  pdfPosition,
+  pdfSubjectStatus,
+  pdfText,
+} from "./format";
 import type { ReportPdfData } from "./types";
 
-export const REPORT_PDF_LAYOUT_VERSION = "report-card-a4-v1";
+export const REPORT_PDF_LAYOUT_VERSION = "report-card-a4-v2";
 export const REPORT_PDF_FIXED_DATE = new Date("2000-01-01T00:00:00.000Z");
 
 const normalFont = join(
@@ -22,52 +28,76 @@ const boldFont = join(
   "fonts",
   "report-noto-sans-700.ttf",
 );
-
 const PAGE_WIDTH = 595.28;
 const PAGE_HEIGHT = 841.89;
 const LEFT = 36;
 const RIGHT = PAGE_WIDTH - 36;
-const BOTTOM = PAGE_HEIGHT - 48;
+const CONTENT_BOTTOM = PAGE_HEIGHT - 52;
 const INK = "#111111";
 const MUTED = "#4b4b4b";
 const RULE = "#777777";
 const LIGHT = "#eeeeee";
+const COLUMN_GAP = 7;
 
 type Pdf = InstanceType<typeof PDFDocument>;
+type PageState = { pageNumber: number };
 
-function drawFooter(doc: Pdf, pageNumber: number) {
+function drawFooter(doc: Pdf, pageNumber: number, pageCount: number) {
   doc
     .font(normalFont)
     .fontSize(7)
     .fillColor(MUTED)
     .text(
-      `PDF available to authorized staff. Publication and parent access are unavailable. | Page ${pageNumber} | Layout ${REPORT_PDF_LAYOUT_VERSION}`,
+      `PDF available to authorized staff. Publication and parent access are unavailable. | Page ${pageNumber} of ${pageCount} | Layout ${REPORT_PDF_LAYOUT_VERSION}`,
       LEFT,
       PAGE_HEIGHT - 29,
       { align: "center", width: RIGHT - LEFT, lineBreak: false },
     );
 }
 
-function newPage(doc: Pdf, pageNumber: number) {
+function newPage(doc: Pdf, state: PageState) {
   doc.addPage({ size: "A4", margin: 0 });
-  drawFooter(doc, pageNumber);
+  state.pageNumber += 1;
   doc.x = LEFT;
   doc.y = 36;
 }
 
+function ensureSpace(
+  doc: Pdf,
+  state: PageState,
+  requiredHeight: number,
+  onNewPage?: () => void,
+) {
+  if (doc.y + requiredHeight <= CONTENT_BOTTOM) return;
+  newPage(doc, state);
+  onNewPage?.();
+}
+
 function section(doc: Pdf, title: string) {
+  const y = doc.y;
   doc
     .font(boldFont)
     .fontSize(10)
     .fillColor(INK)
-    .text(title, LEFT, doc.y, { width: RIGHT - LEFT });
+    .text(title, LEFT, y, { width: RIGHT - LEFT, lineBreak: false });
   doc
-    .moveTo(LEFT, doc.y + 3)
-    .lineTo(RIGHT, doc.y + 3)
+    .moveTo(LEFT, y + 15)
+    .lineTo(RIGHT, y + 15)
     .lineWidth(0.7)
     .strokeColor(RULE)
     .stroke();
-  doc.y += 11;
+  doc.y = y + 23;
+}
+
+function textHeight(doc: Pdf, value: string, width: number, fontSize: number) {
+  doc.font(normalFont).fontSize(fontSize);
+  return doc.heightOfString(value, { width, lineGap: 1 });
+}
+
+function fieldHeight(doc: Pdf, label: string, value: string, width: number) {
+  return (
+    textHeight(doc, label, width, 7) + textHeight(doc, value, width, 9) + 8
+  );
 }
 
 function field(
@@ -78,6 +108,7 @@ function field(
   label: string,
   value: unknown,
 ) {
+  const displayValue = pdfText(value);
   doc
     .font(normalFont)
     .fontSize(7)
@@ -87,14 +118,48 @@ function field(
     .font(boldFont)
     .fontSize(9)
     .fillColor(INK)
-    .text(pdfText(value), x, y + 10, {
-      width,
-      height: 22,
-      ellipsis: true,
-    });
+    .text(displayValue, x, y + 10, { width, lineGap: 1 });
+  return fieldHeight(doc, label, displayValue, width);
 }
 
-function row(
+type GridField = { label: string; value: unknown };
+
+function gridHeight(doc: Pdf, fields: GridField[], widths: number[]) {
+  return Math.max(
+    ...fields.map((item, index) =>
+      fieldHeight(doc, item.label, pdfText(item.value), widths[index]),
+    ),
+  );
+}
+
+function drawGridRow(
+  doc: Pdf,
+  fields: GridField[],
+  widths: number[],
+  y: number,
+) {
+  const height = gridHeight(doc, fields, widths);
+  let x = LEFT;
+  fields.forEach((item, index) => {
+    field(doc, x, y, widths[index], item.label, item.value);
+    x += widths[index] + COLUMN_GAP;
+  });
+  return height;
+}
+
+function tableRowHeight(doc: Pdf, values: string[], widths: number[]) {
+  return Math.max(
+    24,
+    ...values.map((value, index) => {
+      doc.font(normalFont).fontSize(8);
+      return (
+        doc.heightOfString(value, { width: widths[index] - 8, lineGap: 1 }) + 10
+      );
+    }),
+  );
+}
+
+function tableRow(
   doc: Pdf,
   values: string[],
   widths: number[],
@@ -113,71 +178,145 @@ function row(
       .font(header ? boldFont : normalFont)
       .fontSize(header ? 7.5 : 8)
       .fillColor(INK)
-      .text(value, x + 4, y + 5, {
-        width: width - 8,
-        height: height - 7,
-        ellipsis: true,
-      });
+      .text(value, x + 4, y + 5, { width: width - 8, lineGap: 1 });
     x += width;
   });
 }
 
-function header(doc: Pdf, snapshot: ReportSnapshotData, reportVersion: number) {
+function drawHeader(
+  doc: Pdf,
+  snapshot: ReportSnapshotData,
+  reportVersion: number,
+) {
+  let y = 36;
   doc
     .font(boldFont)
     .fontSize(7)
     .fillColor(MUTED)
-    .text("STUDENT REPORT CARD", LEFT, 36, {
-      characterSpacing: 1,
+    .text("STUDENT REPORT CARD", LEFT, y, { characterSpacing: 1 });
+  y += 13;
+
+  const schoolName = pdfText(snapshot.school.name);
+  doc.font(boldFont).fontSize(16).fillColor(INK);
+  doc.text(schoolName, LEFT, y, { width: RIGHT - LEFT, lineGap: 1 });
+  y += doc.heightOfString(schoolName, { width: RIGHT - LEFT, lineGap: 1 }) + 4;
+
+  const schoolMeta = [
+    `School code: ${pdfText(snapshot.school.school_code)}`,
+    snapshot.school.motto ? `Motto: ${pdfText(snapshot.school.motto)}` : null,
+    snapshot.school.address
+      ? `Address: ${pdfText(snapshot.school.address)}`
+      : null,
+    snapshot.school.phone ? `Phone: ${pdfText(snapshot.school.phone)}` : null,
+    snapshot.school.email ? `Email: ${pdfText(snapshot.school.email)}` : null,
+    snapshot.school.website
+      ? `Website: ${pdfText(snapshot.school.website)}`
+      : null,
+  ]
+    .filter((value): value is string => Boolean(value))
+    .join(" | ");
+  doc.font(normalFont).fontSize(7.5).fillColor(MUTED);
+  doc.text(schoolMeta, LEFT, y, { width: RIGHT - LEFT, lineGap: 1 });
+  y += doc.heightOfString(schoolMeta, { width: RIGHT - LEFT, lineGap: 1 }) + 7;
+
+  doc.moveTo(LEFT, y).lineTo(RIGHT, y).lineWidth(1.5).strokeColor(INK).stroke();
+  y += 12;
+  const learner = pdfText(snapshot.student.display_name);
+  doc.font(boldFont).fontSize(13).fillColor(INK);
+  doc.text(learner, LEFT, y, { width: RIGHT - LEFT, lineGap: 1 });
+  y += doc.heightOfString(learner, { width: RIGHT - LEFT, lineGap: 1 }) + 3;
+  const period = `${pdfText(snapshot.academic_period.academic_year_name)} | ${pdfText(snapshot.academic_period.term_name)} | Report version ${reportVersion}`;
+  doc.font(normalFont).fontSize(8).fillColor(MUTED);
+  doc.text(period, LEFT, y, { width: RIGHT - LEFT, lineGap: 1 });
+  y += doc.heightOfString(period, { width: RIGHT - LEFT, lineGap: 1 }) + 9;
+  doc.y = y;
+}
+
+function drawSubjectTable(
+  doc: Pdf,
+  state: PageState,
+  subjects: ReportPdfData["subjects"],
+) {
+  const widths = [150, 62, 62, 77, 72, RIGHT - LEFT - 423];
+  const headings = [
+    "Subject",
+    "Score",
+    "Grade",
+    "Aggregate",
+    "Position",
+    "Status",
+  ];
+  const drawTableHeader = (title: string) => {
+    section(doc, title);
+    tableRow(doc, headings, widths, doc.y, 24, true);
+    doc.y += 24;
+  };
+
+  ensureSpace(doc, state, 50);
+  drawTableHeader("Subject results");
+  const orderedSubjects = [...subjects].sort(
+    (left, right) =>
+      left.sort_order - right.sort_order ||
+      left.subject_id.localeCompare(right.subject_id),
+  );
+  for (const subject of orderedSubjects) {
+    const values = [
+      pdfText(subject.subject_name),
+      pdfNumber(subject.subject_score),
+      pdfText(subject.grade),
+      pdfNumber(subject.aggregate_points),
+      pdfPosition(
+        subject.subject_position,
+        subject.subject_is_tied,
+        subject.subject_tie_size,
+      ),
+      `${pdfSubjectStatus(subject.subject_status, subject.has_absence, subject.has_exemption)}${subject.subject_is_tied ? ` (tie of ${subject.subject_tie_size})` : ""}`,
+    ];
+    const height = tableRowHeight(doc, values, widths);
+    ensureSpace(doc, state, height, () =>
+      drawTableHeader("Subject results (continued)"),
+    );
+    tableRow(doc, values, widths, doc.y, height);
+    doc.y += height;
+  }
+  doc.y += 12;
+}
+
+function drawLabeledParagraph(
+  doc: Pdf,
+  state: PageState,
+  label: string,
+  value: unknown,
+) {
+  const text = `${label}: ${pdfText(value)}`;
+  const height = textHeight(doc, text, RIGHT - LEFT, 8) + 5;
+  ensureSpace(doc, state, height);
+  doc
+    .font(normalFont)
+    .fontSize(8)
+    .fillColor(INK)
+    .text(text, LEFT, doc.y, {
+      width: RIGHT - LEFT,
+      lineGap: 1,
     });
-  doc
-    .font(boldFont)
-    .fontSize(17)
-    .fillColor(INK)
-    .text(pdfText(snapshot.school.name), LEFT, 49);
-  doc
-    .font(normalFont)
-    .fontSize(8)
-    .fillColor(MUTED)
-    .text(
-      `${pdfText(snapshot.school.school_code)}${snapshot.school.address ? ` | ${pdfText(snapshot.school.address)}` : ""}`,
-      LEFT,
-      70,
-    );
-  doc
-    .moveTo(LEFT, 88)
-    .lineTo(RIGHT, 88)
-    .lineWidth(1.5)
-    .strokeColor(INK)
-    .stroke();
-  doc
-    .font(boldFont)
-    .fontSize(13)
-    .fillColor(INK)
-    .text(pdfText(snapshot.student.display_name), LEFT, 101);
-  doc
-    .font(normalFont)
-    .fontSize(8)
-    .fillColor(MUTED)
-    .text(
-      `${pdfText(snapshot.academic_period.academic_year_name)} | ${pdfText(snapshot.academic_period.term_name)} | Report version ${reportVersion}`,
-      LEFT,
-      119,
-    );
-  doc.y = 143;
+  doc.y += height;
+}
+
+function finishFooters(doc: Pdf) {
+  const range = doc.bufferedPageRange();
+  for (let index = 0; index < range.count; index += 1) {
+    doc.switchToPage(range.start + index);
+    drawFooter(doc, index + 1, range.count);
+  }
 }
 
 export function writeReportCardPdf(data: ReportPdfData) {
   const { report, subjects } = data;
   const snapshot = report.snapshot_data;
   const summary = snapshot.academic_summary;
-  const orderedSubjects = [...subjects].sort(
-    (left, right) =>
-      left.sort_order - right.sort_order ||
-      left.subject_id.localeCompare(right.subject_id),
-  );
   const doc = new PDFDocument({
     autoFirstPage: false,
+    bufferPages: true,
     compress: true,
     info: {
       Author: "School report system",
@@ -192,276 +331,205 @@ export function writeReportCardPdf(data: ReportPdfData) {
     pdfVersion: "1.7",
     size: "A4",
   });
-  let pageNumber = 1;
-  newPage(doc, pageNumber);
-  header(doc, snapshot, report.report_version);
+  const state: PageState = { pageNumber: 0 };
+  newPage(doc, state);
+  drawHeader(doc, snapshot, report.report_version);
 
+  const three = (RIGHT - LEFT - COLUMN_GAP * 2) / 3;
+  const widths = [three, three, three];
   section(doc, "Learner and placement");
-  const three = (RIGHT - LEFT - 14) / 3;
-  let y = doc.y;
-  field(
-    doc,
-    LEFT,
-    y,
-    three,
-    "Admission number",
-    snapshot.student.admission_number,
-  );
-  field(doc, LEFT + three + 7, y, three, "Gender", snapshot.student.gender);
-  field(
-    doc,
-    LEFT + (three + 7) * 2,
-    y,
-    three,
-    "Date of birth",
-    pdfDate(snapshot.student.date_of_birth),
-  );
-  y += 39;
-  field(doc, LEFT, y, three, "Grade", snapshot.placement.grade_name);
-  field(
-    doc,
-    LEFT + three + 7,
-    y,
-    three,
-    "Class",
-    snapshot.placement.class_name,
-  );
-  field(
-    doc,
-    LEFT + (three + 7) * 2,
-    y,
-    three,
-    "Class code",
-    snapshot.placement.class_code,
-  );
-  doc.y = y + 36;
+  const learnerRows: GridField[][] = [
+    [
+      { label: "Admission number", value: snapshot.student.admission_number },
+      { label: "Grade", value: snapshot.placement.grade_name },
+      { label: "Class", value: snapshot.placement.class_name },
+    ],
+    [
+      { label: "Class code", value: snapshot.placement.class_code },
+      {
+        label: "Academic year",
+        value: snapshot.academic_period.academic_year_name,
+      },
+      { label: "Term", value: snapshot.academic_period.term_name },
+    ],
+  ];
+  for (const row of learnerRows) {
+    const height = gridHeight(doc, row, widths);
+    ensureSpace(doc, state, height);
+    drawGridRow(doc, row, widths, doc.y);
+    doc.y += height + 5;
+  }
+  doc.y += 7;
 
   section(doc, "Academic summary");
+  const summaryRows: GridField[][] = [
+    [
+      { label: "Overall total", value: pdfNumber(summary.overall_total) },
+      { label: "Overall average", value: pdfNumber(summary.overall_average) },
+      { label: "Overall grade", value: summary.overall_grade },
+    ],
+    [
+      { label: "Aggregate", value: pdfNumber(summary.aggregate_total) },
+      { label: "Classification", value: summary.aggregate_classification },
+      {
+        label: "Status",
+        value: summary.is_complete ? "Complete" : "Incomplete",
+      },
+    ],
+    [
+      {
+        label: "Class position",
+        value: pdfPosition(
+          summary.class_position,
+          summary.class_is_tied,
+          summary.class_tie_size,
+        ),
+      },
+      {
+        label: "Grade-level position",
+        value: pdfPosition(
+          summary.grade_level_position,
+          summary.grade_level_is_tied,
+          summary.grade_level_tie_size,
+        ),
+      },
+      {
+        label: "Subjects complete",
+        value: `${summary.complete_subject_count} of ${summary.subject_count}`,
+      },
+    ],
+  ];
+  const summaryHeight = summaryRows.reduce(
+    (total, row) => total + gridHeight(doc, row, widths) + 5,
+    7,
+  );
+  ensureSpace(doc, state, summaryHeight + 7);
+  const summaryBoxY = doc.y;
   doc
-    .roundedRect(LEFT, doc.y, RIGHT - LEFT, 65, 2)
+    .roundedRect(LEFT, summaryBoxY, RIGHT - LEFT, summaryHeight, 2)
     .lineWidth(0.7)
     .strokeColor("#444444")
     .stroke();
-  y = doc.y + 9;
-  field(
-    doc,
-    LEFT + 8,
-    y,
-    three - 8,
-    "Overall total",
-    pdfNumber(summary.overall_total),
-  );
-  field(
-    doc,
-    LEFT + three + 7,
-    y,
-    three,
-    "Overall average",
-    pdfNumber(summary.overall_average),
-  );
-  field(
-    doc,
-    LEFT + (three + 7) * 2,
-    y,
-    three - 8,
-    "Overall grade",
-    summary.overall_grade,
-  );
-  y += 38;
-  field(
-    doc,
-    LEFT + 8,
-    y,
-    three - 8,
-    "Aggregate",
-    pdfNumber(summary.aggregate_total),
-  );
-  field(
-    doc,
-    LEFT + three + 7,
-    y,
-    three,
-    "Classification",
-    summary.aggregate_classification,
-  );
-  field(
-    doc,
-    LEFT + (three + 7) * 2,
-    y,
-    three - 8,
-    "Status",
-    summary.is_complete ? "Complete" : "Incomplete",
-  );
-  doc.y += 77;
-
-  section(doc, "Subject results");
-  const widths = [150, 62, 62, 77, 72, RIGHT - LEFT - 423];
-  const headings = [
-    "Subject",
-    "Score",
-    "Grade",
-    "Aggregate",
-    "Position",
-    "Status",
-  ];
-  row(doc, headings, widths, doc.y, 22, true);
-  y = doc.y + 22;
-  for (const subject of orderedSubjects) {
-    if (y > BOTTOM - 28) {
-      pageNumber += 1;
-      newPage(doc, pageNumber);
-      section(doc, "Subject results (continued)");
-      row(doc, headings, widths, doc.y, 22, true);
-      y = doc.y + 22;
-    }
-    row(
-      doc,
-      [
-        pdfText(subject.subject_name),
-        pdfNumber(subject.subject_score),
-        pdfText(subject.grade),
-        pdfNumber(subject.aggregate_points),
-        pdfNumber(subject.subject_position),
-        `${pdfSubjectStatus(subject.subject_status, subject.has_absence, subject.has_exemption)}${subject.subject_is_tied ? " (tied)" : ""}`,
-      ],
-      widths,
-      y,
-      22,
-    );
-    y += 22;
+  doc.y = summaryBoxY + 7;
+  for (const row of summaryRows) {
+    const height = drawGridRow(doc, row, widths, doc.y);
+    doc.y += height + 5;
   }
-  doc.y = y + 13;
+  doc.y = summaryBoxY + summaryHeight + 12;
 
-  if (doc.y > 520) {
-    pageNumber += 1;
-    newPage(doc, pageNumber);
-  }
+  drawSubjectTable(doc, state, subjects);
+
+  ensureSpace(doc, state, 45);
   section(doc, "Attendance and comments");
-  const half = (RIGHT - LEFT - 12) / 2;
   const attendance = snapshot.attendance;
+  const half = (RIGHT - LEFT - COLUMN_GAP) / 2;
+  const attendanceRows: GridField[][] = [
+    [
+      { label: "Days open", value: attendance?.days_open },
+      { label: "Present", value: attendance?.days_present },
+    ],
+    [
+      { label: "Absent", value: attendance?.days_absent },
+      { label: "Times late", value: attendance?.times_late },
+    ],
+  ];
+  const attendanceWidths = [half, half];
+  if (!attendance) {
+    ensureSpace(doc, state, 22);
+    doc
+      .font(normalFont)
+      .fontSize(8)
+      .fillColor(MUTED)
+      .text("Attendance unavailable for this snapshot.", LEFT, doc.y, {
+        width: RIGHT - LEFT,
+      });
+    doc.y += 22;
+  } else {
+    for (const row of attendanceRows) {
+      const height = drawGridRow(doc, row, attendanceWidths, doc.y);
+      doc.y += height + 5;
+    }
+  }
+  doc.y += 4;
+
   const comments = snapshot.comments;
-  field(doc, LEFT, doc.y, half, "Days open", attendance?.days_open);
-  field(doc, LEFT, doc.y + 30, half, "Present", attendance?.days_present);
-  field(doc, LEFT + half + 12, doc.y, half, "Absent", attendance?.days_absent);
-  field(
-    doc,
-    LEFT + half + 12,
-    doc.y + 30,
-    half,
-    "Times late",
-    attendance?.times_late,
-  );
-  if (!attendance)
-    doc
-      .font(normalFont)
-      .fontSize(8)
-      .fillColor(MUTED)
-      .text("Attendance unavailable for this snapshot.", LEFT, doc.y + 15);
-  const commentY = doc.y + 68;
-  doc
-    .font(normalFont)
-    .fontSize(8)
-    .fillColor(INK)
-    .text(
-      `Class teacher: ${pdfText(comments?.class_teacher_comment)}`,
-      LEFT + half + 12,
-      commentY,
-      { width: half },
+  if (!comments) {
+    drawLabeledParagraph(
+      doc,
+      state,
+      "Comments",
+      "Comments unavailable for this snapshot.",
     );
-  doc
-    .font(normalFont)
-    .fontSize(8)
-    .fillColor(INK)
-    .text(
-      `Head teacher: ${pdfText(comments?.head_teacher_comment)}`,
-      LEFT + half + 12,
-      commentY + 17,
-      { width: half },
+  } else {
+    drawLabeledParagraph(
+      doc,
+      state,
+      "Class teacher comment",
+      comments.class_teacher_comment,
     );
-  doc
-    .font(normalFont)
-    .fontSize(8)
-    .fillColor(INK)
-    .text(
-      `Conduct: ${pdfText(comments?.conduct_grade)}`,
-      LEFT + half + 12,
-      commentY + 34,
-      { width: half },
+    drawLabeledParagraph(
+      doc,
+      state,
+      "Head teacher comment",
+      comments.head_teacher_comment,
     );
-  if (!comments)
-    doc
-      .font(normalFont)
-      .fontSize(8)
-      .fillColor(MUTED)
-      .text(
-        "Comments unavailable for this snapshot.",
-        LEFT + half + 12,
-        commentY,
-        { width: half },
-      );
-  doc.y = commentY + 52;
+    drawLabeledParagraph(doc, state, "Conduct", comments.conduct_grade);
+  }
 
+  ensureSpace(doc, state, 48);
   section(doc, "Next term");
-  doc
-    .font(normalFont)
-    .fontSize(8.5)
-    .fillColor(INK)
-    .text(
-      snapshot.next_term
-        ? `${pdfText(snapshot.next_term.term_name)} | starts ${pdfDate(snapshot.next_term.starts_on)}`
-        : "Next term information unavailable for this snapshot.",
-      LEFT,
-      doc.y,
-      { width: RIGHT - LEFT },
-    );
-  doc.y += 27;
+  drawLabeledParagraph(
+    doc,
+    state,
+    "Next term",
+    snapshot.next_term
+      ? `${pdfText(snapshot.next_term.term_name)} | starts ${pdfDate(snapshot.next_term.starts_on)}`
+      : "Next term information unavailable for this snapshot.",
+  );
 
+  ensureSpace(doc, state, 82);
   section(doc, "Signatories");
-  const signY = doc.y;
-  doc
-    .moveTo(LEFT, signY + 25)
-    .lineTo(LEFT + half - 10, signY + 25)
-    .strokeColor(RULE)
-    .stroke();
-  doc
-    .moveTo(LEFT + half + 12, signY + 25)
-    .lineTo(RIGHT, signY + 25)
-    .strokeColor(RULE)
-    .stroke();
-  field(
+  const signatoryRows: GridField[] = [
+    {
+      label: "Class teacher",
+      value: snapshot.signatories.class_teacher?.display_name,
+    },
+    {
+      label: "Head teacher",
+      value: snapshot.signatories.head_teacher?.display_name,
+    },
+  ];
+  const signatoryHeight = drawGridRow(
     doc,
-    LEFT,
-    signY + 30,
-    half - 10,
-    "Class teacher",
-    snapshot.signatories.class_teacher?.display_name,
+    signatoryRows,
+    attendanceWidths,
+    doc.y,
   );
-  field(
-    doc,
-    LEFT + half + 12,
-    signY + 30,
-    half - 12,
-    "Head teacher",
-    snapshot.signatories.head_teacher?.display_name,
-  );
-  doc.y = signY + 68;
+  doc.y += signatoryHeight + 12;
 
+  ensureSpace(doc, state, 85);
   section(doc, "Snapshot fingerprint");
-  doc
-    .font(normalFont)
-    .fontSize(7.5)
-    .fillColor(INK)
-    .text(
-      `Report snapshot SHA-256: ${pdfText(report.snapshot_checksum)}`,
-      LEFT,
-      doc.y,
-    );
-  doc.text(
-    `Calculation input SHA-256: ${pdfText(report.input_checksum)}`,
-    LEFT,
-    doc.y + 13,
+  drawLabeledParagraph(
+    doc,
+    state,
+    "Report snapshot SHA-256",
+    report.snapshot_checksum,
   );
-  doc.text(`Layout: ${REPORT_PDF_LAYOUT_VERSION}`, LEFT, doc.y + 26);
+  drawLabeledParagraph(
+    doc,
+    state,
+    "Calculation input SHA-256",
+    report.input_checksum,
+  );
+  drawLabeledParagraph(
+    doc,
+    state,
+    "Calculation output SHA-256",
+    report.output_checksum,
+  );
+  drawLabeledParagraph(doc, state, "Layout", REPORT_PDF_LAYOUT_VERSION);
+
+  finishFooters(doc);
   doc.end();
   return doc;
 }

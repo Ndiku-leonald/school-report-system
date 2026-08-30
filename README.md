@@ -30,7 +30,9 @@ concurrency-protected submission, review, return, resubmission, approval,
 locking, term-phase, and correction-revision RPCs. Stage 11 calculates
 immutable term-and-grade results only from the latest locked mark-sheet
 revisions. Stage 12 report snapshots are now rendered by a Node-only A4 PDF
-route for authorized staff. Publication, parent access, analytics, and
+route for authorized staff. PDF rendering uses PDFKit 0.20.1, immutable
+snapshot values, measured multipage layout, buffered `Page X of Y` footers,
+and traced local fonts. Publication, parent access, analytics, and
 promotion processing remain later-stage work.
 
 Stage 7 adds `/dashboard/students`, admission and profile workflows, guarded
