@@ -818,6 +818,14 @@ revoke all on function internal.report_artifact_access(text, boolean) from publi
 revoke all on function internal.report_artifact_upload_access(text) from public, anon, authenticated;
 revoke all on function internal.report_artifact_cleanup_access(text) from public, anon, authenticated;
 
+-- Storage evaluates every object policy as authenticated, including policies
+-- for other buckets. Keep these helpers non-public but grant the role the
+-- execution privilege required for policy evaluation; each helper performs
+-- its own selected-membership and permission checks.
+grant execute on function internal.report_artifact_access(text, boolean) to authenticated;
+grant execute on function internal.report_artifact_upload_access(text) to authenticated;
+grant execute on function internal.report_artifact_cleanup_access(text) to authenticated;
+
 revoke all on function public.register_report_pdf_artifact(uuid, bigint, text, text, bigint, text) from public, anon, authenticated;
 revoke all on function public.review_generated_report(uuid, bigint) from public, anon, authenticated;
 revoke all on function public.publish_reviewed_report(uuid, bigint) from public, anon, authenticated;
