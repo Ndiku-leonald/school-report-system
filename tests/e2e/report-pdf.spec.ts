@@ -304,7 +304,7 @@ test.describe
   });
   test("26. report version is visible", async ({ page }) => {
     await openReport(page);
-    await expect(page.getByText(/Report version \d+/)).toBeVisible();
+    await expect(page.getByText(/report snapshot v\d+/i)).toBeVisible();
   });
   test("27. mobile report page keeps the control usable", async ({ page }) => {
     await page.setViewportSize({ width: 390, height: 844 });
