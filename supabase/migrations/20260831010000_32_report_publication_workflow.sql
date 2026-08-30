@@ -494,9 +494,9 @@ begin
     report_school_id
   );
 
-  select report.* into report
-  from public.reports report
-  where report.id = target_report_id
+  select r.* into report
+  from public.reports r
+  where r.id = target_report_id
   for update;
   if not found or report.calculation_run_id is null
      or report.status <> 'GENERATED' or report.superseded_by is not null then
@@ -586,7 +586,7 @@ begin
   perform internal.lock_and_require_current_report_calculation_source(
     (select calculation_run_id from public.reports where id = target_report_id), report_school_id
   );
-  select report.* into report from public.reports report where report.id = target_report_id for update;
+  select r.* into report from public.reports r where r.id = target_report_id for update;
   if not found or report.status <> 'GENERATED' or report.superseded_by is not null
      or report.pdf_storage_path is null then
     raise exception 'REPORT_NOT_REVIEWABLE' using errcode = '55000';
@@ -643,7 +643,7 @@ begin
   where candidate.term_id = (select term_id from public.reports where id = target_report_id)
     and candidate.enrollment_id = (select enrollment_id from public.reports where id = target_report_id)
   order by candidate.id for update;
-  select report.* into report from public.reports report where report.id = target_report_id for update;
+  select r.* into report from public.reports r where r.id = target_report_id for update;
   if not found or report.status <> 'REVIEWED' or report.superseded_by is not null
      or report.pdf_storage_path is null or report.reviewed_at is null then
     raise exception 'REPORT_NOT_PUBLISHABLE' using errcode = '55000';
@@ -720,7 +720,7 @@ begin
   select * into actor from internal.lock_and_require_report_authority(
     report_school_id, array['REPORTS_WITHDRAW']::public.app_permission[]
   );
-  select report.* into report from public.reports report where report.id = target_report_id for update;
+  select r.* into report from public.reports r where r.id = target_report_id for update;
   if not found or report.status <> 'PUBLISHED' then
     raise exception 'REPORT_NOT_WITHDRAWABLE' using errcode = '55000';
   end if;
@@ -791,16 +791,16 @@ declare
   report_school_id uuid;
 begin
   select year.school_id into report_school_id
-  from public.reports report
-  join public.terms term on term.id = report.term_id
+  from public.reports r
+  join public.terms term on term.id = r.term_id
   join public.academic_years year on year.id = term.academic_year_id
-  where report.id = target_report_id;
+  where r.id = target_report_id;
   if not found then raise exception 'REPORT_NOT_FOUND' using errcode = 'P0002'; end if;
   select * into actor from internal.lock_and_require_report_authority(
     report_school_id,
     array['REPORTS_VIEW_ALL','REPORTS_GENERATE','REPORTS_VIEW_ASSIGNED']::public.app_permission[]
   );
-  select report.* into report from public.reports report where report.id = target_report_id for update;
+  select r.* into report from public.reports r where r.id = target_report_id for update;
   if not found or not internal.current_user_can_read_report(target_report_id)
      or report.file_checksum is distinct from verified_checksum then
     raise exception 'REPORT_ARTIFACT_ACCESS_DENIED' using errcode = '42501';
