@@ -50,9 +50,6 @@ jobs:
       - name: Run report-card PDF renderer tests
         run: npm run test:report-pdf
 
-      - name: Run report publication integration tests
-        run: npm run test:report-publication
-
       - name: Install Poppler for PDF visual regression
         env:
           POPPLER_VERSION: 24.02.0-1ubuntu9.9
@@ -108,6 +105,9 @@ jobs:
 
       - name: Run database tests
         run: npm run db:test
+
+      - name: Run report publication integration tests
+        run: npm run test:report-publication
 
       - name: Run local authentication integration tests
         run: npm run test:auth

@@ -479,10 +479,10 @@ declare
   changed public.reports%rowtype;
 begin
   select year.school_id into report_school_id
-  from public.reports report
-  join public.terms term on term.id = report.term_id
+  from public.reports r
+  join public.terms term on term.id = r.term_id
   join public.academic_years year on year.id = term.academic_year_id
-  where report.id = target_report_id;
+  where r.id = target_report_id;
   if not found then raise exception 'REPORT_NOT_FOUND' using errcode = 'P0002'; end if;
 
   select * into actor from internal.lock_and_require_report_authority(
@@ -575,10 +575,10 @@ declare
   changed public.reports%rowtype;
 begin
   select year.school_id into report_school_id
-  from public.reports report
-  join public.terms term on term.id = report.term_id
+  from public.reports r
+  join public.terms term on term.id = r.term_id
   join public.academic_years year on year.id = term.academic_year_id
-  where report.id = target_report_id;
+  where r.id = target_report_id;
   if not found then raise exception 'REPORT_NOT_FOUND' using errcode = 'P0002'; end if;
   select * into actor from internal.lock_and_require_report_authority(
     report_school_id, array['REPORTS_REVIEW']::public.app_permission[]
@@ -625,10 +625,10 @@ declare
   report_school_id uuid;
 begin
   select year.school_id into report_school_id
-  from public.reports report
-  join public.terms term on term.id = report.term_id
+  from public.reports r
+  join public.terms term on term.id = r.term_id
   join public.academic_years year on year.id = term.academic_year_id
-  where report.id = target_report_id;
+  where r.id = target_report_id;
   if not found then raise exception 'REPORT_NOT_FOUND' using errcode = 'P0002'; end if;
   select * into actor from internal.lock_and_require_report_authority(
     report_school_id, array['REPORTS_PUBLISH']::public.app_permission[]
@@ -712,10 +712,10 @@ begin
     raise exception 'REPORT_WITHDRAWAL_REASON_REQUIRED' using errcode = '22023';
   end if;
   select year.school_id into report_school_id
-  from public.reports report
-  join public.terms term on term.id = report.term_id
+  from public.reports r
+  join public.terms term on term.id = r.term_id
   join public.academic_years year on year.id = term.academic_year_id
-  where report.id = target_report_id;
+  where r.id = target_report_id;
   if not found then raise exception 'REPORT_NOT_FOUND' using errcode = 'P0002'; end if;
   select * into actor from internal.lock_and_require_report_authority(
     report_school_id, array['REPORTS_WITHDRAW']::public.app_permission[]
@@ -762,14 +762,8 @@ security definer
 set search_path = pg_catalog, public, internal
 as $$
 declare
-  report_school_id uuid;
 begin
-  select year.school_id into report_school_id
-  from public.reports report
-  join public.terms term on term.id = report.term_id
-  join public.academic_years year on year.id = term.academic_year_id
-  where report.id = target_report_id;
-  if not found or not internal.current_user_can_read_report(target_report_id) then
+  if not internal.current_user_can_read_report(target_report_id) then
     raise exception 'REPORT_NOT_FOUND' using errcode = 'P0002';
   end if;
   return query
