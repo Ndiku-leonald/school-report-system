@@ -4,6 +4,7 @@ import {
   contentDisposition,
   pdfDate,
   pdfNumber,
+  pdfPosition,
   pdfSubjectStatus,
   pdfText,
   safeReportFilename,
@@ -38,8 +39,18 @@ describe("report PDF formatting", () => {
 
   it("renders subject states as readable labels", () => {
     expect(pdfSubjectStatus("COMPLETE", false, false)).toBe("Complete");
-    expect(pdfSubjectStatus("INCOMPLETE", true, false)).toBe("Absent");
+    expect(pdfSubjectStatus("COMPLETE", true, false)).toBe(
+      "Complete · absence recorded",
+    );
+    expect(pdfSubjectStatus("COMPLETE", false, true)).toBe("Complete");
+    expect(pdfSubjectStatus("INCOMPLETE", true, false)).toBe("Incomplete");
     expect(pdfSubjectStatus("EXEMPTED", false, true)).toBe("Exempted");
+  });
+
+  it("keeps frozen numeric positions visible when tied", () => {
+    expect(pdfPosition(2, true, 2)).toBe("2 (tie of 2)");
+    expect(pdfPosition(4, false, 3)).toBe("4");
+    expect(pdfPosition(null, true, 2)).toBe("Unavailable");
   });
 
   it("normalizes dynamic filename segments to safe ASCII", () => {

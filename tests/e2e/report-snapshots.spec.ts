@@ -863,7 +863,12 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     const downloadPromise = page.waitForEvent("download");
     await page.getByRole("link", { name: "Download PDF", exact: true }).click();
     const download = await downloadPromise;
-    expect(download.suggestedFilename()).toMatch(/-v2\.pdf$/);
+    const currentReport = await page.locator("body").innerText();
+    const version = currentReport.match(/Report version\s+(\d+)/)?.[1];
+    expect(version).toBeTruthy();
+    expect(download.suggestedFilename()).toMatch(
+      new RegExp(`-v${version}\\.pdf$`),
+    );
   });
   test("41. publication remains unavailable", async ({ page }) => {
     await openGeneratedReport(page);

@@ -6,7 +6,11 @@ import {
 } from "../src/lib/report-pdf/format";
 import { renderReportCardPdf } from "../src/lib/report-pdf/render";
 
-import { reportPdfFixture } from "./report-pdf-fixture";
+import {
+  reportPdfFixture,
+  reportPdfLongCommentFixture,
+  reportPdfManySubjectsFixture,
+} from "./report-pdf-fixture";
 
 async function main() {
   const pdf = await renderReportCardPdf(reportPdfFixture);
@@ -20,7 +24,33 @@ async function main() {
   );
   assert.doesNotMatch(
     pdf.toString("latin1"),
-    /\/(?:JavaScript|JS|Launch|OpenAction)\b/i,
+    /\/(?:JavaScript|JS|Launch|OpenAction|URI)\b/i,
+  );
+
+  for (const fixture of [
+    reportPdfLongCommentFixture,
+    reportPdfManySubjectsFixture,
+  ]) {
+    const first = await renderReportCardPdf(fixture);
+    const second = await renderReportCardPdf(fixture);
+    assert.equal(
+      first.compare(second),
+      0,
+      "stress report must be deterministic",
+    );
+    assert.ok(
+      first.byteLength > pdf.byteLength,
+      "stress report should contain its additional content",
+    );
+  }
+
+  await assert.rejects(
+    () =>
+      renderReportCardPdf({
+        ...reportPdfFixture,
+        report: { ...reportPdfFixture.report, snapshot_data: {} },
+      } as never),
+    /stored report snapshot is invalid/,
   );
 
   const filename = safeReportFilename(reportPdfFixture.report);
@@ -39,7 +69,7 @@ async function main() {
     "rendered report should contain the full report card",
   );
   console.log(
-    `report-pdf tests passed (1 PDF, ${pdf.byteLength} bytes, deterministic)`,
+    `report-pdf tests passed (3 PDFs, ${pdf.byteLength} bytes typical, deterministic)`,
   );
 }
 

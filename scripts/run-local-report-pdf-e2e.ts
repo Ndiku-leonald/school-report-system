@@ -29,7 +29,7 @@ if (
 }
 const result = spawnSync(
   "npx",
-  ["playwright", "test", "tests/e2e/report-snapshots.spec.ts"],
+  ["playwright", "test", "tests/e2e/report-pdf.spec.ts"],
   {
     env: {
       ...process.env,
@@ -38,6 +38,7 @@ const result = spawnSync(
       SUPABASE_SERVICE_ROLE_KEY: local.SERVICE_ROLE_KEY,
       SUPABASE_LOCAL_DB_URL: local.DB_URL,
       REPORT_SNAPSHOTS_E2E: "1",
+      REPORT_PDF_E2E: "1",
     },
     stdio: "inherit",
     shell: true,

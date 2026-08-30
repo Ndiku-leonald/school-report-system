@@ -123,7 +123,7 @@ export const reportPdfFixture: ReportPdfData = {
       subject_status: "COMPLETE",
       is_pass: true,
       assessed_weight: 1,
-      has_absence: false,
+      has_absence: true,
       has_exemption: false,
       subject_tie_size: 1,
       subject_is_tied: false,
@@ -138,7 +138,7 @@ export const reportPdfFixture: ReportPdfData = {
       subject_score: 84,
       grade: "A",
       aggregate_points: 1,
-      subject_position: 3,
+      subject_position: 2,
       subject_status: "COMPLETE",
       is_pass: true,
       assessed_weight: 1,
@@ -170,3 +170,70 @@ export const reportPdfFixture: ReportPdfData = {
     },
   ],
 };
+
+const cloneFixture = () => structuredClone(reportPdfFixture);
+
+export const reportPdfLongCommentFixture: ReportPdfData = (() => {
+  const fixture = cloneFixture();
+  fixture.report.snapshot_data.comments = {
+    class_teacher_comment:
+      "Class teacher observation: the learner has shown steady curiosity, careful collaboration, and a willingness to revise work after useful feedback. ".repeat(
+        8,
+      ),
+    head_teacher_comment:
+      "Head teacher observation: continue practising clear explanations, independent planning, respectful leadership, and consistent preparation for every learning activity. ".repeat(
+        8,
+      ),
+    conduct_grade: "Excellent",
+  };
+  return fixture;
+})();
+
+export const reportPdfManySubjectsFixture: ReportPdfData = (() => {
+  const fixture = cloneFixture();
+  const template = fixture.subjects[0];
+  fixture.subjects = Array.from({ length: 36 }, (_, index) => ({
+    ...template,
+    subject_id: id(String(100 + index)),
+    subject_code: `S${String(index + 1).padStart(2, "0")}`,
+    subject_name:
+      index % 3 === 0
+        ? `Integrated Long Curriculum Subject ${index + 1} — Communication and Practical Skills`
+        : `Subject ${index + 1}`,
+    subject_score: 60 + (index % 35),
+    grade: index % 5 === 0 ? "B+" : "A",
+    aggregate_points: 1,
+    subject_position: index + 1,
+    subject_is_tied: index === 1,
+    subject_tie_size: index === 1 ? 2 : 1,
+    has_absence: index === 4,
+    has_exemption: false,
+    sort_order: index + 1,
+  }));
+  fixture.report.snapshot_data.school.name =
+    "Kampala Metropolitan Community Primary School and Learning Centre";
+  fixture.report.snapshot_data.student.display_name =
+    "Alexandria Mukasa Namukasa Long-Name Learner";
+  fixture.report.snapshot_data.placement.class_name =
+    "Primary Six Blue — Inclusive Learning Group";
+  fixture.report.snapshot_data.comments = {
+    class_teacher_comment:
+      "Long-form class teacher comment for the multipage visual fixture. ".repeat(
+        8,
+      ),
+    head_teacher_comment:
+      "Long-form head teacher comment for the multipage visual fixture. ".repeat(
+        8,
+      ),
+    conduct_grade: "Excellent",
+  };
+  return fixture;
+})();
+
+export const reportPdfMaliciousTextFixture: ReportPdfData = (() => {
+  const fixture = cloneFixture();
+  fixture.report.snapshot_data.school.email = "javascript:alert(1)";
+  fixture.report.snapshot_data.school.website = "https://evil.invalid";
+  fixture.report.snapshot_data.school.motto = ")/Launch( ordinary report text";
+  return fixture;
+})();
