@@ -203,6 +203,15 @@ async function setup() {
       fixture.membershipId,
     ],
   );
+  await database.query("begin");
+  await database.query(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await database.query(
+    "update public.mark_sheets set workflow_status='LOCKED', locked_by=$1, locked_at=now() where id=$2",
+    [fixture.membershipId, fixture.sheetId],
+  );
+  await database.query("commit");
   await database.query(
     "insert into public.term_attendance(id,term_id,enrollment_id,days_open,days_present,days_absent,times_late,recorded_by) values($1,$2,$3,90,84,6,2,$4)",
     [
@@ -429,13 +438,6 @@ async function setup() {
     ],
   );
   await database.query("begin");
-  await database.query(
-    "select set_config('app.marks_workflow_transition','allowed',true)",
-  );
-  await database.query(
-    "update public.mark_sheets set workflow_status='LOCKED', locked_by=$1, locked_at=now() where id=$2",
-    [fixture.membershipId, fixture.sheetId],
-  );
   await database.query(
     "select set_config('app.term_marks_workflow_transition','allowed',true)",
   );
