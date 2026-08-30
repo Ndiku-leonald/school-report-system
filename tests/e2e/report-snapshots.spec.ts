@@ -1129,7 +1129,7 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     page,
   }) => {
     await openGeneratedReport(page);
-    await page.getByText(/Report v1 Â· calculation v1/).click();
+    await page.getByRole("link", { name: /Report v1/ }).click();
     await expect(page).toHaveURL(/dashboard\/reports\//);
     await expect(
       page.getByRole("link", { name: "Download PDF", exact: true }),
