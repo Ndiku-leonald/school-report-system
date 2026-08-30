@@ -415,3 +415,10 @@ school isolation, exact bound-teacher authority, stale writes, all nine
 workflow race classes, roster freezing, correction lineage, stable revision
 navigation, browser console cleanliness, privacy, and the Stage 11 boundary.
 Stage 11 calculations remain unstarted.
+
+## Stage 14 — Secure report publication workflow
+
+Implemented on the Stage 14 feature branch: private checksum-verified PDF
+artifacts, staff review/publication/withdrawal workflow, publication-aware
+supersession, selected-membership authorization, audit events, and staff UI.
+Parent access and public publication remain future Stage 15 work.

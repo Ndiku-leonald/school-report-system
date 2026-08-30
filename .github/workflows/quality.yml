@@ -50,6 +50,9 @@ jobs:
       - name: Run report-card PDF renderer tests
         run: npm run test:report-pdf
 
+      - name: Run report publication integration tests
+        run: npm run test:report-publication
+
       - name: Install Poppler for PDF visual regression
         env:
           POPPLER_VERSION: 24.02.0-1ubuntu9.9
@@ -186,6 +189,9 @@ jobs:
 
       - name: Run local report-card PDF browser tests
         run: npm run test:e2e:report-pdf
+
+      - name: Run local report publication browser tests
+        run: npm run test:e2e:report-publication
 
       - name: Stop local Supabase
         if: always()

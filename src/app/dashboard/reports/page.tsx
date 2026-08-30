@@ -118,8 +118,16 @@ export default async function ReportsPage() {
                       {report.calculation_version}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={report.is_latest ? "success" : "neutral"}>
-                        {report.is_latest ? "Current" : "Historical"}
+                      <Badge
+                        variant={
+                          report.status === "PUBLISHED"
+                            ? "success"
+                            : report.is_latest
+                              ? "info"
+                              : "neutral"
+                        }
+                      >
+                        {report.status}
                       </Badge>
                     </td>
                   </tr>
