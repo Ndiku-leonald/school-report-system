@@ -298,9 +298,29 @@ Create immutable, versioned report snapshots that decouple approved academic dat
   acceptance is completed by CI only when the Supabase suites pass; local
   Docker-unavailable runs are not treated as proof.
 
-## 13. PDF generation
+## 13. PDF generation - Implemented for review
 
-Implement report rendering only after the school supplies and approves a real report-card example.
+Stage 13 adds a dedicated Node.js report-card PDF module using
+`@react-pdf/renderer` 4.9.0. `GET /api/reports/[reportId]/pdf` loads the exact
+immutable Stage 12 snapshot and frozen subject-result rows through the
+session-bound Supabase client. The route is dynamic, private, uncached, and
+available only to the existing schoolwide or assigned-class report readers.
+
+The A4 portrait layout includes school and learner identity, placement, the
+frozen subject table, academic summary, attendance, comments, signatories, the
+next-term value, and SHA-256 snapshot fingerprints. It has no guardian contact
+fields, publication labels, parent controls, or current timestamps. Local,
+package-managed Noto Sans files handle report text; absent or invalid values
+render as `Unavailable`. Student photos and school logos are not embedded
+because their storage paths can be replaced and are not immutable report
+assets. The passive-PDF check rejects active actions, and the route never
+accepts a URL, storage path, or image source from the caller.
+
+The report detail page exposes exactly `Download PDF`; historical detail pages
+target their own report ID. Safe attachment headers, server-only imports, Node
+runtime selection, deterministic metadata, and the PDF contract are covered by
+focused unit, integration, browser, and visual tests. No remote Supabase
+project or database migration is part of Stage 13.
 
 **Acceptance criteria**
 

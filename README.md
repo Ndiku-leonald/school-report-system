@@ -8,7 +8,7 @@ The product must remain configurable for different schools. School identity, sub
 
 ## Current status
 
-**Stage 11: deterministic results calculation is implemented for review.** The repository
+**Stage 13: secure report-card PDF generation is implemented for review.** The repository
 contains the Stage 3 database foundation plus cookie-based Supabase Auth,
 server-authoritative staff membership checks, invitation and recovery flows,
 active-school selection, authentication audit events, and local-only Auth test
@@ -29,8 +29,9 @@ Academic table writes remain deny-by-default. Stage 10 adds narrow, audited,
 concurrency-protected submission, review, return, resubmission, approval,
 locking, term-phase, and correction-revision RPCs. Stage 11 calculates
 immutable term-and-grade results only from the latest locked mark-sheet
-revisions. Report snapshots, report generation/publication, analytics,
-promotion processing, and parent verification remain later-stage work.
+revisions. Stage 12 report snapshots are now rendered by a Node-only A4 PDF
+route for authorized staff. Publication, parent access, analytics, and
+promotion processing remain later-stage work.
 
 Stage 7 adds `/dashboard/students`, admission and profile workflows, guarded
 student and enrolment lifecycle changes, primary-guardian management, private
@@ -171,6 +172,8 @@ npm run test:authorization
 npm run test:academic-config
 npm run test:marks-workflow
 npm run test:results-engine
+npm run test:report-snapshots
+npm run test:report-pdf
 npm run build
 npm run test:e2e
 npm run test:e2e:auth
@@ -178,6 +181,8 @@ npm run test:e2e:authorization
 npm run test:e2e:academic-config
 npm run test:e2e:marks-workflow
 npm run test:e2e:results-engine
+npm run test:e2e:report-snapshots
+npm run test:e2e:report-pdf
 ```
 
 Use `npx playwright install chromium` once if the local Playwright browser is not installed.

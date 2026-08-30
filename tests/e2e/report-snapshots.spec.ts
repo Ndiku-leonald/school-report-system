@@ -640,16 +640,13 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     await expect(page.getByText("Immutable report snapshots")).toBeVisible();
   });
 
-  test("3. stage 12 preview does not expose PDF or publication controls", async ({
+  test("3. authorized detail exposes the exact PDF download control", async ({
     page,
   }) => {
-    await login(page);
-    await page.goto("/dashboard/reports");
+    await openGeneratedReport(page);
     await expect(
-      page.getByRole("button", {
-        name: /PDF download|Publish to parents|Promotion/i,
-      }),
-    ).toHaveCount(0);
+      page.getByRole("link", { name: "Download PDF", exact: true }),
+    ).toHaveAttribute("download", "");
   });
 
   test("4. generated state lists the synthetic finalized report", async ({
@@ -851,25 +848,35 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     await expect(page).toHaveURL(/dashboard\/reports\//);
     await expect(page.getByText("Browser comment")).toBeVisible();
   });
-  test("39. detail page identifies the HTML preview boundary", async ({
+  test("39. detail page identifies the HTML preview and PDF boundary", async ({
     page,
   }) => {
     await openGeneratedReport(page);
-    await expect(page.getByText(/HTML snapshot preview/)).toBeVisible();
+    await expect(
+      page.getByText(/PDF is available to authorized staff/),
+    ).toBeVisible();
   });
-  test("40. PDF download remains unavailable", async ({ page }) => {
+  test("40. authorized staff can download the current report PDF", async ({
+    page,
+  }) => {
     await openGeneratedReport(page);
-    await expect(page.getByText(/PDF download/)).toBeVisible();
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("link", { name: "Download PDF", exact: true }).click();
+    const download = await downloadPromise;
+    expect(download.suggestedFilename()).toMatch(/-v2\.pdf$/);
   });
   test("41. publication remains unavailable", async ({ page }) => {
     await openGeneratedReport(page);
-    await expect(page.getByText(/publication are not available/)).toBeVisible();
+    await expect(
+      page.getByText(/Publication and parent access are unavailable/),
+    ).toBeVisible();
   });
   test("42. parent access is not presented", async ({ page }) => {
     await openGeneratedReport(page);
+    await expect(page.getByText(/student access credentials/i)).toHaveCount(0);
     await expect(
-      page.getByText(/parent access|student access credentials/i),
-    ).toHaveCount(0);
+      page.getByText(/parent access are unavailable/i),
+    ).toBeVisible();
   });
 
   test("43. ungenerated run exposes readiness and a missing report count", async ({
@@ -1019,17 +1026,17 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     ).toHaveCount(0);
   });
 
-  test("55. browser report routes retain the HTML-only Stage 12 boundary", async ({
+  test("55. browser report routes retain the staff-only Stage 13 boundary", async ({
     page,
   }) => {
     await openGeneratedReport(page);
-    await expect(page.getByText(/HTML snapshot preview/)).toBeVisible();
     await expect(
-      page.getByText(/PDF download and publication are not available/),
+      page.getByText(/PDF is available to authorized staff/),
     ).toBeVisible();
     await expect(
-      page.locator("main").getByText(/parent access|promotion/i),
-    ).toHaveCount(0);
+      page.getByText(/Publication and parent access are unavailable/),
+    ).toBeVisible();
+    await expect(page.locator("main").getByText(/promotion/i)).toHaveCount(0);
   });
 
   test("56. subject teacher receives generic report denial without data leakage", async ({
@@ -1109,5 +1116,50 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
       links.map((link) => (link as HTMLAnchorElement).href),
     );
     expect(new Set(hrefs).size).toBe(hrefs.length);
+  });
+
+  test("61. historical detail targets the exact historical report PDF", async ({
+    page,
+  }) => {
+    await openGeneratedReport(page);
+    await page.getByText(/Report v1 Â· calculation v1/).click();
+    await expect(page).toHaveURL(/dashboard\/reports\//);
+    await expect(
+      page.getByRole("link", { name: "Download PDF", exact: true }),
+    ).toHaveAttribute("href", /\/api\/reports\/.+\/pdf$/);
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("link", { name: "Download PDF", exact: true }).click();
+    expect((await downloadPromise).suggestedFilename()).toMatch(/-v1\.pdf$/);
+  });
+
+  test("62. report PDF response uses private passive download headers", async ({
+    page,
+  }) => {
+    await openGeneratedReport(page);
+    const href = await page
+      .getByRole("link", { name: "Download PDF", exact: true })
+      .getAttribute("href");
+    const response = await page.request.get(href!);
+    expect(response.status()).toBe(200);
+    expect(response.headers()).toMatchObject({
+      "cache-control": "private, no-store",
+      "content-type": "application/pdf",
+      "x-content-type-options": "nosniff",
+    });
+    expect(await response.body()).toEqual(expect.any(Buffer));
+  });
+
+  test("63. unauthorized staff cannot download a report PDF", async ({
+    page,
+  }) => {
+    await login(page, subjectTeacherEmail, fixture.subjectMembershipId);
+    const response = await page.request.get(
+      `/api/reports/${generatedReportId}/pdf`,
+      { maxRedirects: 0 },
+    );
+    expect([307, 308, 403, 404]).toContain(response.status());
+    expect(await response.text()).not.toMatch(
+      /Browser Student|SBR-001|Snapshot Browser School/,
+    );
   });
 });

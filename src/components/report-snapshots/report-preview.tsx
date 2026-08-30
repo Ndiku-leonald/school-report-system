@@ -274,8 +274,8 @@ export function ReportPreview({
         </CardContent>
       </Card>
       <p className="text-muted-foreground text-xs">
-        This is an HTML snapshot preview. PDF download and publication are not
-        available in Stage 12.
+        PDF is available to authorized staff. Publication and parent access are
+        unavailable.
       </p>
     </div>
   );
