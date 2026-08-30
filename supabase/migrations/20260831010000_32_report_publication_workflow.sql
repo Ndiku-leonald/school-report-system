@@ -537,14 +537,14 @@ begin
   end if;
 
   perform set_config('app.report_publication_workflow', 'on', true);
-  update public.reports
+  update public.reports as target
   set pdf_storage_path = artifact_storage_path,
       file_checksum = artifact_checksum,
       pdf_size_bytes = artifact_size_bytes,
       pdf_stored_at = now(),
       pdf_renderer_version = btrim(renderer_version),
-      workflow_version = workflow_version + 1
-  where id = report.id
+      workflow_version = target.workflow_version + 1
+  where target.id = report.id
   returning * into changed;
 
   perform internal.record_configuration_audit(
@@ -595,10 +595,10 @@ begin
     raise exception 'REPORT_WORKFLOW_CONFLICT' using errcode = '40001';
   end if;
   perform set_config('app.report_publication_workflow', 'on', true);
-  update public.reports
+  update public.reports as target
   set status = 'REVIEWED', reviewed_at = now(), reviewed_by = actor.membership_id,
-      workflow_version = workflow_version + 1
-  where id = report.id returning * into changed;
+      workflow_version = target.workflow_version + 1
+  where target.id = report.id returning target.* into changed;
   perform internal.record_configuration_audit(actor.profile_id, actor.membership_id, actor.school_id,
     'REPORT_REVIEWED', 'report', changed.id,
     jsonb_build_object('status', report.status, 'workflow_version', report.workflow_version),
@@ -666,15 +666,15 @@ begin
     if previous.superseded_by is distinct from report.id then
       raise exception 'REPORT_SUCCESSOR_LINK_INVALID' using errcode = '55000';
     end if;
-    update public.reports
-    set status = 'SUPERSEDED', workflow_version = workflow_version + 1
-    where id = previous.id returning * into previous_changed;
+    update public.reports as target
+    set status = 'SUPERSEDED', workflow_version = target.workflow_version + 1
+    where target.id = previous.id returning target.* into previous_changed;
   end if;
 
-  update public.reports
+  update public.reports as target
   set status = 'PUBLISHED', published_at = now(), published_by = actor.membership_id,
-      workflow_version = workflow_version + 1
-  where id = report.id returning * into changed;
+      workflow_version = target.workflow_version + 1
+  where target.id = report.id returning target.* into changed;
 
   perform internal.record_configuration_audit(actor.profile_id, actor.membership_id, actor.school_id,
     'REPORT_PUBLISHED', 'report', changed.id,
@@ -728,10 +728,10 @@ begin
     raise exception 'REPORT_WORKFLOW_CONFLICT' using errcode = '40001';
   end if;
   perform set_config('app.report_publication_workflow', 'on', true);
-  update public.reports
+  update public.reports as target
   set status = 'WITHDRAWN', withdrawn_at = now(), withdrawn_by = actor.membership_id,
-      withdrawal_reason = normalized_reason, workflow_version = workflow_version + 1
-  where id = report.id returning * into changed;
+      withdrawal_reason = normalized_reason, workflow_version = target.workflow_version + 1
+  where target.id = report.id returning target.* into changed;
   perform internal.record_configuration_audit(actor.profile_id, actor.membership_id, actor.school_id,
     'REPORT_WITHDRAWN', 'report', changed.id,
     jsonb_build_object('status', report.status, 'workflow_version', report.workflow_version),
