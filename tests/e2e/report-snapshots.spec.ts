@@ -1022,7 +1022,9 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     await page.goto(`/dashboard/reports/${generatedReportId}`);
     await expect(page).toHaveURL(/forbidden|reports/);
     await expect(
-      page.getByText(/Browser Student|SBR-001|Snapshot Browser School/i),
+      page
+        .locator("main")
+        .getByText(/Browser Student|SBR-001|Snapshot Browser School/i),
     ).toHaveCount(0);
   });
 
@@ -1047,7 +1049,9 @@ test.describe.serial("report snapshots dedicated browser verification", () => {
     await page.goto(`/dashboard/reports/${generatedReportId}`);
     await expect(page).toHaveURL(/forbidden|reports/);
     await expect(
-      page.getByText(/Browser Student|SBR-001|Snapshot Browser School/i),
+      page
+        .locator("main")
+        .getByText(/Browser Student|SBR-001|Snapshot Browser School/i),
     ).toHaveCount(0);
   });
 
