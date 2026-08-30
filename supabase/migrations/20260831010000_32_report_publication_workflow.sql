@@ -847,5 +847,3 @@ comment on column public.reports.workflow_version is
   'Optimistic concurrency version for guarded Stage 14 artifact/publication mutations.';
 comment on column public.reports.pdf_renderer_version is
   'Stable renderer contract identifier, distinct from report and calculation versions.';
-comment on table storage.buckets is
-  'Includes the private report-artifacts bucket for immutable report PDFs.';
