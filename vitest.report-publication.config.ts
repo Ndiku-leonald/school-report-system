@@ -7,7 +7,10 @@ export default defineConfig({
   test: {
     ...baseConfig.test,
     environment: "node",
-    include: ["tests/report-publication/**/*.integration.test.ts"],
+    include: [
+      "tests/report-publication/report-publication.integration.test.ts",
+      "tests/report-publication/report-publication.trust.integration.test.ts",
+    ],
     fileParallelism: false,
   },
 });

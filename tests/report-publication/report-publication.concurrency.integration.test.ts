@@ -202,6 +202,10 @@ async function makeReport(label: string) {
   await db.query("update public.terms set status='LOCKED' where id=$1", [
     source.term_id,
   ]);
+  const contextChecksum = randomUUID()
+    .replaceAll("-", "")
+    .slice(0, 64)
+    .padEnd(64, "0");
   await db.query(
     `insert into public.reports
        (id,batch_id,term_id,enrollment_id,template_id,version,status,
@@ -214,7 +218,7 @@ async function makeReport(label: string) {
       enrollmentId,
       base.reportId,
       currentRunId,
-      randomUUID().replaceAll("-", "").slice(0, 64).padEnd(64, "0"),
+      contextChecksum,
     ],
   );
   await db.query(
@@ -225,7 +229,7 @@ async function makeReport(label: string) {
     [
       snapshotId,
       reportId,
-      randomUUID().replaceAll("-", "").slice(0, 64).padEnd(64, "0"),
+      contextChecksum,
       base.reportId,
     ],
   );
