@@ -135,13 +135,13 @@ async function makeReport(label: string) {
   const source = snapshotSource.rows[0];
   if (!source) throw new Error("The current calculation has no base result.");
   await db.query(
-    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+    "select set_config('app.term_marks_workflow_transition','allowed',false)",
   );
   await db.query("update public.terms set status='MARKS_ENTRY' where id=$1", [
     source.term_id,
   ]);
   await db.query(
-    "select set_config('app.marks_workflow_transition','allowed',true)",
+    "select set_config('app.marks_workflow_transition','allowed',false)",
   );
   await db.query(
     "update public.mark_sheets set workflow_status='DRAFT',locked_by=null,locked_at=null where id=$1",
@@ -190,14 +190,14 @@ async function makeReport(label: string) {
     [subjectResultId, enrollmentId, currentRunId, templateEnrollmentId],
   );
   await db.query(
-    "select set_config('app.marks_workflow_transition','allowed',true)",
+    "select set_config('app.marks_workflow_transition','allowed',false)",
   );
   await db.query(
     "update public.mark_sheets set workflow_status='LOCKED',locked_by=$2,locked_at=now() where id=$1",
     [source.mark_sheet_id, actorA.membershipId],
   );
   await db.query(
-    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+    "select set_config('app.term_marks_workflow_transition','allowed',false)",
   );
   await db.query("update public.terms set status='LOCKED' where id=$1", [
     source.term_id,
@@ -484,7 +484,7 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       target_membership_id: actorB.membershipId,
     });
     await db.query(
-      "select set_config('app.term_marks_workflow_transition','allowed',true)",
+      "select set_config('app.term_marks_workflow_transition','allowed',false)",
     );
     await db.query("update public.terms set status='LOCKED' where id=$1", [
       base.termId,
@@ -730,7 +730,7 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       const pending = publish(actorA, report.reportId, report.workflowVersion);
       await waitForBlocked(pid);
       await holder.query(
-        "select set_config('app.term_marks_workflow_transition','allowed',true)",
+        "select set_config('app.term_marks_workflow_transition','allowed',false)",
       );
       await holder.query(
         "update public.terms set status='REVIEW' where id=$1",
@@ -740,7 +740,7 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       expect((await pending).error).not.toBeNull();
     });
     await db.query(
-      "select set_config('app.term_marks_workflow_transition','allowed',true)",
+      "select set_config('app.term_marks_workflow_transition','allowed',false)",
     );
     await db.query("update public.terms set status='LOCKED' where id=$1", [
       base.termId,
@@ -757,7 +757,7 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
     );
     expect(published.error).toBeNull();
     await db.query(
-      "select set_config('app.term_marks_workflow_transition','allowed',true)",
+      "select set_config('app.term_marks_workflow_transition','allowed',false)",
     );
     await db.query("update public.terms set status='REVIEW' where id=$1", [
       base.termId,
