@@ -116,11 +116,15 @@ async function makeReport(label: string) {
   }>(
     `select student.id as student_id, enrollment.academic_year_id,
             enrollment.class_section_id, student.admission_date, student.school_id,
-            calculated.subject_id, calculated.mark_sheet_id, calculated.subject_count
+            calculated_subject.subject_id, calculated_subject.mark_sheet_id,
+            calculated.subject_count
        from public.enrollments enrollment
        join public.students student on student.id = enrollment.student_id
        join public.calculated_student_results calculated
          on calculated.enrollment_id = enrollment.id and calculated.calculation_run_id = $1
+       join public.calculated_subject_results calculated_subject
+         on calculated_subject.enrollment_id = enrollment.id
+        and calculated_subject.calculation_run_id = $1
       where enrollment.id = $2
       limit 1`,
     [currentRunId, templateEnrollmentId],
