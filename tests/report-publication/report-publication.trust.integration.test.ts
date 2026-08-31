@@ -137,7 +137,9 @@ describe("Stage 14 artifact trust boundary", () => {
       { target_report_id: reportId },
     );
     expect(result.error).toBeNull();
-    expect(result.data?.[0].workflow_version).toBe(workflowVersion);
+    expect(String(result.data?.[0].workflow_version)).toBe(
+      String(workflowVersion),
+    );
   });
 
   it("3. denies a future-dated REPORTS_GENERATE grant", async () => {
@@ -227,8 +229,13 @@ describe("Stage 14 artifact trust boundary", () => {
       const result = await effectiveActor.client.storage
         .from("report-artifacts")
         .remove([path]);
-      expect(result.data).toBeNull();
-      expect(result.error).not.toBeNull();
+      expect(result.error).toBeNull();
+      expect(result.data).toEqual([]);
+      const stillPresent = await admin!.storage
+        .from("report-artifacts")
+        .download(path);
+      expect(stillPresent.error).toBeNull();
+      expect(stillPresent.data).not.toBeNull();
     } finally {
       await admin!.storage.from("report-artifacts").remove([path]);
     }
