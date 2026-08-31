@@ -37,8 +37,12 @@ insert into public.enrollments(id,student_id,academic_year_id,class_section_id,e
 values ('d1d00000-0000-4000-8000-000000000001','d1c00000-0000-4000-8000-000000000001','d1400000-0000-4000-8000-000000000001','d1700000-0000-4000-8000-000000000001',current_date-20);
 insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on)
 values ('d1e00000-0000-4000-8000-000000000001','d1500000-0000-4000-8000-000000000001','d1700000-0000-4000-8000-000000000001','d1800000-0000-4000-8000-000000000001','d1200000-0000-4000-8000-000000000001',current_date-20);
-insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id,workflow_status,locked_by,locked_at)
-values ('d1f00000-0000-4000-8000-000000000001','d1500000-0000-4000-8000-000000000001','d1700000-0000-4000-8000-000000000001','d1800000-0000-4000-8000-000000000001','d1a00000-0000-4000-8000-000000000001','d1e00000-0000-4000-8000-000000000001','LOCKED','d1200000-0000-4000-8000-000000000001',now());
+insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id)
+values ('d1f00000-0000-4000-8000-000000000001','d1500000-0000-4000-8000-000000000001','d1700000-0000-4000-8000-000000000001','d1800000-0000-4000-8000-000000000001','d1a00000-0000-4000-8000-000000000001','d1e00000-0000-4000-8000-000000000001');
+select set_config('app.marks_workflow_transition','allowed',true);
+update public.mark_sheets
+set workflow_status='LOCKED',locked_by='d1200000-0000-4000-8000-000000000001',locked_at=now()
+where id='d1f00000-0000-4000-8000-000000000001';
 insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,effective_from,created_by)
 values ('d2000000-0000-4000-8000-000000000001','d1000000-0000-4000-8000-000000000001','d1400000-0000-4000-8000-000000000001','d1600000-0000-4000-8000-000000000001','Publication Scale',current_date-20,'d1200000-0000-4000-8000-000000000001');
 insert into public.ranking_rules(id,school_id,academic_year_id,grade_level_id,name,ranking_basis,tie_method,configuration,is_active,created_by)
@@ -51,6 +55,8 @@ insert into public.calculated_student_results(id,calculation_run_id,enrollment_i
 values ('d2400000-0000-4000-8000-000000000001','d2200000-0000-4000-8000-000000000001','d1d00000-0000-4000-8000-000000000001','d1700000-0000-4000-8000-000000000001',1,1,1,88,88,'A',3,'Advanced',true,true,88,1,1,1,1,false,false);
 insert into public.calculated_subject_results(id,calculation_run_id,enrollment_id,class_section_id,subject_id,mark_sheet_id,subject_status,subject_score,grade,aggregate_points,is_pass,assessed_weight,has_absence,has_exemption,subject_position,subject_tie_size,subject_is_tied)
 values ('d2500000-0000-4000-8000-000000000001','d2200000-0000-4000-8000-000000000001','d1d00000-0000-4000-8000-000000000001','d1700000-0000-4000-8000-000000000001','d1800000-0000-4000-8000-000000000001','d1f00000-0000-4000-8000-000000000001','COMPLETE',88,'A',3,true,100,false,false,1,1,false);
+select set_config('app.term_marks_workflow_transition','allowed',true);
+update public.terms set status='LOCKED' where id='d1500000-0000-4000-8000-000000000001';
 
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"d1100000-0000-4000-8000-000000000001","role":"authenticated","session_id":"d2600000-0000-4000-8000-000000000001"}',true);
