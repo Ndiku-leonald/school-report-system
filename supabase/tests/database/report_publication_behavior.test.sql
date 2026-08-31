@@ -17,7 +17,7 @@ values ('d1300000-0000-4000-8000-000000000001','d1200000-0000-4000-8000-00000000
 insert into public.academic_years(id,school_id,name,starts_on,ends_on,status)
 values ('d1400000-0000-4000-8000-000000000001','d1000000-0000-4000-8000-000000000001','Publication Behavior Year',current_date-30,current_date+30,'ACTIVE');
 insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status)
-values ('d1500000-0000-4000-8000-000000000001','d1400000-0000-4000-8000-000000000001','Publication Behavior Term',1,current_date-30,current_date+30,'LOCKED');
+values ('d1500000-0000-4000-8000-000000000001','d1400000-0000-4000-8000-000000000001','Publication Behavior Term',1,current_date-30,current_date+30,'MARKS_ENTRY');
 insert into public.grade_levels(id,school_id,code,name,sort_order)
 values ('d1600000-0000-4000-8000-000000000001','d1000000-0000-4000-8000-000000000001','PBT','Publication Grade',1);
 insert into public.class_sections(id,academic_year_id,grade_level_id,name,class_code)
