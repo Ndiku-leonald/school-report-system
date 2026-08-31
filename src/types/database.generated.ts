@@ -3222,6 +3222,13 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      authorize_report_artifact_generation: {
+        Args: { target_report_id: string };
+        Returns: {
+          report_id: string;
+          workflow_version: number;
+        }[];
+      };
       calculate_grade_results: {
         Args: {
           target_aggregate_classification_scale_id?: string;
@@ -3787,13 +3794,6 @@ export type Database = {
           sheet_updated_at: string;
           sheet_version: number;
           workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
-        }[];
-      };
-      authorize_report_artifact_generation: {
-        Args: { target_report_id: string };
-        Returns: {
-          report_id: string;
-          workflow_version: number;
         }[];
       };
       get_report_artifact_descriptor: {
