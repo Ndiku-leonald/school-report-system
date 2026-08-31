@@ -110,18 +110,21 @@ async function makeReport(label: string) {
     class_section_id: string;
     admission_date: string;
     school_id: string;
+    term_id: string;
     subject_id: string;
     mark_sheet_id: string;
     subject_count: number;
   }>(
     `select student.id as student_id, enrollment.academic_year_id,
             enrollment.class_section_id, student.admission_date, student.school_id,
+            run.term_id,
             calculated_subject.subject_id, calculated_subject.mark_sheet_id,
             calculated.subject_count
        from public.enrollments enrollment
        join public.students student on student.id = enrollment.student_id
        join public.calculated_student_results calculated
          on calculated.enrollment_id = enrollment.id and calculated.calculation_run_id = $1
+       join public.result_calculation_runs run on run.id = calculated.calculation_run_id
        join public.calculated_subject_results calculated_subject
          on calculated_subject.enrollment_id = enrollment.id
         and calculated_subject.calculation_run_id = $1
@@ -131,6 +134,19 @@ async function makeReport(label: string) {
   );
   const source = snapshotSource.rows[0];
   if (!source) throw new Error("The current calculation has no base result.");
+  await db.query(
+    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+  );
+  await db.query("update public.terms set status='MARKS_ENTRY' where id=$1", [
+    source.term_id,
+  ]);
+  await db.query(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await db.query(
+    "update public.mark_sheets set workflow_status='DRAFT',locked_by=null,locked_at=null where id=$1",
+    [source.mark_sheet_id],
+  );
   await db.query(
     "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date) select $1,school_id,$2,first_name,last_name,admission_date from public.students where id=$3",
     [studentId, `${label}-${Date.now()}`, source.student_id],
@@ -173,6 +189,19 @@ async function makeReport(label: string) {
       where calculation_run_id=$3 and enrollment_id=$4`,
     [subjectResultId, enrollmentId, currentRunId, templateEnrollmentId],
   );
+  await db.query(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await db.query(
+    "update public.mark_sheets set workflow_status='LOCKED',locked_by=$2,locked_at=now() where id=$1",
+    [source.mark_sheet_id, actorA.membershipId],
+  );
+  await db.query(
+    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+  );
+  await db.query("update public.terms set status='LOCKED' where id=$1", [
+    source.term_id,
+  ]);
   await db.query(
     `insert into public.reports
        (id,batch_id,term_id,enrollment_id,template_id,version,status,
