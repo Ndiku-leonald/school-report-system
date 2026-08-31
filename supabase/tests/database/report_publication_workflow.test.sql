@@ -1,7 +1,7 @@
 -- Stage 14 database boundary checks. Behavioral lifecycle coverage lives in
 -- the signed-in integration suite; these checks execute against the rebuilt
 -- local schema and do not use production data.
-select plan(36);
+select plan(41);
 
 select extensions.ok(exists (select 1 from storage.buckets where id = 'report-artifacts'), 'bucket exists');
 select extensions.is((select public from storage.buckets where id = 'report-artifacts'), false, 'bucket is private');
@@ -17,7 +17,9 @@ select extensions.ok(exists (select 1 from pg_indexes where schemaname='public' 
 select extensions.ok(exists (select 1 from pg_constraint where conname='reports_artifact_metadata_complete'), 'artifact metadata constraint exists');
 select extensions.ok(exists (select 1 from pg_constraint where conname='reports_workflow_version_valid'), 'workflow version constraint exists');
 
-select extensions.ok(to_regprocedure('public.register_report_pdf_artifact(uuid,bigint,text,text,bigint,text)') is not null, 'artifact registration RPC exists');
+select extensions.ok(to_regprocedure('public.authorize_report_artifact_generation(uuid)') is not null, 'artifact generation authorization RPC exists');
+select extensions.ok(to_regprocedure('public.register_report_pdf_artifact(uuid,bigint,text)') is not null, 'narrow artifact registration RPC exists');
+select extensions.ok(to_regprocedure('public.register_report_pdf_artifact(uuid,bigint,text,text,bigint,text)') is null, 'caller metadata registration RPC is absent');
 select extensions.ok(to_regprocedure('public.review_generated_report(uuid,bigint)') is not null, 'review RPC exists');
 select extensions.ok(to_regprocedure('public.publish_reviewed_report(uuid,bigint)') is not null, 'publish RPC exists');
 select extensions.ok(to_regprocedure('public.withdraw_published_report(uuid,bigint,text)') is not null, 'withdraw RPC exists');
@@ -31,9 +33,7 @@ select extensions.is(internal.report_artifact_access('00000000-0000-0000-0000-00
 select extensions.is(internal.report_artifact_access('00000000-0000-0000-0000-000000000000/' || repeat('a',64) || '.pdf', false), false, 'unknown report path is denied');
 
 select extensions.ok(not exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and roles @> array['anon']::name[] and policyname like 'report_artifacts%'), 'no anonymous report artifact policy exists');
-select extensions.ok(exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='report_artifacts_select_authorized'), 'storage SELECT policy exists');
-select extensions.ok(exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='report_artifacts_insert_managed'), 'storage INSERT policy exists');
-select extensions.ok(exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname='report_artifacts_delete_orphan'), 'storage cleanup DELETE policy exists');
+select extensions.ok(not exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname like 'report_artifacts%'), 'direct report artifact Storage policies are absent');
 select extensions.ok(not exists (select 1 from pg_policies where schemaname='storage' and tablename='objects' and policyname like 'report_artifacts%update%'), 'storage UPDATE policy is absent');
 
 select extensions.ok(not has_table_privilege('authenticated', 'public.reports', 'UPDATE'), 'authenticated users cannot update reports directly');
@@ -45,5 +45,10 @@ select extensions.ok(not has_table_privilege('authenticated', 'public.report_sna
 select extensions.ok(pg_get_functiondef('internal.prevent_generated_report_mutation()'::regprocedure) like '%app.report_publication_workflow%', 'generated report guard has a separate workflow context');
 select extensions.ok(pg_get_functiondef('internal.prevent_generated_report_mutation()'::regprocedure) like '%app.report_snapshot_generation%', 'Stage 12 generation context remains supported');
 select extensions.ok(pg_get_functiondef('public.record_report_artifact_access(uuid,text)'::regprocedure) like '%REPORT_ARTIFACT_ACCESSED%', 'artifact access emits the required audit action');
+select extensions.ok(pg_get_functiondef('internal.lock_and_require_report_authority(uuid,public.app_permission[])'::regprocedure) like '%assignment.granted_at <= now()%', 'future role assignments do not grant authority');
+select extensions.ok(exists (select 1 from pg_trigger where tgname = 'a_reports_generation_supersession_status'), 'generation supersession status trigger exists');
+select extensions.ok(pg_get_functiondef('internal.apply_report_generation_supersession_status()'::regprocedure) like '%SUPERSEDED%', 'generation supersession status is applied by trigger');
+select extensions.ok(pg_get_functiondef('public.register_report_pdf_artifact(uuid,bigint,text)'::regprocedure) like '%metadata%size%', 'registration derives size from Storage metadata');
+select extensions.ok(pg_get_functiondef('public.register_report_pdf_artifact(uuid,bigint,text)'::regprocedure) like '%report-card-v1%', 'registration uses fixed trusted renderer contract');
 
 select * from finish();
