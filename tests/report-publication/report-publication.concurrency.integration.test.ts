@@ -213,25 +213,14 @@ async function makeReport(label: string) {
      select $1,batch_id,term_id,$2,template_id,1,'GENERATED',$4,
         $5,now(),created_by
        from public.reports where id=$3`,
-    [
-      reportId,
-      enrollmentId,
-      base.reportId,
-      currentRunId,
-      contextChecksum,
-    ],
+    [reportId, enrollmentId, base.reportId, currentRunId, contextChecksum],
   );
   await db.query(
     `insert into public.report_snapshots
        (id,report_id,snapshot_version,snapshot_data,source_checksum,snapshot_checksum)
      select $1,$2,1,snapshot_data,source_checksum,$3
        from public.report_snapshots where report_id=$4 limit 1`,
-    [
-      snapshotId,
-      reportId,
-      contextChecksum,
-      base.reportId,
-    ],
+    [snapshotId, reportId, contextChecksum, base.reportId],
   );
   await db.query(
     `insert into public.report_snapshot_sources
