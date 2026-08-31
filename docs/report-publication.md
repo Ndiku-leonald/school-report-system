@@ -63,7 +63,16 @@ Stage 12 successor generation links the previous report through
 a reviewed successor atomically supersedes the prior published version. A
 correction therefore follows the complete sequence: reopen and revise marks,
 relock and recalculate, generate a new immutable snapshot, materialize a new
-artifact, review, then publish.
+artifact, review, then publish. The retained Stage 10 reopen RPC rejects
+terms with downstream reports, so this branch does not claim a post-publication
+reopen sequence; see the acceptance coverage note below.
+
+The dedicated concurrency suite uses separate PostgreSQL connections,
+transaction-held row locks, and observed lock-wait barriers. It covers double
+registration/review/publication, authority and membership changes, term
+ordering, successor generation/publication, and predecessor withdrawal. The
+browser suite exercises 46 signed-in and boundary scenarios against real local
+Supabase routes.
 
 ## Boundaries
 

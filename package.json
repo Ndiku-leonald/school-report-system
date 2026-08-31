@@ -21,6 +21,7 @@
     "test:report-snapshots": "tsx scripts/run-local-report-snapshot-tests.ts",
     "test:report-pdf": "tsx --conditions=react-server scripts/run-local-report-pdf-tests.ts",
     "test:report-publication": "tsx scripts/run-local-report-publication-tests.ts",
+    "test:report-publication:concurrency": "tsx scripts/run-local-report-publication-concurrency-tests.ts",
     "test:report-pdf:unit": "tsx --conditions=react-server scripts/test-report-pdf.ts",
     "verify:report-pdf-trace": "tsx scripts/verify-report-pdf-trace.ts",
     "test:watch": "vitest",

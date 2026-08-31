@@ -355,6 +355,27 @@ See `docs/report-publication.md` for the trust and correction model.
 - Only a reviewed version can be published, and withdrawal takes effect promptly.
 - Publication lifecycle events and artifact access are audited and tested.
 
+**Implementation evidence (2026-09-01)**
+
+- Migration 33 is additive and leaves Migration 32 byte-for-byte unchanged. It
+  requires `granted_at <= now()` plus a null `revoked_at`, removes direct
+  authenticated report-artifact Storage policies, derives registration
+  metadata from the canonical object, and applies publication-aware automatic
+  supersession.
+- `storage-admin.ts` is a server-only, narrow transport for report-artifact
+  upload, verified download, and unregistered orphan cleanup only. Authorization,
+  report reads, workflow RPCs, and audit attribution remain user-session and
+  database controlled.
+- The database behavior fixture covers live transitions and denial paths. The
+  signed-in integration suite covers the trust boundary; the dedicated
+  concurrency runner uses independent PostgreSQL connections and explicit row
+  lock barriers for 12 race classes plus successor/immutability lifecycle
+  proofs; the publication browser suite contains 46 scenarios.
+- The retained Stage 10 reopen RPC rejects downstream reports by design and its
+  existing tests assert that behavior. Stage 14 does not rewrite that contract,
+  so a post-publication Stage 10 reopen cannot be claimed as completed here.
+  No Stage 15 work has started and no remote Supabase project is modified.
+
 ## 15. Parent portal
 
 Implement rate-limited student-code and secure-PIN verification, restricted sessions, and current and historical published-report access.

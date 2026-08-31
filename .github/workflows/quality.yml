@@ -139,6 +139,9 @@ jobs:
       - name: Run report publication integration tests
         run: npm run test:report-publication
 
+      - name: Run deterministic report publication concurrency tests
+        run: npm run test:report-publication:concurrency
+
       - name: Verify generated database types
         run: |
           npm run db:types
