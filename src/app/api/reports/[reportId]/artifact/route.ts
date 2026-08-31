@@ -75,10 +75,8 @@ export async function GET(
       { status: 404 },
     );
   try {
-    const [{ bytes }, report] = await Promise.all([
-      downloadReportArtifact(reportId),
-      getGeneratedReport(reportId),
-    ]);
+    const { bytes } = await downloadReportArtifact(reportId);
+    const report = await getGeneratedReport(reportId);
     return new NextResponse(bytes as BodyInit, {
       headers: {
         "Cache-Control": "private, no-store",

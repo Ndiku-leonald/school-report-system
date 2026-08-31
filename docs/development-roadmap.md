@@ -339,7 +339,14 @@ migration is part of Stage 13.
 
 ## 14. Publication workflow
 
-Implement private artifact storage, review, publication, withdrawal, regeneration, and supersession.
+Stage 14 implements private artifact storage, review, publication, withdrawal,
+regeneration through new immutable report versions, and publication-aware
+supersession. Artifact bytes are rendered by the Stage 13 server path and
+transported through a narrow server-only Storage wrapper; user-session
+authorization remains authoritative for report reads, workflow RPCs, and
+access audits. Migration 33 also rejects future-dated role grants and
+preserves published/withdrawn predecessor history during Stage 12 generation.
+See `docs/report-publication.md` for the trust and correction model.
 
 **Acceptance criteria**
 

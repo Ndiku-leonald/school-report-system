@@ -8,12 +8,15 @@ import { renderReportCardPdf } from "@/lib/report-pdf/render";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
 import {
-  REPORT_ARTIFACT_BUCKET,
   REPORT_ARTIFACT_MAX_BYTES,
-  REPORT_PDF_RENDERER_VERSION,
   type ReportArtifactDescriptor,
 } from "./types";
 import { reportArtifactChecksum, reportArtifactPath } from "./artifact";
+import {
+  downloadPrivateReportArtifact,
+  removeUnregisteredReportArtifact,
+  uploadPrivateReportArtifact,
+} from "./storage-admin";
 
 type RpcError = { code: string; message: string };
 
@@ -40,17 +43,11 @@ function digest(bytes: Uint8Array) {
 }
 
 async function downloadAndVerify(
-  supabase: Awaited<ReturnType<typeof createServerSupabaseClient>>,
   path: string,
   expectedChecksum: string,
   expectedSize?: number | null,
 ) {
-  const result = await supabase.storage
-    .from(REPORT_ARTIFACT_BUCKET)
-    .download(path);
-  if (result.error || !result.data)
-    throw new Error("The stored report artifact is unavailable.");
-  const bytes = new Uint8Array(await result.data.arrayBuffer());
+  const bytes = await downloadPrivateReportArtifact(path);
   if (
     digest(bytes) !== expectedChecksum ||
     (expectedSize !== null &&
@@ -61,7 +58,7 @@ async function downloadAndVerify(
       "The stored report artifact failed integrity verification.",
     );
   }
-  return Buffer.from(bytes);
+  return bytes;
 }
 
 function rpcMessage(error: RpcError) {
@@ -104,6 +101,19 @@ export async function materializeReportArtifact(
     return descriptor;
   }
 
+  const authorization = await supabase.rpc(
+    "authorize_report_artifact_generation",
+    { target_report_id: reportId },
+  );
+  if (authorization.error || !authorization.data?.[0])
+    throw new Error("The report artifact is unavailable.");
+  const authorizedWorkflowVersion = authorization.data[0].workflow_version;
+  if (
+    expectedWorkflowVersion !== undefined &&
+    expectedWorkflowVersion !== authorizedWorkflowVersion
+  )
+    throw new Error("Another workflow change won. Refresh and try again.");
+
   const report = await getGeneratedReport(reportId);
   const subjects = await getReportSubjects(reportId);
   const bytes = await renderReportCardPdf({ report, subjects });
@@ -112,26 +122,24 @@ export async function materializeReportArtifact(
 
   const checksum = digest(bytes);
   const path = reportArtifactPath(reportId, checksum);
-  const storage = supabase.storage.from(REPORT_ARTIFACT_BUCKET);
   let uploadedByRequest = false;
-  const upload = await storage.upload(path, bytes, {
-    contentType: "application/pdf",
-    upsert: false,
-  });
-  if (!upload.error) uploadedByRequest = true;
+  try {
+    await uploadPrivateReportArtifact(path, bytes);
+    uploadedByRequest = true;
+  } catch {
+    // A retry may encounter the trusted object left by a registration crash.
+    // downloadAndVerify below decides whether the existing bytes are usable.
+  }
 
   // A retry may find the deterministic object already present after a prior
   // upload/registration crash. It is usable only after byte verification.
-  await downloadAndVerify(supabase, path, checksum, bytes.byteLength);
+  await downloadAndVerify(path, checksum, bytes.byteLength);
 
   const registered = await supabase.rpc("register_report_pdf_artifact", {
     target_report_id: reportId,
     expected_workflow_version:
-      expectedWorkflowVersion ?? descriptor.workflow_version,
-    artifact_storage_path: path,
-    artifact_checksum: checksum,
-    artifact_size_bytes: bytes.byteLength,
-    renderer_version: REPORT_PDF_RENDERER_VERSION,
+      expectedWorkflowVersion ?? authorizedWorkflowVersion,
+    canonical_storage_path: path,
   });
   if (registered.error) {
     const after = await supabase.rpc("get_report_artifact_descriptor", {
@@ -147,7 +155,7 @@ export async function materializeReportArtifact(
     ) {
       return afterDescriptor;
     }
-    if (uploadedByRequest) await storage.remove([path]);
+    if (uploadedByRequest) await removeUnregisteredReportArtifact(path);
     throw new Error(rpcMessage(registered.error).message);
   }
   return descriptorFromRow(registered.data);
@@ -171,7 +179,6 @@ export async function downloadReportArtifact(reportId: string) {
   )
     throw new Error("The report artifact is unavailable.");
   const bytes = await downloadAndVerify(
-    supabase,
     descriptor.storage_path,
     descriptor.file_checksum,
     descriptor.file_size,

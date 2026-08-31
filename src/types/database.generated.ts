@@ -3789,6 +3789,13 @@ export type Database = {
           workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
         }[];
       };
+      authorize_report_artifact_generation: {
+        Args: { target_report_id: string };
+        Returns: {
+          report_id: string;
+          workflow_version: number;
+        }[];
+      };
       get_report_artifact_descriptor: {
         Args: { target_report_id: string };
         Returns: {
@@ -4510,11 +4517,8 @@ export type Database = {
       };
       register_report_pdf_artifact: {
         Args: {
-          artifact_checksum: string;
-          artifact_size_bytes: number;
-          artifact_storage_path: string;
+          canonical_storage_path: string;
           expected_workflow_version: number;
-          renderer_version: string;
           target_report_id: string;
         };
         Returns: {
