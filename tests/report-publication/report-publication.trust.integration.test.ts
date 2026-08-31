@@ -215,11 +215,23 @@ describe("Stage 14 artifact trust boundary", () => {
 
   it("10. denies direct authenticated Storage delete", async () => {
     if (!enabled) return;
-    const result = await effectiveActor.client.storage
+    const path = `${reportId}/${"d".repeat(64)}.pdf`;
+    const seeded = await admin!.storage
       .from("report-artifacts")
-      .remove([`${reportId}/${"b".repeat(64)}.pdf`]);
-    expect(result.data).toBeNull();
-    expect(result.error).not.toBeNull();
+      .upload(path, Buffer.from("%PDF-server-seeded"), {
+        contentType: "application/pdf",
+        upsert: false,
+      });
+    expect(seeded.error).toBeNull();
+    try {
+      const result = await effectiveActor.client.storage
+        .from("report-artifacts")
+        .remove([path]);
+      expect(result.data).toBeNull();
+      expect(result.error).not.toBeNull();
+    } finally {
+      await admin!.storage.from("report-artifacts").remove([path]);
+    }
   });
 
   it("11. denies direct authenticated Storage read", async () => {

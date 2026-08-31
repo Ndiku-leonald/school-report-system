@@ -20,20 +20,20 @@ declare
   selected internal.staff_session_active_memberships%rowtype;
   membership public.school_staff_memberships%rowtype;
   school public.schools%rowtype;
-  session_id uuid;
+  auth_session_id uuid;
 begin
   if auth.uid() is null then
     raise exception 'REPORT_AUTH_REQUIRED' using errcode = '28000';
   end if;
 
-  session_id := internal.current_auth_session_id();
-  if session_id is null then
+  auth_session_id := internal.current_auth_session_id();
+  if auth_session_id is null then
     raise exception 'REPORT_AUTH_REQUIRED' using errcode = '28000';
   end if;
 
   select selection.* into selected
   from internal.staff_session_active_memberships selection
-  where selection.session_id = session_id
+  where selection.session_id = auth_session_id
     and selection.profile_id = auth.uid()
   for update;
   if not found then
