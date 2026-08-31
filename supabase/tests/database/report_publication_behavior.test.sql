@@ -27,9 +27,10 @@ values ('d1800000-0000-4000-8000-000000000001','d1000000-0000-4000-8000-00000000
 insert into public.grade_level_subjects(id,grade_level_id,subject_id,sort_order)
 values ('d1900000-0000-4000-8000-000000000001','d1600000-0000-4000-8000-000000000001','d1800000-0000-4000-8000-000000000001',1);
 insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by)
-values ('d1a00000-0000-4000-8000-000000000001','d1500000-0000-4000-8000-000000000001','d1600000-0000-4000-8000-000000000001','d1800000-0000-4000-8000-000000000001','Publication Scheme','ACTIVE',current_date-30,'d1200000-0000-4000-8000-000000000001');
+values ('d1a00000-0000-4000-8000-000000000001','d1500000-0000-4000-8000-000000000001','d1600000-0000-4000-8000-000000000001','d1800000-0000-4000-8000-000000000001','Publication Scheme','DRAFT',current_date-30,'d1200000-0000-4000-8000-000000000001');
 insert into public.assessment_components(id,assessment_scheme_id,name,component_code,maximum_score,weight_percentage,sort_order)
 values ('d1b00000-0000-4000-8000-000000000001','d1a00000-0000-4000-8000-000000000001','Exam','EXAM',100,100,1);
+update public.assessment_schemes set status='ACTIVE' where id='d1a00000-0000-4000-8000-000000000001';
 insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date)
 values ('d1c00000-0000-4000-8000-000000000001','d1000000-0000-4000-8000-000000000001','PBT-001','Synthetic','Learner',current_date-20);
 insert into public.enrollments(id,student_id,academic_year_id,class_section_id,enrolled_on)
