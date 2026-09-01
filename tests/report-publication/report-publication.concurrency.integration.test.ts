@@ -987,6 +987,18 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
     );
     expect(stored.checksum).not.toBe(old.file_checksum);
     expect(successor.reportId).not.toBe(v1.reportId);
+    console.info(
+      "LIFECYCLE_V1_V2_PUBLISHED",
+      JSON.stringify({
+        v1ReportId: v1.reportId,
+        v1ArtifactPath: old.storage_path,
+        v1ArtifactSha256: old.file_checksum,
+        v2ReportId: successor.reportId,
+        v2ArtifactPath: stored.path,
+        v2ArtifactSha256: stored.checksum,
+        v1FinalStatus: after.rows[0].status,
+      }),
+    );
   });
 
   it("14. a withdrawn predecessor remains withdrawn after an actual successor is published", async () => {
@@ -1019,10 +1031,18 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       old_status: string;
       old_reason: string;
       new_status: string;
+      old_storage_path: string;
+      old_file_checksum: string;
+      new_storage_path: string;
+      new_file_checksum: string;
     }>(
       `select (select status from public.reports where id=$1) old_status,
           (select withdrawal_reason from public.reports where id=$1) old_reason,
-          (select status from public.reports where id=$2) new_status`,
+          (select status from public.reports where id=$2) new_status,
+          (select pdf_storage_path from public.reports where id=$1) old_storage_path,
+          (select file_checksum from public.reports where id=$1) old_file_checksum,
+          (select pdf_storage_path from public.reports where id=$2) new_storage_path,
+          (select file_checksum from public.reports where id=$2) new_file_checksum`,
       [v1.reportId, successor.reportId],
     );
     expect(rows.rows[0]).toEqual({
@@ -1030,5 +1050,17 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       old_reason: "Correction retained as history",
       new_status: "PUBLISHED",
     });
+    console.info(
+      "LIFECYCLE_V1_WITHDRAWN_V2_PUBLISHED",
+      JSON.stringify({
+        v1ReportId: v1.reportId,
+        v1ArtifactPath: rows.rows[0].old_storage_path,
+        v1ArtifactSha256: rows.rows[0].old_file_checksum,
+        v2ReportId: successor.reportId,
+        v2ArtifactPath: rows.rows[0].new_storage_path,
+        v2ArtifactSha256: rows.rows[0].new_file_checksum,
+        v1FinalStatus: rows.rows[0].old_status,
+      }),
+    );
   });
 });

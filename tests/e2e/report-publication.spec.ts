@@ -201,7 +201,13 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
   });
   test("2. GENERATED status is visible", async ({ page }) => {
     await openReport(page);
-    await expect(page.getByText("GENERATED", { exact: true })).toBeVisible();
+    const workflowCard = page
+      .getByText("Publication workflow")
+      .locator("..")
+      .locator("..");
+    await expect(
+      workflowCard.getByText("GENERATED", { exact: true }),
+    ).toBeVisible();
   });
   test("3. generator sees the private-PDF control", async ({ page }) => {
     await openReport(page);
