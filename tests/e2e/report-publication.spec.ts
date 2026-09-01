@@ -166,6 +166,10 @@ async function openReport(
   await page.goto(`/dashboard/reports/${reportId}`);
 }
 
+function publicationWorkflowCard(page: Page) {
+  return page.getByText("Publication workflow").locator("..").locator("..");
+}
+
 test.describe.serial("Stage 14 signed-in publication acceptance", () => {
   test.skip(
     !enabled,
@@ -201,12 +205,8 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
   });
   test("2. GENERATED status is visible", async ({ page }) => {
     await openReport(page);
-    const workflowCard = page
-      .getByText("Publication workflow")
-      .locator("..")
-      .locator("..");
     await expect(
-      workflowCard.getByText("GENERATED", { exact: true }),
+      publicationWorkflowCard(page).getByText("GENERATED", { exact: true }),
     ).toBeVisible();
   });
   test("3. generator sees the private-PDF control", async ({ page }) => {
@@ -232,7 +232,9 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
   });
   test("6. stored artifact state is visible", async ({ page }) => {
     await openReport(page);
-    await expect(page.getByText("Stored", { exact: true })).toBeVisible();
+    await expect(
+      publicationWorkflowCard(page).getByText("Stored", { exact: true }),
+    ).toBeVisible();
   });
   test("7. stored SHA-256 checksum is visible", async ({ page }) => {
     await openReport(page);
@@ -335,15 +337,21 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
   test("21. review succeeds", async ({ page }) => {
     await openReport(page);
     await page.getByRole("button", { name: "Mark reviewed" }).click();
-    await expect(page.getByText("REVIEWED", { exact: true })).toBeVisible();
+    await expect(
+      publicationWorkflowCard(page).getByText("REVIEWED", { exact: true }),
+    ).toBeVisible();
   });
   test("22. reviewed badge remains after refresh", async ({ page }) => {
     await openReport(page);
-    await expect(page.getByText("REVIEWED", { exact: true })).toBeVisible();
+    await expect(
+      publicationWorkflowCard(page).getByText("REVIEWED", { exact: true }),
+    ).toBeVisible();
   });
   test("23. reviewed report keeps its stored artifact", async ({ page }) => {
     await openReport(page);
-    await expect(page.getByText("Stored", { exact: true })).toBeVisible();
+    await expect(
+      publicationWorkflowCard(page).getByText("Stored", { exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Download stored PDF" }),
     ).toBeVisible();
@@ -381,11 +389,15 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
     await openReport(page);
     await page.getByRole("button", { name: "Publish report" }).click();
     await page.getByRole("button", { name: "Confirm publish" }).press("Enter");
-    await expect(page.getByText("PUBLISHED", { exact: true })).toBeVisible();
+    await expect(
+      publicationWorkflowCard(page).getByText("PUBLISHED", { exact: true }),
+    ).toBeVisible();
   });
   test("28. published state survives a new session", async ({ page }) => {
     await openReport(page);
-    await expect(page.getByText("PUBLISHED", { exact: true })).toBeVisible();
+    await expect(
+      publicationWorkflowCard(page).getByText("PUBLISHED", { exact: true }),
+    ).toBeVisible();
   });
   test("29. withdraw control is visible to authorized staff", async ({
     page,
@@ -417,7 +429,9 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
     await page.getByRole("button", { name: "Withdraw publication" }).click();
     await page.getByLabel("Reason").fill("Correction required");
     await page.getByRole("button", { name: "Confirm withdrawal" }).click();
-    await expect(page.getByText("WITHDRAWN", { exact: true })).toBeVisible();
+    await expect(
+      publicationWorkflowCard(page).getByText("WITHDRAWN", { exact: true }),
+    ).toBeVisible();
   });
   test("33. withdrawn history remains downloadable", async ({ page }) => {
     await openReport(page);
