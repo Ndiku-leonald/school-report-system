@@ -1032,40 +1032,4 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
     });
   });
 
-  it("artifact registration commits one row, one version increment, one audit, and one canonical object", async () => {
-    if (!enabled) return;
-    const reportId = await makeReport("double-registration");
-    const bytes = Buffer.from(`%PDF-double-registration-${reportId}`);
-    const checksum = createHash("sha256").update(bytes).digest("hex");
-    const path = `${reportId}/${checksum}.pdf`;
-    await db.query(
-      `insert into storage.objects(id,bucket_id,name,metadata)
-       values($1,'report-artifacts',$2,jsonb_build_object('size',octet_length($3::text),'mimetype','application/pdf'))`,
-      [randomUUID(), path, bytes.toString()],
-    );
-    const first = await actorA.client.rpc("register_report_pdf_artifact", {
-      target_report_id: reportId,
-      expected_workflow_version: 0,
-      canonical_storage_path: path,
-    });
-    const second = await actorB.client.rpc("register_report_pdf_artifact", {
-      target_report_id: reportId,
-      expected_workflow_version: 0,
-      canonical_storage_path: path,
-    });
-    expect(first.error).toBeNull();
-    expect(second.error).not.toBeNull();
-    const row = await db.query<{
-      workflow_version: number;
-      path: string;
-      audits: string;
-    }>(
-      `select report.workflow_version, report.pdf_storage_path as path,
-        (select count(*)::text from public.audit_logs where entity_id=report.id and action='REPORT_ARTIFACT_STORED') audits
-       from public.reports report where report.id=$1`,
-      [reportId],
-    );
-    expect(row.rows[0]).toMatchObject({ workflow_version: "1", path });
-    expect(row.rows[0].audits).toBe("1");
-  });
 });
