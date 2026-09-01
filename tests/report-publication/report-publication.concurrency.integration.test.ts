@@ -528,18 +528,17 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
         })
       ).error,
     ).toBeNull();
-    const results = await Promise.all([
-      actorA.client.rpc("register_report_pdf_artifact", {
-        target_report_id: reportId,
-        expected_workflow_version: 0,
-        canonical_storage_path: path,
-      }),
-      actorB.client.rpc("register_report_pdf_artifact", {
-        target_report_id: reportId,
-        expected_workflow_version: 0,
-        canonical_storage_path: path,
-      }),
-    ]);
+    const first = await actorA.client.rpc("register_report_pdf_artifact", {
+      target_report_id: reportId,
+      expected_workflow_version: 0,
+      canonical_storage_path: path,
+    });
+    const second = await actorB.client.rpc("register_report_pdf_artifact", {
+      target_report_id: reportId,
+      expected_workflow_version: 0,
+      canonical_storage_path: path,
+    });
+    const results = [first, second];
     expect(results.filter((result) => !result.error)).toHaveLength(1);
     const row = await db.query<{
       workflow_version: number;
@@ -621,9 +620,15 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
   it("4. role revocation that holds the live assignment lock wins and publication has no audit", async () => {
     if (!enabled) return;
     const report = await prepareReviewed("role-revocation");
+    const assignment = await db.query<{ id: string }>(
+      "select id from public.staff_role_assignments where membership_id=$1 order by id limit 1",
+      [actorA.membershipId],
+    );
+    if (!assignment.rows[0])
+      throw new Error("The actor role assignment is missing.");
     await holdRow(
       "staff_role_assignments",
-      actorA.membershipId,
+      assignment.rows[0].id,
       async (holder, pid) => {
         const pending = publish(
           actorA,
