@@ -98,12 +98,11 @@ async function createActor(label: string, schoolId: string) {
 }
 
 async function makeReport(label: string) {
-  const reportId = randomUUID();
   const studentId = randomUUID();
   const enrollmentId = randomUUID();
+  const runId = randomUUID();
   const resultId = randomUUID();
   const subjectResultId = randomUUID();
-  const snapshotId = randomUUID();
   const snapshotSource = await db.query<{
     student_id: string;
     academic_year_id: string;
@@ -111,15 +110,20 @@ async function makeReport(label: string) {
     admission_date: string;
     school_id: string;
     term_id: string;
+    grade_level_id: string;
+    grading_scale_id: string;
+    ranking_rule_id: string;
+    aggregate_classification_scale_id: string | null;
     subject_id: string;
     mark_sheet_id: string;
-    subject_count: number;
   }>(
     `select student.id as student_id, enrollment.academic_year_id,
             enrollment.class_section_id, student.admission_date, student.school_id,
             run.term_id,
+            run.grade_level_id, run.grading_scale_id, run.ranking_rule_id,
+            run.aggregate_classification_scale_id,
             calculated_subject.subject_id, calculated_subject.mark_sheet_id,
-            calculated.subject_count
+            calculated.id as calculated_student_result_id
        from public.enrollments enrollment
        join public.students student on student.id = enrollment.student_id
        join public.calculated_student_results calculated
@@ -162,32 +166,56 @@ async function makeReport(label: string) {
     ],
   );
   await db.query(
+    `insert into public.result_calculation_runs
+       (id,term_id,grade_level_id,version,supersedes_run_id,grading_scale_id,
+        ranking_rule_id,aggregate_classification_scale_id,input_checksum,
+        output_checksum,created_by)
+     select $1,term_id,grade_level_id,version+1,id,grading_scale_id,
+        ranking_rule_id,aggregate_classification_scale_id,
+        internal.results_input_checksum(term_id,grade_level_id,grading_scale_id,
+          ranking_rule_id,aggregate_classification_scale_id),$2,created_by
+       from public.result_calculation_runs where id=$3`,
+    [runId, "d".repeat(64), currentRunId],
+  );
+  await db.query(
+    `insert into public.result_calculation_sources
+       (calculation_run_id,mark_sheet_id,class_section_id,subject_id,
+        mark_sheet_version,assessment_scheme_id,grade_level_subject_id,
+        curriculum_is_required,curriculum_contributes_to_aggregate,
+        curriculum_sort_order)
+     select $1,mark_sheet_id,class_section_id,subject_id,mark_sheet_version,
+        assessment_scheme_id,grade_level_subject_id,curriculum_is_required,
+        curriculum_contributes_to_aggregate,curriculum_sort_order
+       from public.result_calculation_sources where calculation_run_id=$2`,
+    [runId, currentRunId],
+  );
+  await db.query(
     `insert into public.calculated_student_results
        (id,calculation_run_id,enrollment_id,class_section_id,subject_count,
         complete_subject_count,subjects_passed,overall_total,overall_average,
         overall_grade,aggregate_total,aggregate_classification,is_complete,
         ranking_eligible,ranking_metric,class_position,grade_level_position,
         class_tie_size,grade_level_tie_size,class_is_tied,grade_level_is_tied)
-     select $1,calculation_run_id,$2,class_section_id,subject_count,
+      select $1,$3,$2,class_section_id,subject_count,
         complete_subject_count,subjects_passed,overall_total,overall_average,
         overall_grade,aggregate_total,aggregate_classification,is_complete,
         ranking_eligible,ranking_metric,class_position,grade_level_position,
         class_tie_size,grade_level_tie_size,class_is_tied,grade_level_is_tied
        from public.calculated_student_results
-      where calculation_run_id=$3 and enrollment_id=$4`,
-    [resultId, enrollmentId, currentRunId, templateEnrollmentId],
+       where calculation_run_id=$4 and enrollment_id=$5`,
+    [resultId, enrollmentId, runId, currentRunId, templateEnrollmentId],
   );
   await db.query(
     `insert into public.calculated_subject_results
        (id,calculation_run_id,enrollment_id,class_section_id,subject_id,mark_sheet_id,
         subject_status,subject_score,grade,aggregate_points,is_pass,assessed_weight,
         has_absence,has_exemption,subject_position,subject_tie_size,subject_is_tied)
-     select $1,calculation_run_id,$2,class_section_id,subject_id,mark_sheet_id,
+      select $1,$3,$2,class_section_id,subject_id,mark_sheet_id,
         subject_status,subject_score,grade,aggregate_points,is_pass,assessed_weight,
         has_absence,has_exemption,subject_position,subject_tie_size,subject_is_tied
        from public.calculated_subject_results
-      where calculation_run_id=$3 and enrollment_id=$4`,
-    [subjectResultId, enrollmentId, currentRunId, templateEnrollmentId],
+       where calculation_run_id=$4 and enrollment_id=$5`,
+    [subjectResultId, enrollmentId, runId, currentRunId, templateEnrollmentId],
   );
   await db.query(
     "select set_config('app.marks_workflow_transition','allowed',false)",
@@ -202,46 +230,18 @@ async function makeReport(label: string) {
   await db.query("update public.terms set status='LOCKED' where id=$1", [
     source.term_id,
   ]);
-  const contextChecksum = randomUUID()
-    .replaceAll("-", "")
-    .slice(0, 64)
-    .padEnd(64, "0");
-  await db.query(
-    `insert into public.reports
-       (id,batch_id,term_id,enrollment_id,template_id,version,status,
-        calculation_run_id,snapshot_context_checksum,generated_at,created_by)
-     select $1,batch_id,term_id,$2,template_id,1,'GENERATED',$4,
-        $5,now(),created_by
-       from public.reports where id=$3`,
-    [reportId, enrollmentId, base.reportId, currentRunId, contextChecksum],
+  currentRunId = runId;
+  templateEnrollmentId = enrollmentId;
+  const generated = await actorA.client.rpc(
+    "generate_student_report_snapshot",
+    {
+      target_calculation_run_id: runId,
+      target_enrollment_id: enrollmentId,
+    },
   );
-  await db.query(
-    `insert into public.report_snapshots
-       (id,report_id,snapshot_version,snapshot_data,source_checksum,snapshot_checksum)
-     select $1,$2,1,snapshot_data,source_checksum,$3
-       from public.report_snapshots where report_id=$4 limit 1`,
-    [snapshotId, reportId, contextChecksum, base.reportId],
-  );
-  await db.query(
-    `insert into public.report_snapshot_sources
-       (snapshot_id,report_id,calculation_run_id,calculated_student_result_id,
-        input_checksum,output_checksum)
-     select $1,$2,calculation_run_id,$3,input_checksum,output_checksum
-       from public.report_snapshot_sources where report_id=$4 limit 1`,
-    [snapshotId, reportId, resultId, base.reportId],
-  );
-  await db.query(
-    `insert into public.report_subject_results
-       (report_id,subject_id,subject_code,subject_name,subject_score,grade,
-        aggregate_points,subject_position,subject_status,is_pass,assessed_weight,
-        has_absence,has_exemption,subject_tie_size,subject_is_tied,teacher_comment,sort_order)
-     select $1,subject_id,subject_code,subject_name,subject_score,grade,
-        aggregate_points,subject_position,subject_status,is_pass,assessed_weight,
-        has_absence,has_exemption,subject_tie_size,subject_is_tied,teacher_comment,sort_order
-       from public.report_subject_results where report_id=$2`,
-    [reportId, base.reportId],
-  );
-  return reportId;
+  if (generated.error || !generated.data?.[0])
+    throw generated.error ?? new Error("cloned report generation failed");
+  return generated.data[0].report_id as string;
 }
 
 async function storeArtifact(actor: Actor, reportId: string) {
