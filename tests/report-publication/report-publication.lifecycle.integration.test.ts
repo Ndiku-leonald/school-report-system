@@ -191,7 +191,7 @@ async function reportEvidence(reportId: string): Promise<Evidence> {
         student.aggregate_total::text aggregate,student.overall_average::text overall_average,
         student.class_position,student.grade_level_position grade_position,
         (select jsonb_agg(to_jsonb(mark) order by mark.assessment_component_id)::text
-           from public.marks mark where mark.mark_sheet_id=source.mark_sheet_id) marks,
+           from public.marks mark where mark.mark_sheet_id=calculation_source.mark_sheet_id) marks,
         (select jsonb_agg(to_jsonb(subject_row) order by subject_row.subject_id)::text
            from public.calculated_subject_results subject_row
           where subject_row.calculation_run_id=report.calculation_run_id
