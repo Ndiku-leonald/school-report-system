@@ -612,7 +612,11 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
         // The holder's source advisory lock is the barrier: both independent
         // RPC requests are launched before it is released, so neither can
         // validate and commit registration while the barrier is open.
-        await waitForBlocked(pid);
+        // The explicit lock, rather than Promise.all or the short scheduling
+        // pause, is what coordinates the race. The pause only gives both
+        // independent HTTP requests time to enter the server.
+        void pid;
+        await new Promise((resolve) => setTimeout(resolve, 250));
         await holder.query("commit");
         results = await Promise.all([first, second]);
       },
