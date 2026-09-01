@@ -58,6 +58,17 @@ function client() {
   });
 }
 
+async function waitForArtifactStorage() {
+  for (let attempt = 0; attempt < 60; attempt += 1) {
+    const result = await admin!.storage
+      .from("report-artifacts")
+      .list("", { limit: 1 });
+    if (!result.error) return;
+    await new Promise((resolve) => setTimeout(resolve, 500));
+  }
+  throw new Error("Private report artifact Storage did not become ready.");
+}
+
 async function createActor(label: string, schoolId: string) {
   const auth = await admin!.auth.admin.createUser({
     email: `stage14-concurrency-${label}-${Date.now()}@example.invalid`,
@@ -446,6 +457,7 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
   beforeAll(async () => {
     if (!enabled) return;
     await db.connect();
+    await waitForArtifactStorage();
     const found = await db.query<Base>(
       `select report.id as "reportId", report.batch_id as "batchId", report.term_id as "termId",
               report.enrollment_id as "enrollmentId", report.calculation_run_id as "runId",
