@@ -233,7 +233,9 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
   test("6. stored artifact state is visible", async ({ page }) => {
     await openReport(page);
     await expect(
-      publicationWorkflowCard(page).getByText("Stored", { exact: true }),
+      publicationWorkflowCard(page)
+        .locator("span")
+        .filter({ hasText: "Stored" }),
     ).toBeVisible();
   });
   test("7. stored SHA-256 checksum is visible", async ({ page }) => {
@@ -350,7 +352,9 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
   test("23. reviewed report keeps its stored artifact", async ({ page }) => {
     await openReport(page);
     await expect(
-      publicationWorkflowCard(page).getByText("Stored", { exact: true }),
+      publicationWorkflowCard(page)
+        .locator("span")
+        .filter({ hasText: "Stored" }),
     ).toBeVisible();
     await expect(
       page.getByRole("link", { name: "Download stored PDF" }),
