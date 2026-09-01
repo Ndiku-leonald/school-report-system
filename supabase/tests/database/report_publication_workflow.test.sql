@@ -1,7 +1,7 @@
 -- Stage 14 database boundary checks. Behavioral lifecycle coverage lives in
 -- the signed-in integration suite; these checks execute against the rebuilt
 -- local schema and do not use production data.
-select plan(41);
+select plan(42);
 
 select extensions.ok(exists (select 1 from storage.buckets where id = 'report-artifacts'), 'bucket exists');
 select extensions.is((select public from storage.buckets where id = 'report-artifacts'), false, 'bucket is private');
