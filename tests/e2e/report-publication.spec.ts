@@ -28,6 +28,7 @@ let classTeacherMembershipId = "";
 let schoolBEmail = "";
 let schoolBMembershipId = "";
 let registrarGenerateMappingExisted = false;
+let wrongClassSectionId = "";
 
 async function createStaff(
   label: string,
@@ -124,6 +125,25 @@ async function setup() {
      values($1,$2,$3,false,$4)`,
     [termId, sectionId, classTeacherMembershipId, termStartsOn],
   );
+  const section = await db.query<{
+    academic_year_id: string;
+    grade_level_id: string;
+  }>(
+    "select academic_year_id, grade_level_id from public.class_sections where id = $1",
+    [sectionId],
+  );
+  wrongClassSectionId = randomUUID();
+  await db.query(
+    `insert into public.class_sections
+       (id,academic_year_id,grade_level_id,name,class_code)
+     values($1,$2,$3,'Stage 14 Wrong Class',$4)`,
+    [
+      wrongClassSectionId,
+      section.rows[0].academic_year_id,
+      section.rows[0].grade_level_id,
+      `ST14-WRONG-${Date.now()}`,
+    ],
+  );
 
   const schoolB = randomUUID();
   await db.query(
@@ -212,6 +232,15 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
       await db.query(
         "insert into public.role_permissions(role,permission) values('ACADEMIC_REGISTRAR','REPORTS_GENERATE') on conflict (role,permission) do nothing",
       );
+    }
+    if (wrongClassSectionId) {
+      await db.query(
+        "delete from public.class_teacher_assignments where staff_membership_id = $1",
+        [classTeacherMembershipId],
+      );
+      await db.query("delete from public.class_sections where id = $1", [
+        wrongClassSectionId,
+      ]);
     }
     if (enabled) await db.end();
   });
@@ -503,16 +532,36 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
       page.getByRole("link", { name: "Download stored PDF" }),
     ).toBeVisible();
   });
-  test("39. class-teacher scope is still constrained by the live term boundary", async ({
+  test("39. assigned class teacher can use the artifact route", async ({
     page,
   }) => {
     await login(page, classTeacherEmail, classTeacherMembershipId);
     const response = await page.request.get(
       `/api/reports/${reportId}/artifact`,
     );
-    expect(response.status()).toBeGreaterThanOrEqual(400);
+    expect(response.status()).toBe(200);
   });
-  test("40. class teacher cannot review or publish", async ({ page }) => {
+  test("40. assigned class teacher is denied for another class", async ({
+    page,
+  }) => {
+    await db.query(
+      "update public.class_teacher_assignments set class_section_id = $1 where staff_membership_id = $2 and term_id = $3",
+      [wrongClassSectionId, classTeacherMembershipId, termId],
+    );
+    try {
+      await login(page, classTeacherEmail, classTeacherMembershipId);
+      const response = await page.request.get(
+        `/api/reports/${reportId}/artifact`,
+      );
+      expect(response.status()).toBeGreaterThanOrEqual(400);
+    } finally {
+      await db.query(
+        "update public.class_teacher_assignments set class_section_id = $1 where staff_membership_id = $2 and term_id = $3",
+        [sectionId, classTeacherMembershipId, termId],
+      );
+    }
+  });
+  test("41. class teacher cannot review or publish", async ({ page }) => {
     await openReport(page, classTeacherEmail, classTeacherMembershipId);
     await expect(
       page.getByRole("button", { name: "Mark reviewed" }),
@@ -521,14 +570,14 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
       page.getByRole("button", { name: "Publish report" }),
     ).toHaveCount(0);
   });
-  test("41. subject teacher cannot review or publish", async ({ page }) => {
+  test("42. subject teacher cannot review or publish", async ({ page }) => {
     await login(page, subjectEmail, subjectMembershipId);
     await page.goto(`/dashboard/reports/${reportId}`);
     await expect(
       page.getByRole("button", { name: "Publish report" }),
     ).toHaveCount(0);
   });
-  test("42. unknown report does not disclose artifact details", async ({
+  test("43. unknown report does not disclose artifact details", async ({
     request,
   }) => {
     const response = await request.get(
@@ -537,12 +586,12 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
     expect(response.status()).toBeGreaterThanOrEqual(400);
     expect(await response.text()).not.toMatch(/storage|checksum|signed|token/i);
   });
-  test("43. anonymous report detail is denied", async ({ page }) => {
+  test("44. anonymous report detail is denied", async ({ page }) => {
     await page.goto(`/dashboard/reports/${unknownReport}`);
     await expect(page).toHaveURL(/staff-login|auth-error|forbidden/i);
     await expect(page.getByText(/parent|guardian/i)).toHaveCount(0);
   });
-  test("44. artifact POST rejects browser metadata", async ({ request }) => {
+  test("45. artifact POST rejects browser metadata", async ({ request }) => {
     const response = await request.post(
       `/api/reports/${unknownReport}/artifact`,
       {
@@ -558,13 +607,13 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
       /storagePath|snapshotData|checksum/i,
     );
   });
-  test("45. no credential or parent endpoint is present", async ({ page }) => {
+  test("46. no credential or parent endpoint is present", async ({ page }) => {
     await openReport(page);
     expect(await page.locator("body").innerText()).not.toMatch(
       /parent login|access code|guardian portal/i,
     );
   });
-  test("46. workflow has no browser console errors", async ({ page }) => {
+  test("47. workflow has no browser console errors", async ({ page }) => {
     const errors: string[] = [];
     page.on("console", (message) => {
       if (message.type() === "error") errors.push(message.text());
