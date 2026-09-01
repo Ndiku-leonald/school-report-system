@@ -33,7 +33,7 @@ const result = spawnSync(
     vitestCli,
     "run",
     "--config",
-    "vitest.report-publication.config.ts",
+    "vitest.report-publication-concurrency.config.ts",
     "tests/report-publication/report-publication.concurrency.integration.test.ts",
   ],
   {
