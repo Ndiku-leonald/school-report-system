@@ -578,10 +578,8 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
         expected_workflow_version: 0,
         canonical_storage_path: path,
       });
-    let attempts: [
-      ReturnType<typeof register>,
-      ReturnType<typeof register>,
-    ] | null = null;
+    let attempts:
+      [ReturnType<typeof register>, ReturnType<typeof register>] | null = null;
     await holdRow("reports", reportId, async (holder) => {
       const first = register(actorA);
       // Let the first request traverse source validation and queue on the
