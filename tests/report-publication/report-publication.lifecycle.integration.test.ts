@@ -488,7 +488,7 @@ describe("Stage 14 continuous real Stage 10-to-14 lifecycle", () => {
       },
     );
     expect(reopened.error).toBeNull();
-    expect(reopened.data![0].term_status).toBe("MARKS_ENTRY");
+    expect(reopened.data![0].term_status).toBe("REVIEW");
     const correction = await reviewer.client.rpc(
       "create_mark_sheet_correction_revision",
       {
