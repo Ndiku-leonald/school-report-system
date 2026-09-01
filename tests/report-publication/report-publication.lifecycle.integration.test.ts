@@ -181,7 +181,7 @@ async function reportEvidence(reportId: string): Promise<Evidence> {
     calculated_subject_rows: string;
     calculated_student_rows: string;
   }>(
-    `select source.mark_sheet_id,source.mark_sheet_version,
+    `select calculation_source.mark_sheet_id,calculation_source.mark_sheet_version,
         report.calculation_run_id,run.version calculation_version,
         source.input_checksum,source.output_checksum,report.version report_version,
         snapshot.id snapshot_id,snapshot.snapshot_checksum,snapshot.snapshot_data,
@@ -204,6 +204,9 @@ async function reportEvidence(reportId: string): Promise<Evidence> {
      join public.result_calculation_runs run on run.id=report.calculation_run_id
      join public.report_snapshots snapshot on snapshot.report_id=report.id
      join public.report_snapshot_sources source on source.report_id=report.id
+     join public.result_calculation_sources calculation_source
+       on calculation_source.calculation_run_id=report.calculation_run_id
+      and calculation_source.subject_id=$2
      join public.calculated_subject_results subject
        on subject.calculation_run_id=report.calculation_run_id
       and subject.enrollment_id=report.enrollment_id
