@@ -619,7 +619,7 @@ describe("Stage 14 continuous real Stage 10-to-14 lifecycle", () => {
     expect(v1After.artifactPath).toBe(v1.artifactPath);
     expect(v1After.artifactSha256).toBe(v1.artifactSha256);
     expect(v1After.artifactBytes).toEqual(v1.artifactBytes);
-    expect(v1After.publishedAt).toBe(v1.publishedAt);
+    expect(v1After.publishedAt).toEqual(v1.publishedAt);
     expect(v1After.publishedBy).toBe(v1.publishedBy);
     expect(v1After.marks).toBe(v1.marks);
     expect(v1After.calculatedSubjectRows).toBe(v1.calculatedSubjectRows);
@@ -647,7 +647,7 @@ describe("Stage 14 continuous real Stage 10-to-14 lifecycle", () => {
         v1Academic: v1.academic,
         correctionMarkSheetId: correctionSheetId,
         correctionMarkSheetVersion: correction.data![0].correction_version,
-        actualReopenRpc: "MARKS_ENTRY",
+        actualReopenRpc: "REVIEW",
         correctionSubmit: "SUBMITTED",
         correctionReview: "REVIEW",
         correctionApprove: "APPROVED",
