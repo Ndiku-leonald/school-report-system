@@ -395,6 +395,30 @@ async function holdRow(
   }
 }
 
+async function holdReportSourceAdvisoryLock(
+  termId: string,
+  gradeLevelId: string,
+  callback: (holder: Client, pid: number) => Promise<void>,
+) {
+  const holder = new Client({ connectionString: databaseUrl! });
+  await holder.connect();
+  await holder.query("begin");
+  const pid = Number(
+    (await holder.query<{ pid: string }>("select pg_backend_pid() pid")).rows[0]
+      .pid,
+  );
+  await holder.query(
+    "select pg_advisory_xact_lock(hashtextextended($1,11011))",
+    [`${termId}:${gradeLevelId}`],
+  );
+  try {
+    await callback(holder, pid);
+  } finally {
+    await holder.query("rollback").catch(() => undefined);
+    await holder.end();
+  }
+}
+
 async function createSuccessor(reportId: string) {
   const runId = randomUUID();
   const resultId = randomUUID();
@@ -579,16 +603,20 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
         canonical_storage_path: path,
       });
     let results: Awaited<ReturnType<typeof register>>[] = [];
-    await holdRow("reports", reportId, async (holder) => {
-      const first = register(actorA);
-      const second = register(actorB);
-      // The holder's explicit row lock is the barrier: both independent RPC
-      // requests are launched before it is released, so neither can commit
-      // registration while the barrier transaction is open.
-      await new Promise((resolve) => setTimeout(resolve, 100));
-      await holder.query("commit");
-      results = await Promise.all([first, second]);
-    });
+    await holdReportSourceAdvisoryLock(
+      base.termId,
+      base.gradeId,
+      async (holder, pid) => {
+        const first = register(actorA);
+        const second = register(actorB);
+        // The holder's source advisory lock is the barrier: both independent
+        // RPC requests are launched before it is released, so neither can
+        // validate and commit registration while the barrier is open.
+        await waitForBlocked(pid);
+        await holder.query("commit");
+        results = await Promise.all([first, second]);
+      },
+    );
 
     const winner = results.filter((result) => !result.error);
     const loser = results.filter((result) => result.error);
