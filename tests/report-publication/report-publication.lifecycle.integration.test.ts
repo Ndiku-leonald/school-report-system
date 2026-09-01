@@ -414,11 +414,15 @@ describe("Stage 14 continuous real Stage 10-to-14 lifecycle", () => {
       ],
     );
     await db.query(
-      "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,$3,$4,'Lifecycle Scale',1,true,current_date-30,$5)",
+      "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,$3,$4,'Lifecycle Scale',1,false,current_date-30,$5)",
       [ids.scale, ids.school, ids.year, ids.grade, reviewer.membershipId],
     );
     await db.query(
       "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,50,'F',1,false,1),($1,50,80,'C',2,true,2),($1,80,100,'A',3,true,3)",
+      [ids.scale],
+    );
+    await db.query(
+      "update public.grading_scales set is_active=true where id=$1",
       [ids.scale],
     );
     await db.query(
