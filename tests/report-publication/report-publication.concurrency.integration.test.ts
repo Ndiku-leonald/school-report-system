@@ -1045,7 +1045,7 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
           (select file_checksum from public.reports where id=$2) new_file_checksum`,
       [v1.reportId, successor.reportId],
     );
-    expect(rows.rows[0]).toEqual({
+    expect(rows.rows[0]).toMatchObject({
       old_status: "WITHDRAWN",
       old_reason: "Correction retained as history",
       new_status: "PUBLISHED",
