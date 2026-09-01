@@ -1,7 +1,7 @@
 -- Stage 14 database boundary checks. Behavioral lifecycle coverage lives in
 -- the signed-in integration suite; these checks execute against the rebuilt
 -- local schema and do not use production data.
-select plan(42);
+select plan(41);
 
 select extensions.ok(exists (select 1 from storage.buckets where id = 'report-artifacts'), 'bucket exists');
 select extensions.is((select public from storage.buckets where id = 'report-artifacts'), false, 'bucket is private');
@@ -50,6 +50,10 @@ select extensions.ok(exists (select 1 from pg_trigger where tgname = 'a_reports_
 select extensions.ok(pg_get_functiondef('internal.apply_report_generation_supersession_status()'::regprocedure) like '%SUPERSEDED%', 'generation supersession status is applied by trigger');
 select extensions.ok(pg_get_functiondef('public.register_report_pdf_artifact(uuid,bigint,text)'::regprocedure) like '%metadata%size%', 'registration derives size from Storage metadata');
 select extensions.ok(pg_get_functiondef('public.register_report_pdf_artifact(uuid,bigint,text)'::regprocedure) like '%report-card-v1%', 'registration uses fixed trusted renderer contract');
-select extensions.ok(pg_get_functiondef('public.register_report_pdf_artifact(uuid,bigint,text)'::regprocedure) like '%pg_advisory_xact_lock%' and pg_get_functiondef('public.register_report_pdf_artifact(uuid,bigint,text)'::regprocedure) like '%hashtextextended(target_report_id::text, 14014)%', 'same-report registrations serialize before source locking');
+select extensions.ok(
+  position('lock_and_require_report_authority' in pg_get_functiondef('public.register_report_pdf_artifact(uuid,bigint,text)'::regprocedure))
+    < position('for update' in pg_get_functiondef('public.register_report_pdf_artifact(uuid,bigint,text)'::regprocedure)),
+  'report authority is established before the protected report row is locked'
+);
 
 select * from finish();

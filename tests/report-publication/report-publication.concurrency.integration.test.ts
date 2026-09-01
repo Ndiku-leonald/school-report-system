@@ -29,6 +29,11 @@ type Actor = {
   client: SupabaseClient;
   membershipId: string;
   userId: string;
+  claims: {
+    sub: string;
+    session_id: string;
+    [key: string]: unknown;
+  };
 };
 
 type Base = {
@@ -49,6 +54,7 @@ const createdUsers: string[] = [];
 let base: Base;
 let actorA: Actor;
 let actorB: Actor;
+let unauthorizedActor: Actor;
 let currentRunId = "";
 let templateEnrollmentId = "";
 
@@ -123,11 +129,74 @@ async function createActor(label: string, schoolId: string) {
     password,
   });
   if (login.error) throw login.error;
+  const session = login.data.session;
+  if (!session) throw new Error("The concurrency actor session is missing.");
+  const claims = JSON.parse(
+    Buffer.from(session.access_token.split(".")[1], "base64url").toString(
+      "utf8",
+    ),
+  ) as Actor["claims"];
+  if (!claims.sub || !claims.session_id)
+    throw new Error("The concurrency actor JWT claims are incomplete.");
   const selected = await signedIn.rpc("set_my_active_membership", {
     target_membership_id: membershipId,
   });
   if (selected.error) throw selected.error;
-  return { client: signedIn, membershipId, userId: auth.data.user.id };
+  return {
+    client: signedIn,
+    membershipId,
+    userId: auth.data.user.id,
+    claims,
+  };
+}
+
+async function createUnauthorizedActor(label: string, schoolId: string) {
+  const auth = await admin!.auth.admin.createUser({
+    email: `stage14-concurrency-${label}-${Date.now()}@example.invalid`,
+    password,
+    email_confirm: true,
+  });
+  if (auth.error) throw auth.error;
+  createdUsers.push(auth.data.user.id);
+  const membershipId = randomUUID();
+  await db.query(
+    "insert into public.profiles(id,first_name,last_name) values($1,$2,'Unauthorized')",
+    [auth.data.user.id, label],
+  );
+  await db.query(
+    "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,$4,'ACTIVE')",
+    [
+      membershipId,
+      schoolId,
+      auth.data.user.id,
+      `ST14-C-${label}-${Date.now()}`,
+    ],
+  );
+  const signedIn = client();
+  const login = await signedIn.auth.signInWithPassword({
+    email: auth.data.user.email!,
+    password,
+  });
+  if (login.error) throw login.error;
+  const session = login.data.session;
+  if (!session) throw new Error("The unauthorized actor session is missing.");
+  const claims = JSON.parse(
+    Buffer.from(session.access_token.split(".")[1], "base64url").toString(
+      "utf8",
+    ),
+  ) as Actor["claims"];
+  if (!claims.sub || !claims.session_id)
+    throw new Error("The unauthorized actor JWT claims are incomplete.");
+  const selected = await signedIn.rpc("set_my_active_membership", {
+    target_membership_id: membershipId,
+  });
+  if (selected.error) throw selected.error;
+  return {
+    client: signedIn,
+    membershipId,
+    userId: auth.data.user.id,
+    claims,
+  };
 }
 
 async function makeReport(label: string) {
@@ -372,6 +441,128 @@ async function waitForBlocked(holderPid: number) {
   );
 }
 
+type DirectRegistrationOutcome = {
+  data: Record<string, unknown>[] | null;
+  error: (Error & { code?: string }) | null;
+};
+
+type DirectRegistration = {
+  caller: Client;
+  pid: number;
+  query: Promise<DirectRegistrationOutcome>;
+};
+
+type RegistrationLockEvidence = {
+  activity: Array<{
+    pid: number;
+    state: string;
+    wait_event_type: string | null;
+    wait_event: string | null;
+    blockers: number[];
+    query: string;
+  }>;
+  locks: Array<{
+    pid: number;
+    locktype: string;
+    mode: string;
+    granted: boolean;
+    relation: string | null;
+    page: number | null;
+    tuple: number | null;
+    classid: number | null;
+    objid: number | null;
+    objsubid: number | null;
+  }>;
+};
+
+async function beginDirectRegistration(
+  actor: Actor,
+  reportId: string,
+  path: string,
+): Promise<DirectRegistration> {
+  const caller = new Client({ connectionString: databaseUrl! });
+  await caller.connect();
+  try {
+    await caller.query("begin");
+    await caller.query("set local role authenticated");
+    await caller.query("set local lock_timeout='5s'");
+    await caller.query("set local statement_timeout='15s'");
+    await caller.query(
+      "select set_config('request.jwt.claim.sub',$1,true), set_config('request.jwt.claims',$2,true)",
+      [actor.claims.sub, JSON.stringify(actor.claims)],
+    );
+    const pid = Number(
+      (await caller.query<{ pid: string }>("select pg_backend_pid() pid"))
+        .rows[0].pid,
+    );
+    const query = caller
+      .query(
+        "select * from public.register_report_pdf_artifact($1::uuid,$2::bigint,$3::text)",
+        [reportId, 0, path],
+      )
+      .then((result) => ({ data: result.rows, error: null }))
+      .catch((cause: unknown) => {
+        const error =
+          cause instanceof Error
+            ? cause
+            : new Error(
+                typeof cause === "string" ? cause : "direct RPC failed",
+              );
+        return { data: null, error: error as Error & { code?: string } };
+      });
+    return { caller, pid, query };
+  } catch (cause) {
+    await caller.query("rollback").catch(() => undefined);
+    await caller.end().catch(() => undefined);
+    throw cause;
+  }
+}
+
+async function inspectRegistrationCompetition(
+  pids: number[],
+  holderPid: number,
+): Promise<RegistrationLockEvidence> {
+  const activity = await db.query<RegistrationLockEvidence["activity"][number]>(
+    `select pid,state,wait_event_type,wait_event,pg_blocking_pids(pid) blockers,query
+       from pg_stat_activity
+      where pid = any($1::int[]) or pid = $2
+      order by pid`,
+    [pids, holderPid],
+  );
+  const locks = await db.query<RegistrationLockEvidence["locks"][number]>(
+    `select pid,locktype,mode,granted,relation::regclass::text relation,
+            page,tuple,classid,objid,objsubid
+       from pg_locks
+      where pid = any($1::int[]) or pid = $2
+      order by pid,locktype,mode`,
+    [pids, holderPid],
+  );
+  return { activity: activity.rows, locks: locks.rows };
+}
+
+async function waitForBothRegistrationTransactions(
+  pids: number[],
+  holderPid: number,
+) {
+  let evidence = await inspectRegistrationCompetition(pids, holderPid);
+  for (let attempt = 0; attempt < 500; attempt += 1) {
+    if (
+      evidence.activity.filter((row) => pids.includes(row.pid)).length ===
+        pids.length &&
+      evidence.activity
+        .filter((row) => pids.includes(row.pid))
+        .every((row) => row.state === "active" && row.blockers.length > 0)
+    ) {
+      return evidence;
+    }
+    await new Promise((resolve) => setTimeout(resolve, 10));
+    evidence = await inspectRegistrationCompetition(pids, holderPid);
+  }
+  throw new Error(
+    `Fresh registration race did not reach the deterministic barrier: ${JSON.stringify(evidence)}`,
+  );
+}
+
 async function holdRow(
   table: string,
   id: string,
@@ -509,6 +700,7 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
     templateEnrollmentId = base.enrollmentId;
     actorA = await createActor("A", base.schoolId);
     actorB = await createActor("B", base.schoolId);
+    unauthorizedActor = await createUnauthorizedActor("no-role", base.schoolId);
   });
 
   afterEach(async () => {
@@ -572,15 +764,62 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       });
     expect(uploaded.error).toBeNull();
 
-    const register = (actor: Actor) =>
-      actor.client.rpc("register_report_pdf_artifact", {
-        target_report_id: reportId,
-        expected_workflow_version: 0,
-        canonical_storage_path: path,
-      });
-    // Both independent authenticated RPCs are launched before awaiting either
-    // response. Production row/advisory locking serializes same-report writes.
-    const results = await Promise.all([register(actorA), register(actorB)]);
+    const holder = new Client({ connectionString: databaseUrl! });
+    let holderReleased = false;
+    let directA: DirectRegistration | undefined;
+    let directB: DirectRegistration | undefined;
+    let evidence: RegistrationLockEvidence | undefined;
+    let results: DirectRegistrationOutcome[] = [];
+    try {
+      await holder.connect();
+      await holder.query("begin");
+      const holderPid = Number(
+        (await holder.query<{ pid: string }>("select pg_backend_pid() pid"))
+          .rows[0].pid,
+      );
+      await holder.query(
+        "select 1 from public.reports where id=$1 for update",
+        [reportId],
+      );
+      directA = await beginDirectRegistration(actorA, reportId, path);
+      directB = await beginDirectRegistration(actorB, reportId, path);
+      evidence = await waitForBothRegistrationTransactions(
+        [directA.pid, directB.pid],
+        holderPid,
+      );
+      await holder.query("commit");
+      holderReleased = true;
+      await holder.end();
+
+      const tagged = [
+        directA.query.then((outcome) => ({ attempt: directA!, outcome })),
+        directB.query.then((outcome) => ({ attempt: directB!, outcome })),
+      ];
+      const first = await Promise.race(tagged);
+      await first.attempt.caller.query(
+        first.outcome.error ? "rollback" : "commit",
+      );
+      await first.attempt.caller.end();
+      const secondAttempt = first.attempt === directA ? directB : directA;
+      const second = await secondAttempt.query;
+      await secondAttempt.caller.query(second.error ? "rollback" : "commit");
+      await secondAttempt.caller.end();
+      results =
+        first.attempt === directA
+          ? [first.outcome, second]
+          : [second, first.outcome];
+    } finally {
+      if (!holderReleased) {
+        await holder.query("rollback").catch(() => undefined);
+        await holder.end().catch(() => undefined);
+      }
+      for (const attempt of [directA, directB]) {
+        if (!attempt) continue;
+        await attempt.query.catch(() => undefined);
+        await attempt.caller.query("rollback").catch(() => undefined);
+        await attempt.caller.end().catch(() => undefined);
+      }
+    }
 
     const winner = results.filter((result) => !result.error);
     const loser = results.filter((result) => result.error);
@@ -648,6 +887,9 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
         registeredChecksum: stored.rows[0].file_checksum,
         registeredSize: stored.rows[0].pdf_size_bytes,
         actualBytesMatch: true,
+        actorAPid: directA?.pid,
+        actorBPid: directB?.pid,
+        lockBarrier: evidence,
       }),
     );
   });
@@ -1176,6 +1418,68 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
         v2ArtifactPath: rows.rows[0].new_storage_path,
         v2ArtifactSha256: rows.rows[0].new_file_checksum,
         v1FinalStatus: rows.rows[0].old_status,
+      }),
+    );
+  });
+
+  it("15. unauthorized contention fails before publication authority or artifact mutation", async () => {
+    if (!enabled) return;
+    const reportId = await makeReport("unauthorized-contention");
+    const bytes = Buffer.from(`%PDF-unauthorized-contention-${reportId}`);
+    const checksum = createHash("sha256").update(bytes).digest("hex");
+    const path = `${reportId}/${checksum}.pdf`;
+    await uploadArtifactForTest(path, bytes);
+
+    const authorized = await beginDirectRegistration(actorA, reportId, path);
+    const unauthorized = await beginDirectRegistration(
+      unauthorizedActor,
+      reportId,
+      path,
+    );
+    const [authorizedResult, unauthorizedResult] = await Promise.all([
+      authorized.query,
+      unauthorized.query,
+    ]);
+    await authorized.caller
+      .query(authorizedResult.error ? "rollback" : "commit")
+      .catch(() => undefined);
+    await unauthorized.caller
+      .query(unauthorizedResult.error ? "rollback" : "commit")
+      .catch(() => undefined);
+    await authorized.caller.end();
+    await unauthorized.caller.end();
+
+    expect(authorizedResult.error).toBeNull();
+    expect(unauthorizedResult.error).not.toBeNull();
+    expect(unauthorizedResult.error?.message).toMatch(
+      /REPORT_(FORBIDDEN|AUTH_REQUIRED)/,
+    );
+    const stored = await db.query<{
+      pdf_storage_path: string | null;
+      workflow_version: number;
+      audit_count: string;
+    }>(
+      `select pdf_storage_path,workflow_version,
+          (select count(*)::text from public.audit_logs
+             where entity_id=reports.id and action='REPORT_ARTIFACT_STORED') audit_count
+       from public.reports where id=$1`,
+      [reportId],
+    );
+    expect(stored.rows[0]).toEqual({
+      pdf_storage_path: path,
+      workflow_version: 1,
+      audit_count: "1",
+    });
+    console.info(
+      "UNAUTHORIZED_REGISTRATION_CONTENTION",
+      JSON.stringify({
+        reportId,
+        authorizedPid: authorized.pid,
+        unauthorizedPid: unauthorized.pid,
+        authorized: "COMMITTED",
+        unauthorized: unauthorizedResult.error?.message,
+        finalWorkflowVersion: stored.rows[0].workflow_version,
+        storedAudits: stored.rows[0].audit_count,
       }),
     );
   });
