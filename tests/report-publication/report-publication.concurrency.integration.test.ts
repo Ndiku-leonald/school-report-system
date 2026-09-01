@@ -1467,7 +1467,7 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       workflow_version: number;
       audit_count: string;
     }>(
-      `select pdf_storage_path,workflow_version,
+      `select pdf_storage_path,workflow_version::int workflow_version,
           (select count(*)::text from public.audit_logs
              where entity_id=reports.id and action='REPORT_ARTIFACT_STORED') audit_count
        from public.reports where id=$1`,
