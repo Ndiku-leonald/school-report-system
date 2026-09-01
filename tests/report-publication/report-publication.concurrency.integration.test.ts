@@ -579,10 +579,13 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
         canonical_storage_path: path,
       });
     let results: Awaited<ReturnType<typeof register>>[] = [];
-    await holdRow("reports", reportId, async (holder, pid) => {
+    await holdRow("reports", reportId, async (holder) => {
       const first = register(actorA);
       const second = register(actorB);
-      await waitForBlocked(pid);
+      // The holder's explicit row lock is the barrier: both independent RPC
+      // requests are launched before it is released, so neither can commit
+      // registration while the barrier transaction is open.
+      await new Promise((resolve) => setTimeout(resolve, 100));
       await holder.query("commit");
       results = await Promise.all([first, second]);
     });
