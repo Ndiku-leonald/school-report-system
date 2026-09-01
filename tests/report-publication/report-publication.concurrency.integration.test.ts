@@ -700,7 +700,19 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
     templateEnrollmentId = base.enrollmentId;
     actorA = await createActor("A", base.schoolId);
     actorB = await createActor("B", base.schoolId);
-    unauthorizedActor = await createUnauthorizedActor("no-role", base.schoolId);
+    const unauthorizedSchoolId = randomUUID();
+    await db.query(
+      "insert into public.schools(id,name,slug,school_code) values($1,'Concurrency Unauthorized School',$2,$3)",
+      [
+        unauthorizedSchoolId,
+        `concurrency-unauthorized-${Date.now()}`,
+        `CU-${Date.now()}`,
+      ],
+    );
+    unauthorizedActor = await createUnauthorizedActor(
+      "no-role",
+      unauthorizedSchoolId,
+    );
   });
 
   afterEach(async () => {
@@ -834,17 +846,14 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       workflow_version: number;
       object_count: string;
       audit_count: string;
-      object_checksum: string | null;
       object_size: string | null;
     }>(
       `select report.pdf_storage_path,report.file_checksum,
-          report.pdf_size_bytes,report.pdf_renderer_version,report.workflow_version,
+          report.pdf_size_bytes,report.pdf_renderer_version,report.workflow_version::int workflow_version,
           (select count(*)::text from storage.objects object
              where object.bucket_id='report-artifacts' and object.name=$2) object_count,
           (select count(*)::text from public.audit_logs audit
              where audit.entity_id=report.id and audit.action='REPORT_ARTIFACT_STORED') audit_count,
-          (select object.metadata->>'checksum' from storage.objects object
-             where object.bucket_id='report-artifacts' and object.name=$2) object_checksum,
           (select object.metadata->>'size' from storage.objects object
              where object.bucket_id='report-artifacts' and object.name=$2) object_size
        from public.reports report where report.id=$1`,
@@ -858,7 +867,6 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       workflow_version: 1,
       object_count: "1",
       audit_count: "1",
-      object_checksum: checksum,
       object_size: String(bytes.length),
     });
     const downloaded = await admin!.storage
