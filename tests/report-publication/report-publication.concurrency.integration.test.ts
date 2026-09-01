@@ -1031,5 +1031,4 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       new_status: "PUBLISHED",
     });
   });
-
 });
