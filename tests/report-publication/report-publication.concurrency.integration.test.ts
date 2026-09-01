@@ -69,6 +69,28 @@ async function waitForArtifactStorage() {
   throw new Error("Private report artifact Storage did not become ready.");
 }
 
+async function uploadArtifactForTest(path: string, bytes: Buffer) {
+  const response = await fetch(
+    `${url}/storage/v1/object/report-artifacts/${path}`,
+    {
+      method: "POST",
+      headers: {
+        apikey: serviceKey!,
+        authorization: `Bearer ${serviceKey}`,
+        "content-type": "application/pdf",
+        "x-upsert": "false",
+      },
+      body: bytes as unknown as BodyInit,
+      signal: AbortSignal.timeout(10_000),
+    },
+  );
+  if (!response.ok) {
+    throw new Error(
+      `Artifact upload failed with ${response.status}: ${await response.text()}`,
+    );
+  }
+}
+
 async function createActor(label: string, schoolId: string) {
   const auth = await admin!.auth.admin.createUser({
     email: `stage14-concurrency-${label}-${Date.now()}@example.invalid`,
@@ -281,13 +303,7 @@ async function storeArtifact(actor: Actor, reportId: string) {
   const bytes = Buffer.from(`%PDF-concurrency-${reportId}`);
   const checksum = createHash("sha256").update(bytes).digest("hex");
   const path = `${reportId}/${checksum}.pdf`;
-  const uploaded = await admin!.storage
-    .from("report-artifacts")
-    .upload(path, bytes, {
-      contentType: "application/pdf",
-      upsert: false,
-    });
-  if (uploaded.error) throw uploaded.error;
+  await uploadArtifactForTest(path, bytes);
   const result = await actor.client.rpc("register_report_pdf_artifact", {
     target_report_id: reportId,
     expected_workflow_version: 0,
