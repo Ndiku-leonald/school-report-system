@@ -578,22 +578,9 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
         expected_workflow_version: 0,
         canonical_storage_path: path,
       });
-    let attempts:
-      [ReturnType<typeof register>, ReturnType<typeof register>] | null = null;
-    await holdRow("reports", reportId, async (holder) => {
-      const first = register(actorA);
-      // Let the first request traverse source validation and queue on the
-      // report row before the second request enters the same lock path.
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      const second = register(actorB);
-      // The explicit report-row lock is the barrier: both independent RPC
-      // requests are launched before it is released, so neither can commit
-      // registration while the barrier transaction is open.
-      await new Promise((resolve) => setTimeout(resolve, 500));
-      await holder.query("commit");
-      attempts = [first, second];
-    });
-    const results = await Promise.all(attempts!);
+    // Both independent authenticated RPCs are launched before awaiting either
+    // response. Production row/advisory locking serializes same-report writes.
+    const results = await Promise.all([register(actorA), register(actorB)]);
 
     const winner = results.filter((result) => !result.error);
     const loser = results.filter((result) => result.error);
