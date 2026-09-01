@@ -388,12 +388,12 @@ describe("Stage 14 continuous real Stage 10-to-14 lifecycle", () => {
       [ids.scheme, ids.term, ids.grade, ids.subject, teacher.membershipId],
     );
     await db.query(
-      "update public.assessment_schemes set status='ACTIVE' where id=$1",
-      [ids.scheme],
-    );
-    await db.query(
       "insert into public.assessment_components(id,assessment_scheme_id,name,component_code,maximum_score,weight_percentage,sort_order) values($1,$2,'Final','FINAL',100,100,1)",
       [ids.component, ids.scheme],
+    );
+    await db.query(
+      "update public.assessment_schemes set status='ACTIVE' where id=$1",
+      [ids.scheme],
     );
     await db.query(
       "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date) values($1,$2,'ST14-L-001','Proof','Learner',current_date-60)",
