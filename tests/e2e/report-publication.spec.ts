@@ -148,6 +148,7 @@ async function login(
   let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
+      await page.context().clearCookies();
       await page.goto("/staff-login", { waitUntil: "domcontentloaded" });
       await expect(page.getByLabel("Email address")).toBeVisible({
         timeout: 5000,
