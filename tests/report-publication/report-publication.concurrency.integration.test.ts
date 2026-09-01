@@ -578,7 +578,10 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
         expected_workflow_version: 0,
         canonical_storage_path: path,
       });
-    let results: Awaited<ReturnType<typeof register>>[] = [];
+    let attempts: [
+      ReturnType<typeof register>,
+      ReturnType<typeof register>,
+    ] | null = null;
     await holdRow("reports", reportId, async (holder) => {
       const first = register(actorA);
       // Let the first request traverse source validation and queue on the
@@ -590,8 +593,9 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       // registration while the barrier transaction is open.
       await new Promise((resolve) => setTimeout(resolve, 500));
       await holder.query("commit");
-      results = await Promise.all([first, second]);
+      attempts = [first, second];
     });
+    const results = await Promise.all(attempts!);
 
     const winner = results.filter((result) => !result.error);
     const loser = results.filter((result) => result.error);
