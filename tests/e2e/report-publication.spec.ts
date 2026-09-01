@@ -145,16 +145,32 @@ async function login(
   email = generatorEmail,
   membershipId = generatorMembershipId,
 ) {
-  await page.goto("/staff-login");
-  await page.getByLabel("Email address").fill(email);
-  await page.getByLabel("Password").fill(password);
-  await page.getByRole("button", { name: "Sign in" }).click();
-  await page.waitForURL(/dashboard|select-school/);
-  if (page.url().includes("/select-school")) {
-    await page.locator(`input[type="radio"][value="${membershipId}"]`).check();
-    await page.getByRole("button", { name: "Continue" }).click();
+  let lastError: unknown;
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    try {
+      await page.goto("/staff-login", { waitUntil: "domcontentloaded" });
+      await expect(page.getByLabel("Email address")).toBeVisible({
+        timeout: 5000,
+      });
+      await page.getByLabel("Email address").fill(email);
+      await page.getByLabel("Password").fill(password);
+      await page.getByRole("button", { name: "Sign in" }).click();
+      await page.waitForURL(/dashboard|select-school/, { timeout: 15000 });
+      if (page.url().includes("/select-school")) {
+        await page
+          .locator(`input[type="radio"][value="${membershipId}"]`)
+          .check();
+        await page.getByRole("button", { name: "Continue" }).click();
+      }
+      await page.waitForURL(/dashboard/, { timeout: 15000 });
+      return;
+    } catch (error) {
+      lastError = error;
+      if (attempt === 2) throw error;
+      await page.waitForTimeout(250);
+    }
   }
-  await page.waitForURL(/dashboard/);
+  throw lastError;
 }
 
 async function openReport(
