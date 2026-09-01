@@ -551,7 +551,7 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       pdf_size_bytes: string | null;
       workflow_version: number;
     }>(
-      "select pdf_storage_path,file_checksum,pdf_size_bytes,workflow_version from public.reports where id=$1",
+      "select pdf_storage_path,file_checksum,pdf_size_bytes,workflow_version::int from public.reports where id=$1",
       [reportId],
     );
     expect(initial.rows[0]).toEqual({
