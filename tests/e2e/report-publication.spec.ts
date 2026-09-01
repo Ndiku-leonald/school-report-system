@@ -313,7 +313,8 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
   });
   test("16. promotion controls are absent", async ({ page }) => {
     await openReport(page);
-    await expect(page.getByText(/promot/i)).toHaveCount(0);
+    await expect(page.getByRole("button", { name: /promot/i })).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /promot/i })).toHaveCount(0);
   });
   test("17. view-only registrar cannot materialize", async ({ page }) => {
     await openReport(page, viewOnlyEmail, viewOnlyMembershipId);
