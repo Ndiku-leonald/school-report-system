@@ -1,7 +1,9 @@
 import { expect, test, type Page } from "@playwright/test";
-import { createClient } from "@supabase/supabase-js";
-import { randomUUID } from "node:crypto";
+import { createClient, type SupabaseClient } from "@supabase/supabase-js";
+import { createHash, randomUUID } from "node:crypto";
 import { Client } from "pg";
+
+import type { Database } from "../../src/types/database.generated";
 
 const enabled = process.env.REPORT_PUBLICATION_E2E === "1";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
@@ -19,6 +21,7 @@ let termId = "";
 let termStartsOn = "";
 let generatorEmail = "";
 let generatorMembershipId = "";
+let generatorSchoolBMembershipId = "";
 let viewOnlyEmail = "";
 let viewOnlyMembershipId = "";
 let subjectEmail = "";
@@ -28,6 +31,11 @@ let classTeacherMembershipId = "";
 let schoolBEmail = "";
 let schoolBMembershipId = "";
 let registrarGenerateMappingExisted = false;
+let lifecycleV1ReportId = "";
+let lifecycleV2ReportId = "";
+let withdrawnPredecessorReportId = "";
+let withdrawnSuccessorReportId = "";
+type BrowserClient = SupabaseClient<Database>;
 
 async function createStaff(
   label: string,
@@ -138,6 +146,24 @@ async function setup() {
   const outsider = await createStaff("SchoolB", "SCHOOL_ADMIN", schoolB);
   schoolBEmail = outsider.email;
   schoolBMembershipId = outsider.membershipId;
+  const generatorProfile = await db.query<{ profile_id: string }>(
+    "select profile_id from public.school_staff_memberships where id=$1",
+    [generatorMembershipId],
+  );
+  generatorSchoolBMembershipId = randomUUID();
+  await db.query(
+    "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,$4,'ACTIVE')",
+    [
+      generatorSchoolBMembershipId,
+      schoolB,
+      generatorProfile.rows[0].profile_id,
+      `ST14-Generator-B-${Date.now()}`,
+    ],
+  );
+  await db.query(
+    "insert into public.staff_role_assignments(membership_id,role,granted_at) values($1,'SCHOOL_ADMIN',now()-interval '1 day')",
+    [generatorSchoolBMembershipId],
+  );
 }
 
 async function login(
@@ -178,13 +204,173 @@ async function openReport(
   page: Page,
   email = generatorEmail,
   membershipId = generatorMembershipId,
+  targetReportId = reportId,
 ) {
   await login(page, email, membershipId);
-  await page.goto(`/dashboard/reports/${reportId}`);
+  await page.goto(`/dashboard/reports/${targetReportId}`);
 }
 
 function publicationWorkflowCard(page: Page) {
   return page.getByText("Publication workflow").locator("..").locator("..");
+}
+
+async function generatorClient(): Promise<BrowserClient> {
+  const client = createClient<Database>(
+    url,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "",
+    {
+      auth: { autoRefreshToken: false, persistSession: false },
+    },
+  );
+  const signedIn = await client.auth.signInWithPassword({
+    email: generatorEmail,
+    password,
+  });
+  if (signedIn.error) throw signedIn.error;
+  const selected = await client.rpc("set_my_active_membership", {
+    target_membership_id: generatorMembershipId,
+  });
+  if (selected.error) throw selected.error;
+  return client;
+}
+
+async function fixtureSuccessor(predecessorId: string, client: BrowserClient) {
+  const runId = randomUUID();
+  const resultId = randomUUID();
+  const subjectResultId = randomUUID();
+  const target = await db.query<{
+    run_id: string;
+    enrollment_id: string;
+  }>(
+    "select calculation_run_id as run_id,enrollment_id from public.reports where id=$1",
+    [predecessorId],
+  );
+  if (!target.rows[0])
+    throw new Error("The browser successor predecessor is missing.");
+  const sourceRunId = target.rows[0].run_id;
+  const targetEnrollmentId = target.rows[0].enrollment_id;
+  await db.query(
+    `insert into public.result_calculation_runs
+       (id,term_id,grade_level_id,version,supersedes_run_id,grading_scale_id,
+        ranking_rule_id,input_checksum,output_checksum,created_by)
+     select $1,term_id,grade_level_id,version+1,id,grading_scale_id,ranking_rule_id,
+        input_checksum,$2,created_by
+       from public.result_calculation_runs where id=$3`,
+    [runId, "e".repeat(64), sourceRunId],
+  );
+  await db.query(
+    `insert into public.result_calculation_sources
+       (calculation_run_id,mark_sheet_id,class_section_id,subject_id,mark_sheet_version,
+        assessment_scheme_id,grade_level_subject_id,curriculum_is_required,
+        curriculum_contributes_to_aggregate,curriculum_sort_order)
+     select $1,mark_sheet_id,class_section_id,subject_id,mark_sheet_version,
+        assessment_scheme_id,grade_level_subject_id,curriculum_is_required,
+        curriculum_contributes_to_aggregate,curriculum_sort_order
+       from public.result_calculation_sources where calculation_run_id=$2`,
+    [runId, sourceRunId],
+  );
+  await db.query(
+    `insert into public.calculated_student_results
+       (id,calculation_run_id,enrollment_id,class_section_id,subject_count,
+        complete_subject_count,subjects_passed,overall_total,overall_average,
+        overall_grade,aggregate_total,aggregate_classification,is_complete,
+        ranking_eligible,ranking_metric,class_position,grade_level_position,
+        class_tie_size,grade_level_tie_size,class_is_tied,grade_level_is_tied)
+     select $1,$2,enrollment_id,class_section_id,subject_count,
+        complete_subject_count,subjects_passed,overall_total,overall_average,
+        overall_grade,aggregate_total,aggregate_classification,is_complete,
+        ranking_eligible,ranking_metric,class_position,grade_level_position,
+        class_tie_size,grade_level_tie_size,class_is_tied,grade_level_is_tied
+       from public.calculated_student_results where calculation_run_id=$3
+         and enrollment_id=$4`,
+    [resultId, runId, sourceRunId, targetEnrollmentId],
+  );
+  await db.query(
+    `insert into public.calculated_subject_results
+       (id,calculation_run_id,enrollment_id,class_section_id,subject_id,mark_sheet_id,
+        subject_status,subject_score,grade,aggregate_points,is_pass,assessed_weight,
+        has_absence,has_exemption,subject_position,subject_tie_size,subject_is_tied)
+     select $1,$2,enrollment_id,class_section_id,subject_id,mark_sheet_id,
+        subject_status,subject_score,grade,aggregate_points,is_pass,assessed_weight,
+        has_absence,has_exemption,subject_position,subject_tie_size,subject_is_tied
+       from public.calculated_subject_results where calculation_run_id=$3
+         and enrollment_id=$4`,
+    [subjectResultId, runId, sourceRunId, targetEnrollmentId],
+  );
+  const generated = await client.rpc("generate_student_report_snapshot", {
+    target_calculation_run_id: runId,
+    target_enrollment_id: targetEnrollmentId,
+  });
+  if (generated.error || !generated.data?.[0])
+    throw (
+      generated.error ??
+      new Error("The browser successor report was not generated.")
+    );
+  return generated.data[0].report_id as string;
+}
+
+async function fixtureStoreAndReview(
+  client: BrowserClient,
+  targetReportId: string,
+) {
+  const bytes = Buffer.from(`%PDF-browser-lifecycle-${targetReportId}`);
+  const checksum = createHash("sha256").update(bytes).digest("hex");
+  const path = `${targetReportId}/${checksum}.pdf`;
+  const uploaded = await admin!.storage
+    .from("report-artifacts")
+    .upload(path, bytes, {
+      contentType: "application/pdf",
+      upsert: false,
+      metadata: { checksum },
+    });
+  if (uploaded.error) throw uploaded.error;
+  const stored = await client.rpc("register_report_pdf_artifact", {
+    target_report_id: targetReportId,
+    expected_workflow_version: 0,
+    canonical_storage_path: path,
+  });
+  if (stored.error) throw stored.error;
+  const reviewed = await client.rpc("review_generated_report", {
+    target_report_id: targetReportId,
+    expected_workflow_version: Number(stored.data[0].workflow_version),
+  });
+  if (reviewed.error) throw reviewed.error;
+}
+
+async function prepareBrowserLifecyclePair() {
+  const client = await generatorClient();
+  lifecycleV1ReportId = await fixtureSuccessor(reportId, client);
+  await fixtureStoreAndReview(client, lifecycleV1ReportId);
+  const v1Version = await db.query<{ workflow_version: number }>(
+    "select workflow_version from public.reports where id=$1",
+    [lifecycleV1ReportId],
+  );
+  const published = await client.rpc("publish_reviewed_report", {
+    target_report_id: lifecycleV1ReportId,
+    expected_workflow_version: v1Version.rows[0].workflow_version,
+  });
+  if (published.error) throw published.error;
+  lifecycleV2ReportId = await fixtureSuccessor(lifecycleV1ReportId, client);
+}
+
+async function prepareWithdrawnBrowserPair() {
+  const client = await generatorClient();
+  withdrawnPredecessorReportId = lifecycleV2ReportId;
+  const predecessor = await db.query<{ workflow_version: number }>(
+    "select workflow_version from public.reports where id=$1",
+    [withdrawnPredecessorReportId],
+  );
+  const withdrawn = await client.rpc("withdraw_published_report", {
+    target_report_id: withdrawnPredecessorReportId,
+    expected_workflow_version: predecessor.rows[0].workflow_version,
+    withdrawal_reason: "Browser lifecycle correction history",
+  });
+  if (withdrawn.error) throw withdrawn.error;
+  withdrawnSuccessorReportId = await fixtureSuccessor(
+    withdrawnPredecessorReportId,
+    client,
+  );
+  await fixtureStoreAndReview(client, withdrawnSuccessorReportId);
 }
 
 test.describe.serial("Stage 14 signed-in publication acceptance", () => {
@@ -572,5 +758,144 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
     await openReport(page);
     await page.getByRole("link", { name: "Download stored PDF" }).click();
     expect(errors).toEqual([]);
+  });
+  test("47. published v1 and generated v2 remain distinct in browser history", async ({
+    page,
+  }) => {
+    await prepareBrowserLifecyclePair();
+    await openReport(
+      page,
+      generatorEmail,
+      generatorMembershipId,
+      lifecycleV1ReportId,
+    );
+    await expect(
+      publicationWorkflowCard(page).getByText("PUBLISHED", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByRole("link", { name: /Report v2/ })).toHaveAttribute(
+      "href",
+      `/dashboard/reports/${lifecycleV2ReportId}`,
+    );
+    await openReport(
+      page,
+      generatorEmail,
+      generatorMembershipId,
+      lifecycleV2ReportId,
+    );
+    await expect(
+      publicationWorkflowCard(page).getByText("GENERATED", { exact: true }),
+    ).toBeVisible();
+  });
+  test("48. browser review transitions the generated successor while v1 stays published", async ({
+    page,
+  }) => {
+    await openReport(
+      page,
+      generatorEmail,
+      generatorMembershipId,
+      lifecycleV2ReportId,
+    );
+    await page.getByRole("button", { name: "Generate private PDF" }).click();
+    await expect(
+      publicationWorkflowCard(page)
+        .locator("span")
+        .filter({ hasText: "Stored" }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Mark reviewed" }).click();
+    await expect(
+      publicationWorkflowCard(page).getByText("REVIEWED", { exact: true }),
+    ).toBeVisible();
+    await openReport(
+      page,
+      generatorEmail,
+      generatorMembershipId,
+      lifecycleV1ReportId,
+    );
+    await expect(
+      publicationWorkflowCard(page).getByText("PUBLISHED", { exact: true }),
+    ).toBeVisible();
+  });
+  test("49. browser publication supersedes v1 and retains historical navigation/download", async ({
+    page,
+  }) => {
+    await openReport(
+      page,
+      generatorEmail,
+      generatorMembershipId,
+      lifecycleV2ReportId,
+    );
+    await page.getByRole("button", { name: "Publish report" }).click();
+    await page.getByRole("button", { name: "Confirm publish" }).click();
+    await expect(
+      publicationWorkflowCard(page).getByText("PUBLISHED", { exact: true }),
+    ).toBeVisible();
+    await openReport(
+      page,
+      generatorEmail,
+      generatorMembershipId,
+      lifecycleV1ReportId,
+    );
+    await expect(
+      publicationWorkflowCard(page).getByText("SUPERSEDED", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Download stored PDF" }),
+    ).toBeVisible();
+    const download = await page.request.get(
+      `/api/reports/${lifecycleV1ReportId}/artifact`,
+    );
+    expect(download.status()).toBe(200);
+    expect((await download.body()).subarray(0, 5).toString()).toBe("%PDF-");
+  });
+  test("50. browser publication preserves a withdrawn predecessor", async ({
+    page,
+  }) => {
+    await prepareWithdrawnBrowserPair();
+    await openReport(
+      page,
+      generatorEmail,
+      generatorMembershipId,
+      withdrawnSuccessorReportId,
+    );
+    await expect(
+      publicationWorkflowCard(page).getByText("REVIEWED", { exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Publish report" }).click();
+    await page.getByRole("button", { name: "Confirm publish" }).click();
+    await expect(
+      publicationWorkflowCard(page).getByText("PUBLISHED", { exact: true }),
+    ).toBeVisible();
+    await openReport(
+      page,
+      generatorEmail,
+      generatorMembershipId,
+      withdrawnPredecessorReportId,
+    );
+    await expect(
+      publicationWorkflowCard(page).getByText("WITHDRAWN", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("link", { name: "Download stored PDF" }),
+    ).toBeVisible();
+  });
+  test("51. real school switching removes the old publication scope", async ({
+    page,
+  }) => {
+    await openReport(page, generatorEmail, generatorMembershipId, reportId);
+    await expect(page.getByText("Publication workflow")).toBeVisible();
+    await page.goto(`/select-school?next=/dashboard/reports/${reportId}`);
+    await page
+      .locator(`input[type="radio"][value="${generatorSchoolBMembershipId}"]`)
+      .check();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.waitForURL(/dashboard\/reports|forbidden/);
+    await expect(page.getByText("Publication workflow")).toHaveCount(0);
+    await page.goto(`/select-school?next=/dashboard/reports/${reportId}`);
+    await page
+      .locator(`input[type="radio"][value="${generatorMembershipId}"]`)
+      .check();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.waitForURL(/dashboard\/reports/);
+    await expect(page.getByText("Publication workflow")).toBeVisible();
   });
 });

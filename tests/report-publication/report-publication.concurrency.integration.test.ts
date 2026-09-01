@@ -542,6 +542,121 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
     if (enabled) await db.end();
   });
 
+  it("1. fresh double registration commits one artifact, version, and stored audit", async () => {
+    if (!enabled) return;
+    const reportId = await makeReport("fresh-registration-race");
+    const initial = await db.query<{
+      pdf_storage_path: string | null;
+      file_checksum: string | null;
+      pdf_size_bytes: string | null;
+      workflow_version: number;
+    }>(
+      "select pdf_storage_path,file_checksum,pdf_size_bytes,workflow_version from public.reports where id=$1",
+      [reportId],
+    );
+    expect(initial.rows[0]).toEqual({
+      pdf_storage_path: null,
+      file_checksum: null,
+      pdf_size_bytes: null,
+      workflow_version: 0,
+    });
+    const bytes = Buffer.from(`%PDF-fresh-registration-${reportId}`);
+    const checksum = createHash("sha256").update(bytes).digest("hex");
+    const path = `${reportId}/${checksum}.pdf`;
+    const uploaded = await admin!.storage
+      .from("report-artifacts")
+      .upload(path, bytes, {
+        contentType: "application/pdf",
+        upsert: false,
+        metadata: { checksum },
+      });
+    expect(uploaded.error).toBeNull();
+
+    const register = (actor: Actor) =>
+      actor.client.rpc("register_report_pdf_artifact", {
+        target_report_id: reportId,
+        expected_workflow_version: 0,
+        canonical_storage_path: path,
+      });
+    let results: Awaited<ReturnType<typeof register>>[] = [];
+    await holdRow("reports", reportId, async (holder, pid) => {
+      const first = register(actorA);
+      const second = register(actorB);
+      await waitForBlocked(pid);
+      await holder.query("commit");
+      results = await Promise.all([first, second]);
+    });
+
+    const winner = results.filter((result) => !result.error);
+    const loser = results.filter((result) => result.error);
+    expect(winner).toHaveLength(1);
+    expect(loser).toHaveLength(1);
+    expect(loser[0].error?.message).toContain("REPORT_WORKFLOW_CONFLICT");
+    const stored = await db.query<{
+      pdf_storage_path: string;
+      file_checksum: string;
+      pdf_size_bytes: string;
+      pdf_renderer_version: string;
+      workflow_version: number;
+      object_count: string;
+      audit_count: string;
+      object_checksum: string | null;
+      object_size: string | null;
+    }>(
+      `select report.pdf_storage_path,report.file_checksum,
+          report.pdf_size_bytes,report.pdf_renderer_version,report.workflow_version,
+          (select count(*)::text from storage.objects object
+             where object.bucket_id='report-artifacts' and object.name=$2) object_count,
+          (select count(*)::text from public.audit_logs audit
+             where audit.entity_id=report.id and audit.action='REPORT_ARTIFACT_STORED') audit_count,
+          (select object.metadata->>'checksum' from storage.objects object
+             where object.bucket_id='report-artifacts' and object.name=$2) object_checksum,
+          (select object.metadata->>'size' from storage.objects object
+             where object.bucket_id='report-artifacts' and object.name=$2) object_size
+       from public.reports report where report.id=$1`,
+      [reportId, path],
+    );
+    expect(stored.rows[0]).toMatchObject({
+      pdf_storage_path: path,
+      file_checksum: checksum,
+      pdf_size_bytes: String(bytes.length),
+      pdf_renderer_version: "report-card-v1",
+      workflow_version: 1,
+      object_count: "1",
+      audit_count: "1",
+      object_checksum: checksum,
+      object_size: String(bytes.length),
+    });
+    const downloaded = await admin!.storage
+      .from("report-artifacts")
+      .download(path);
+    if (downloaded.error || !downloaded.data)
+      throw downloaded.error ?? new Error("Fresh race artifact is missing.");
+    const actual = Buffer.from(await downloaded.data.arrayBuffer());
+    expect(actual.subarray(0, 5).toString()).toBe("%PDF-");
+    expect(actual.length).toBe(bytes.length);
+    expect(createHash("sha256").update(actual).digest("hex")).toBe(checksum);
+    console.info(
+      "FRESH_DOUBLE_ARTIFACT_REGISTRATION_RACE",
+      JSON.stringify({
+        reportId,
+        initialWorkflowVersion: 0,
+        canonicalArtifactPath: path,
+        artifactSha256: checksum,
+        actualByteLength: actual.length,
+        attemptA: results[0].error ? results[0].error.message : "COMMITTED",
+        attemptB: results[1].error ? results[1].error.message : "COMMITTED",
+        finalWorkflowVersion: stored.rows[0].workflow_version,
+        physicalStorageObjects: stored.rows[0].object_count,
+        storedAudits: stored.rows[0].audit_count,
+        registeredPath: stored.rows[0].pdf_storage_path,
+        registeredChecksum: stored.rows[0].file_checksum,
+        registeredSize: stored.rows[0].pdf_size_bytes,
+        actualBytesMatch: true,
+      }),
+    );
+  });
+
   it("2. double review produces one transition, one workflow increment, and one review audit", async () => {
     if (!enabled) return;
     const reportId = await makeReport("double-review");
