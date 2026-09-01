@@ -166,6 +166,19 @@ async function makeReport(label: string) {
     ],
   );
   await db.query(
+    "select set_config('app.marks_workflow_transition','allowed',false)",
+  );
+  await db.query(
+    "update public.mark_sheets set workflow_status='LOCKED',locked_by=$2,locked_at=now() where id=$1",
+    [source.mark_sheet_id, actorA.membershipId],
+  );
+  await db.query(
+    "select set_config('app.term_marks_workflow_transition','allowed',false)",
+  );
+  await db.query("update public.terms set status='LOCKED' where id=$1", [
+    source.term_id,
+  ]);
+  await db.query(
     `insert into public.result_calculation_runs
        (id,term_id,grade_level_id,version,supersedes_run_id,grading_scale_id,
         ranking_rule_id,aggregate_classification_scale_id,input_checksum,
@@ -217,19 +230,6 @@ async function makeReport(label: string) {
        where calculation_run_id=$4 and enrollment_id=$5`,
     [subjectResultId, enrollmentId, runId, currentRunId, templateEnrollmentId],
   );
-  await db.query(
-    "select set_config('app.marks_workflow_transition','allowed',false)",
-  );
-  await db.query(
-    "update public.mark_sheets set workflow_status='LOCKED',locked_by=$2,locked_at=now() where id=$1",
-    [source.mark_sheet_id, actorA.membershipId],
-  );
-  await db.query(
-    "select set_config('app.term_marks_workflow_transition','allowed',false)",
-  );
-  await db.query("update public.terms set status='LOCKED' where id=$1", [
-    source.term_id,
-  ]);
   const checksumCheck = await db.query<{
     stored: string;
     recomputed: string;
