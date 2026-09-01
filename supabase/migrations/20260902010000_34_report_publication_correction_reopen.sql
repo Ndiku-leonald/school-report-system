@@ -91,6 +91,16 @@ declare
   authoritative_size bigint;
   changed public.reports%rowtype;
 begin
+  -- Take the target-row lock before any shared authority/source locks. This
+  -- makes the same-report registration order unambiguous under concurrency.
+  select report_row.* into report
+  from public.reports report_row
+  where report_row.id = target_report_id
+  for update;
+  if not found then
+    raise exception 'REPORT_NOT_FOUND' using errcode = 'P0002';
+  end if;
+
   -- Serialize only competing registrations for this report before taking the
   -- authority and academic source locks below.
   perform pg_advisory_xact_lock(
