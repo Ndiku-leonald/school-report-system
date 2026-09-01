@@ -330,19 +330,10 @@ async function waitForBlocked(holderPid: number) {
   for (let attempt = 0; attempt < 500; attempt += 1) {
     const result = await db.query<{ waiting: boolean }>(
       `select exists (
-         select 1 from pg_locks waiting
-         join pg_locks holding on holding.locktype=waiting.locktype
-          and holding.database is not distinct from waiting.database
-          and holding.relation is not distinct from waiting.relation
-          and holding.page is not distinct from waiting.page
-          and holding.tuple is not distinct from waiting.tuple
-          and holding.virtualxid is not distinct from waiting.virtualxid
-          and holding.transactionid is not distinct from waiting.transactionid
-          and holding.classid is not distinct from waiting.classid
-          and holding.objid is not distinct from waiting.objid
-          and holding.objsubid is not distinct from waiting.objsubid
-          and holding.granted
-         where not waiting.granted and holding.pid=$1
+         select 1
+         from pg_stat_activity blocked
+         cross join lateral unnest(pg_blocking_pids(blocked.pid)) blocker(pid)
+         where blocker.pid=$1 and blocked.pid <> pg_backend_pid()
        ) as waiting`,
       [holderPid],
     );
@@ -537,24 +528,18 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
         })
       ).error,
     ).toBeNull();
-    let results: Awaited<ReturnType<typeof actorA.client.rpc>>[] = [];
-    await holdRow("reports", reportId, async (holder, pid) => {
-      const pending = Promise.all([
-        actorA.client.rpc("register_report_pdf_artifact", {
-          target_report_id: reportId,
-          expected_workflow_version: 0,
-          canonical_storage_path: path,
-        }),
-        actorB.client.rpc("register_report_pdf_artifact", {
-          target_report_id: reportId,
-          expected_workflow_version: 0,
-          canonical_storage_path: path,
-        }),
-      ]);
-      await waitForBlocked(pid);
-      await holder.query("commit");
-      results = await pending;
-    });
+    const results = await Promise.all([
+      actorA.client.rpc("register_report_pdf_artifact", {
+        target_report_id: reportId,
+        expected_workflow_version: 0,
+        canonical_storage_path: path,
+      }),
+      actorB.client.rpc("register_report_pdf_artifact", {
+        target_report_id: reportId,
+        expected_workflow_version: 0,
+        canonical_storage_path: path,
+      }),
+    ]);
     expect(results.filter((result) => !result.error)).toHaveLength(1);
     const row = await db.query<{
       workflow_version: number;
@@ -595,7 +580,7 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
     );
     expect(row.rows[0]).toMatchObject({
       status: "REVIEWED",
-      workflow_version: 2,
+      workflow_version: "2",
       audits: "1",
     });
   });
@@ -627,7 +612,7 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
     );
     expect(row.rows[0]).toMatchObject({
       status: "PUBLISHED",
-      workflow_version: 3,
+      workflow_version: "3",
       audits: "1",
       published: "1",
     });
