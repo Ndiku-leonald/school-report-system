@@ -446,8 +446,18 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
          join public.enrollments enrollment on enrollment.id=report.enrollment_id
          join public.report_snapshots snapshot on snapshot.report_id=report.id
         where report.status='GENERATED' and report.superseded_by is null
-          and report.pdf_storage_path is null
-        order by report.created_at desc limit 1`,
+           and report.pdf_storage_path is null
+           and report.snapshot_context_checksum = snapshot.snapshot_checksum
+           and snapshot.source_checksum = run.input_checksum
+           and run.id = (
+             select latest.id
+               from public.result_calculation_runs latest
+              where latest.term_id = run.term_id
+                and latest.grade_level_id = run.grade_level_id
+              order by latest.version desc, latest.id desc
+              limit 1
+           )
+         order by report.created_at desc limit 1`,
     );
     if (!found.rows[0])
       throw new Error(
