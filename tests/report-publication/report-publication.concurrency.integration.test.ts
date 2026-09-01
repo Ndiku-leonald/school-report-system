@@ -590,7 +590,30 @@ describe("Stage 14 deterministic concurrency acceptance", () => {
       // registration while the barrier transaction is open.
       await new Promise((resolve) => setTimeout(resolve, 500));
       await holder.query("commit");
-      results = await Promise.all([first, second]);
+      console.info("FRESH_RACE_BARRIER_RELEASED", reportId);
+      let timeoutHandle: ReturnType<typeof setTimeout> | undefined;
+      try {
+        results = await Promise.race([
+          Promise.all([first, second]),
+          new Promise<never>((_, reject) => {
+            timeoutHandle = setTimeout(async () => {
+              const activity = await db.query(
+                `select pid,state,wait_event_type,wait_event,left(query,160) as query
+                   from pg_stat_activity
+                  where datname=current_database() and pid <> pg_backend_pid()
+                    and state <> 'idle'`,
+              );
+              reject(
+                new Error(
+                  `Fresh registration race did not settle: ${JSON.stringify(activity.rows)}`,
+                ),
+              );
+            }, 10_000);
+          }),
+        ]);
+      } finally {
+        if (timeoutHandle) clearTimeout(timeoutHandle);
+      }
     });
 
     const winner = results.filter((result) => !result.error);
