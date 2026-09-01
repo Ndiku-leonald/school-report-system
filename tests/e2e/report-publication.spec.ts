@@ -16,6 +16,7 @@ let reportId = "";
 let schoolId = "";
 let sectionId = "";
 let termId = "";
+let termStartsOn = "";
 let generatorEmail = "";
 let generatorMembershipId = "";
 let viewOnlyEmail = "";
@@ -68,9 +69,10 @@ async function setup() {
     school_id: string;
     section_id: string;
     term_id: string;
+    term_starts_on: string;
   }>(
     `select report.id, year.school_id, enrollment.class_section_id as section_id,
-            report.term_id
+            report.term_id, term.starts_on as term_starts_on
        from public.reports report
        join public.terms term on term.id = report.term_id
        join public.academic_years year on year.id = term.academic_year_id
@@ -90,6 +92,7 @@ async function setup() {
   schoolId = found.rows[0].school_id;
   sectionId = found.rows[0].section_id;
   termId = found.rows[0].term_id;
+  termStartsOn = found.rows[0].term_starts_on;
 
   const generator = await createStaff("Generator", "SCHOOL_ADMIN", schoolId);
   generatorEmail = generator.email;
@@ -118,8 +121,8 @@ async function setup() {
   await db.query(
     `insert into public.class_teacher_assignments
        (term_id,class_section_id,staff_membership_id,is_primary,starts_on)
-     values($1,$2,$3,false,current_date)`,
-    [termId, sectionId, classTeacherMembershipId],
+     values($1,$2,$3,false,$4)`,
+    [termId, sectionId, classTeacherMembershipId, termStartsOn],
   );
 
   const schoolB = randomUUID();
