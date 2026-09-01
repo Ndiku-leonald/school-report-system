@@ -158,7 +158,15 @@ export async function materializeReportArtifact(
     if (uploadedByRequest) await removeUnregisteredReportArtifact(path);
     throw new Error(rpcMessage(registered.error).message);
   }
-  return descriptorFromRow(registered.data);
+  const registeredDescriptor = await supabase.rpc(
+    "get_report_artifact_descriptor",
+    {
+      target_report_id: reportId,
+    },
+  );
+  if (registeredDescriptor.error)
+    throw new Error("The report artifact is unavailable.");
+  return descriptorFromRow(registeredDescriptor.data);
 }
 
 export async function downloadReportArtifact(reportId: string) {
