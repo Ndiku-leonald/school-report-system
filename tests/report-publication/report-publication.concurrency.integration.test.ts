@@ -230,6 +230,28 @@ async function makeReport(label: string) {
   await db.query("update public.terms set status='LOCKED' where id=$1", [
     source.term_id,
   ]);
+  const checksumCheck = await db.query<{
+    stored: string;
+    recomputed: string;
+    latest_id: string;
+  }>(
+    `select run.input_checksum as stored,
+            internal.results_input_checksum(run.term_id,run.grade_level_id,
+              run.grading_scale_id,run.ranking_rule_id,
+              run.aggregate_classification_scale_id) as recomputed,
+            (select latest.id from public.result_calculation_runs latest
+              where latest.term_id=run.term_id
+                and latest.grade_level_id=run.grade_level_id
+              order by latest.version desc,latest.id desc limit 1) as latest_id
+       from public.result_calculation_runs run where run.id=$1`,
+    [runId],
+  );
+  console.info("report publication successor source", {
+    runId,
+    stored: checksumCheck.rows[0]?.stored,
+    recomputed: checksumCheck.rows[0]?.recomputed,
+    latestId: checksumCheck.rows[0]?.latest_id,
+  });
   currentRunId = runId;
   templateEnrollmentId = enrollmentId;
   const generated = await actorA.client.rpc(
