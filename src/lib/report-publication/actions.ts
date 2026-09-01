@@ -5,7 +5,11 @@ import { z } from "zod";
 
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 
-import { materializeReportArtifact, rpcMessage } from "./service";
+import {
+  getReportArtifactDescriptor,
+  materializeReportArtifact,
+  rpcMessage,
+} from "./service";
 import type { PublicationActionResult } from "./types";
 
 const reportId = z.uuid();
@@ -50,6 +54,7 @@ async function mutate(
     const mapped = rpcMessage(result.error);
     return invalid(mapped.message, mapped.code);
   }
+  const descriptor = await getReportArtifactDescriptor(reportIdValue);
   revalidatePath(`/dashboard/reports/${reportIdValue}`);
   revalidatePath("/dashboard/reports");
   return {
@@ -58,6 +63,7 @@ async function mutate(
       name === "publish_reviewed_report"
         ? "Report published."
         : "Report marked reviewed.",
+    descriptor,
   };
 }
 
@@ -106,7 +112,12 @@ export async function withdrawPublishedReportAction(input: unknown) {
     const mapped = rpcMessage(result.error);
     return invalid(mapped.message, mapped.code);
   }
+  const descriptor = await getReportArtifactDescriptor(parsed.data.reportId);
   revalidatePath(`/dashboard/reports/${parsed.data.reportId}`);
   revalidatePath("/dashboard/reports");
-  return { ok: true, message: "Report publication withdrawn." };
+  return {
+    ok: true,
+    message: "Report publication withdrawn.",
+    descriptor,
+  };
 }
