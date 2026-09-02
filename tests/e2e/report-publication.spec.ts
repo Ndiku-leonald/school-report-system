@@ -787,10 +787,11 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
     await expect(
       publicationWorkflowCard(page).getByText("PUBLISHED", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByRole("link", { name: /Report v2/ })).toHaveAttribute(
-      "href",
-      `/dashboard/reports/${lifecycleV2ReportId}`,
-    );
+    await expect(
+      page
+        .locator(`a[href="/dashboard/reports/${lifecycleV2ReportId}"]`)
+        .filter({ hasText: "Report v2" }),
+    ).toHaveCount(1);
     await openReport(
       page,
       generatorEmail,
