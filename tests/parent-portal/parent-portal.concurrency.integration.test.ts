@@ -237,6 +237,10 @@ describe
 
     it("eligibility-removal-wins login race fails before session creation", async () => {
       await resetCredential();
+      const before = await db!.query<{ successes: string; sessions: string }>(
+        "select (select count(*)::text from public.parent_security_events where event_type='PARENT_LOGIN_SUCCEEDED' and student_id=$1) as successes,(select count(*)::text from public.parent_access_sessions where student_access_credential_id=$2 and revoked_at is null) as sessions",
+        [ids.student, ids.credential],
+      );
       const connection = await openConnection();
       await connection.query("begin");
       await connection.query(
@@ -252,11 +256,12 @@ describe
       await connection.query("commit");
       await connection.end();
       expect((await pending).data?.[0]?.ok).toBe(false);
-      const successes = await db!.query<{ count: string }>(
-        "select count(*)::text from public.parent_security_events where event_type='PARENT_LOGIN_SUCCEEDED' and student_id=$1",
-        [ids.student],
+      const after = await db!.query<{ successes: string; sessions: string }>(
+        "select (select count(*)::text from public.parent_security_events where event_type='PARENT_LOGIN_SUCCEEDED' and student_id=$1) as successes,(select count(*)::text from public.parent_access_sessions where student_access_credential_id=$2 and revoked_at is null) as sessions",
+        [ids.student, ids.credential],
       );
-      expect(Number(successes.rows[0]!.count)).toBe(0);
+      expect(after.rows[0]!.successes).toBe(before.rows[0]!.successes);
+      expect(after.rows[0]!.sessions).toBe(before.rows[0]!.sessions);
       await resetCredential();
     });
 
