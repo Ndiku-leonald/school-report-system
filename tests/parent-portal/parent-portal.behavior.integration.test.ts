@@ -301,7 +301,7 @@ describe
       );
       await db!.query(
         `insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values
-       ($1,$2,'Term One',1,'2026-01-01','2026-04-30','LOCKED'),($3,$4,'Term One',1,'2026-01-01','2026-04-30','LOCKED')`,
+       ($1,$2,'Term One',1,'2026-01-01','2026-04-30','MARKS_ENTRY'),($3,$4,'Term One',1,'2026-01-01','2026-04-30','MARKS_ENTRY')`,
         [fixture.termA, fixture.yearA, fixture.termB, fixture.yearB],
       );
       await db!.query(
