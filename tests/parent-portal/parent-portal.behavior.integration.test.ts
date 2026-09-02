@@ -339,14 +339,12 @@ describe
         ],
       );
       await db!.query(
-        `insert into public.guardians(id,school_id,first_name,last_name,is_active) values($1,$2,'Grace','Guardian',true);
-       insert into public.student_guardians(id,student_id,guardian_id,relationship,is_primary,can_access_reports) values($3,$4,$1,'Parent',true,true)`,
-        [
-          fixture.guardianA,
-          fixture.schoolA,
-          fixture.relationshipA,
-          fixture.studentA,
-        ],
+        `insert into public.guardians(id,school_id,first_name,last_name,is_active) values($1,$2,'Grace','Guardian',true)`,
+        [fixture.guardianA, fixture.schoolA],
+      );
+      await db!.query(
+        `insert into public.student_guardians(id,student_id,guardian_id,relationship,is_primary,can_access_reports) values($1,$2,$3,'Parent',true,true)`,
+        [fixture.relationshipA, fixture.studentA, fixture.guardianA],
       );
       fixtureBatchId = randomUUID();
       await db!.query(
