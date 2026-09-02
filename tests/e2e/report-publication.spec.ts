@@ -185,14 +185,21 @@ async function login(
       await page.getByLabel("Email address").fill(email);
       await page.getByLabel("Password").fill(password);
       await page.getByRole("button", { name: "Sign in" }).click();
-      await page.waitForURL(/dashboard|select-school/, { timeout: 15000 });
+      await page.waitForURL(
+        (url) =>
+          url.pathname.startsWith("/dashboard") ||
+          url.pathname === "/select-school",
+        { timeout: 15000 },
+      );
       if (page.url().includes("/select-school")) {
         await page
           .locator(`input[type="radio"][value="${membershipId}"]`)
           .check();
         await page.getByRole("button", { name: "Continue" }).click();
       }
-      await page.waitForURL(/dashboard/, { timeout: 15000 });
+      await page.waitForURL((url) => url.pathname.startsWith("/dashboard"), {
+        timeout: 15000,
+      });
       return;
     } catch (error) {
       lastError = error;
