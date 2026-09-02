@@ -42,5 +42,25 @@ select extensions.throws_ok($$select public.revoke_student_parent_access_credent
 reset role;
 
 select extensions.is((select count(*) from information_schema.routines where routine_schema='public' and routine_name='verify_parent_access'), 1::bigint, 'P35. login remains a single public routine signature');
+select extensions.like(
+  pg_get_functiondef('public.get_parent_report_detail(text,uuid)'::regprocedure),
+  '%result.subject_code%',
+  'P36. parent detail reads frozen subject codes'
+);
+select extensions.like(
+  pg_get_functiondef('public.get_parent_report_detail(text,uuid)'::regprocedure),
+  '%result.subject_name%',
+  'P37. parent detail reads frozen subject names'
+);
+select extensions.unlike(
+  lower(pg_get_functiondef('public.get_parent_report_detail(text,uuid)'::regprocedure)),
+  '%join public.subjects%',
+  'P38. parent detail does not join live subject identity'
+);
+select extensions.like(
+  pg_get_functiondef('public.verify_parent_access(text,text,text)'::regprocedure),
+  '%parent_has_report_eligibility%',
+  'P39. login performs a database eligibility check'
+);
 select * from finish();
 rollback;
