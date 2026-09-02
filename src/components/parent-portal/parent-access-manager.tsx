@@ -44,7 +44,11 @@ export function ParentAccessManager({
       </CardHeader>
       <CardContent className="space-y-4">
         {!status?.guardian_access_eligible ? (
-          <Alert title="Guardian eligibility required" variant="warning">
+          <Alert
+            title="Guardian eligibility required"
+            variant="warning"
+            role="note"
+          >
             Enable report access on an active guardian relationship before
             issuing credentials.
           </Alert>
