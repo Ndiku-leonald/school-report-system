@@ -247,7 +247,9 @@ test.describe("Stage 15 parent portal acceptance", () => {
     await expect(
       page.getByText(`Version ${fixture.historicalVersion}`),
     ).toBeVisible();
-    await expect(page.getByText("Previous published version")).toBeVisible();
+    await expect(
+      page.getByText("Previous published version", { exact: true }),
+    ).toBeVisible();
   });
 
   test("marks the latest report Current", async ({ page }) => {
