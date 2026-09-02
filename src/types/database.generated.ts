@@ -2100,7 +2100,10 @@ export type Database = {
           overall_average: number | null;
           overall_grade: string | null;
           overall_total: number | null;
+          pdf_renderer_version: string | null;
+          pdf_size_bytes: number | null;
           pdf_storage_path: string | null;
+          pdf_stored_at: string | null;
           promotion_recommendation:
             Database["public"]["Enums"]["promotion_outcome"] | null;
           published_at: string | null;
@@ -2114,8 +2117,10 @@ export type Database = {
           term_id: string;
           updated_at: string;
           version: number;
+          withdrawal_reason: string | null;
           withdrawn_at: string | null;
           withdrawn_by: string | null;
+          workflow_version: number;
         };
         Insert: {
           aggregate_total?: number | null;
@@ -2132,7 +2137,10 @@ export type Database = {
           overall_average?: number | null;
           overall_grade?: string | null;
           overall_total?: number | null;
+          pdf_renderer_version?: string | null;
+          pdf_size_bytes?: number | null;
           pdf_storage_path?: string | null;
+          pdf_stored_at?: string | null;
           promotion_recommendation?:
             Database["public"]["Enums"]["promotion_outcome"] | null;
           published_at?: string | null;
@@ -2146,8 +2154,10 @@ export type Database = {
           term_id: string;
           updated_at?: string;
           version?: number;
+          withdrawal_reason?: string | null;
           withdrawn_at?: string | null;
           withdrawn_by?: string | null;
+          workflow_version?: number;
         };
         Update: {
           aggregate_total?: number | null;
@@ -2164,7 +2174,10 @@ export type Database = {
           overall_average?: number | null;
           overall_grade?: string | null;
           overall_total?: number | null;
+          pdf_renderer_version?: string | null;
+          pdf_size_bytes?: number | null;
           pdf_storage_path?: string | null;
+          pdf_stored_at?: string | null;
           promotion_recommendation?:
             Database["public"]["Enums"]["promotion_outcome"] | null;
           published_at?: string | null;
@@ -2178,8 +2191,10 @@ export type Database = {
           term_id?: string;
           updated_at?: string;
           version?: number;
+          withdrawal_reason?: string | null;
           withdrawn_at?: string | null;
           withdrawn_by?: string | null;
+          workflow_version?: number;
         };
         Relationships: [
           {
@@ -3207,6 +3222,13 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      authorize_report_artifact_generation: {
+        Args: { target_report_id: string };
+        Returns: {
+          report_id: string;
+          workflow_version: number;
+        }[];
+      };
       calculate_grade_results: {
         Args: {
           target_aggregate_classification_scale_id?: string;
@@ -3772,6 +3794,24 @@ export type Database = {
           sheet_updated_at: string;
           sheet_version: number;
           workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
+        }[];
+      };
+      get_report_artifact_descriptor: {
+        Args: { target_report_id: string };
+        Returns: {
+          file_checksum: string;
+          file_size: number;
+          has_artifact: boolean;
+          published_at: string;
+          renderer_version: string;
+          report_id: string;
+          report_version: number;
+          reviewed_at: string;
+          status: Database["public"]["Enums"]["report_status"];
+          storage_path: string;
+          stored_at: string;
+          withdrawn_at: string;
+          workflow_version: number;
         }[];
       };
       get_report_generation_readiness: {
@@ -4462,6 +4502,35 @@ export type Database = {
           term_updated_at: string;
         }[];
       };
+      publish_reviewed_report: {
+        Args: { expected_workflow_version: number; target_report_id: string };
+        Returns: {
+          report_id: string;
+          status: Database["public"]["Enums"]["report_status"];
+          superseded_report_id: string;
+          workflow_version: number;
+        }[];
+      };
+      record_report_artifact_access: {
+        Args: { target_report_id: string; verified_checksum: string };
+        Returns: boolean;
+      };
+      register_report_pdf_artifact: {
+        Args: {
+          canonical_storage_path: string;
+          expected_workflow_version: number;
+          target_report_id: string;
+        };
+        Returns: {
+          file_checksum: string;
+          file_size_bytes: number;
+          pdf_storage_path: string;
+          report_id: string;
+          reused: boolean;
+          status: Database["public"]["Enums"]["report_status"];
+          workflow_version: number;
+        }[];
+      };
       remove_grade_level_subject: {
         Args: { expected_updated_at: string; target_mapping_id: string };
         Returns: {
@@ -4538,6 +4607,14 @@ export type Database = {
           mark_sheet_id: string;
           sheet_updated_at: string;
           workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
+        }[];
+      };
+      review_generated_report: {
+        Args: { expected_workflow_version: number; target_report_id: string };
+        Returns: {
+          report_id: string;
+          status: Database["public"]["Enums"]["report_status"];
+          workflow_version: number;
         }[];
       };
       save_aggregate_classification_scale: {
@@ -4921,6 +4998,18 @@ export type Database = {
           entity_id: string;
           entity_status: string;
           updated_at: string;
+        }[];
+      };
+      withdraw_published_report: {
+        Args: {
+          expected_workflow_version: number;
+          target_report_id: string;
+          withdrawal_reason: string;
+        };
+        Returns: {
+          report_id: string;
+          status: Database["public"]["Enums"]["report_status"];
+          workflow_version: number;
         }[];
       };
     };

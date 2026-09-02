@@ -118,9 +118,20 @@ export default async function ReportsPage() {
                       {report.calculation_version}
                     </td>
                     <td className="px-4 py-3">
-                      <Badge variant={report.is_latest ? "success" : "neutral"}>
-                        {report.is_latest ? "Current" : "Historical"}
-                      </Badge>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <Badge
+                          variant={
+                            report.status === "PUBLISHED" ? "success" : "info"
+                          }
+                        >
+                          {report.status}
+                        </Badge>
+                        <Badge
+                          variant={report.is_latest ? "success" : "neutral"}
+                        >
+                          {report.is_latest ? "Current" : "Historical"}
+                        </Badge>
+                      </div>
                     </td>
                   </tr>
                 ))}

@@ -1,9 +1,12 @@
 import Link from "next/link";
 
+import { ReportPublicationControls } from "@/components/report-publication/report-publication-controls";
 import { PageHeader } from "@/components/layout/page-header";
 import { ReportPreview } from "@/components/report-snapshots/report-preview";
 import { Badge } from "@/components/ui/badge";
 import { buttonStyles } from "@/components/ui/button";
+import { getAuthorizationContext } from "@/lib/authorization/context";
+import { getReportArtifactDescriptor } from "@/lib/report-publication/service";
 import {
   getGeneratedReport,
   getReportHistory,
@@ -17,12 +20,14 @@ export default async function ReportDetailPage({
 }) {
   const { reportId } = await params;
   const report = await getGeneratedReport(reportId);
-  const [subjects, history] = await Promise.all([
+  const [subjects, history, descriptor, authorization] = await Promise.all([
     getReportSubjects(reportId),
     getReportHistory(
       report.snapshot_data.placement.enrollment_id,
       report.snapshot_data.academic_period.term_id,
     ),
+    getReportArtifactDescriptor(reportId),
+    getAuthorizationContext(),
   ]);
   return (
     <div className="space-y-8">
@@ -32,6 +37,11 @@ export default async function ReportDetailPage({
         description={`${report.snapshot_data.student.admission_number} · ${report.snapshot_data.placement.class_name} · ${report.snapshot_data.academic_period.term_name}`}
         actions={
           <div className="flex flex-wrap items-center gap-3">
+            <Badge
+              variant={report.status === "PUBLISHED" ? "success" : "neutral"}
+            >
+              {report.status}
+            </Badge>
             <Badge variant={report.superseded_by ? "neutral" : "success"}>
               {report.superseded_by ? "Historical" : "Current"}
             </Badge>
@@ -44,6 +54,14 @@ export default async function ReportDetailPage({
             </a>
           </div>
         }
+      />
+      <ReportPublicationControls
+        reportId={reportId}
+        descriptor={descriptor}
+        canGenerate={authorization.permissions.has("REPORTS_GENERATE")}
+        canReview={authorization.permissions.has("REPORTS_REVIEW")}
+        canPublish={authorization.permissions.has("REPORTS_PUBLISH")}
+        canWithdraw={authorization.permissions.has("REPORTS_WITHDRAW")}
       />
       <p className="text-muted-foreground text-sm">
         <Link

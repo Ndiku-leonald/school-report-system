@@ -243,6 +243,9 @@ select extensions.lives_ok($$select * from public.generate_student_report_snapsh
 select extensions.is((select count(*)::integer from public.reports where term_id = 'c1500000-0000-4000-8000-000000000001'), 6, 'B61. direct successor creates one new version');
 select extensions.is((select max(version) from public.reports where term_id = 'c1500000-0000-4000-8000-000000000001'), 6, 'B62. successor report version increments');
 select extensions.is((select count(*)::integer from public.reports where superseded_by is not null), 5, 'B63. prior report is superseded exactly once');
+select extensions.is((select count(*)::integer from public.reports where superseded_by is not null and status = 'SUPERSEDED'), 5, 'B63a. generated predecessors become publication SUPERSEDED');
+select extensions.is((select count(*)::integer from public.reports where superseded_by is null and status = 'GENERATED'), 1, 'B63b. newest generated report remains actionable');
+select extensions.is((select count(*)::integer from public.audit_logs where action = 'REPORT_SUPERSEDED'), 5, 'B63c. automatic supersession emits one audit per generated predecessor');
 select extensions.is((select count(*)::integer from public.get_student_report_history('c1d00000-0000-4000-8000-000000000001', 'c1500000-0000-4000-8000-000000000001')), 6, 'B64. history returns all immutable versions');
 select extensions.is((select count(*)::integer from public.report_snapshot_sources where calculation_run_id = 'c2200000-0000-4000-8000-000000000003'), 1, 'B65. successor has one source lineage row');
 select extensions.is((select count(*)::integer from public.report_subject_results where report_id = (select id from public.reports where calculation_run_id = 'c2200000-0000-4000-8000-000000000003')), 1, 'B66. successor freezes its subject rows');

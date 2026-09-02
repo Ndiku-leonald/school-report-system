@@ -136,6 +136,12 @@ jobs:
       - name: Run report-card PDF renderer tests
         run: npm run test:report-pdf
 
+      - name: Run report publication integration tests
+        run: npm run test:report-publication
+
+      - name: Run deterministic report publication concurrency tests
+        run: npm run test:report-publication:concurrency
+
       - name: Verify generated database types
         run: |
           npm run db:types
@@ -186,6 +192,9 @@ jobs:
 
       - name: Run local report-card PDF browser tests
         run: npm run test:e2e:report-pdf
+
+      - name: Run local report publication browser tests
+        run: npm run test:e2e:report-publication
 
       - name: Stop local Supabase
         if: always()

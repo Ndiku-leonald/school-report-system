@@ -339,7 +339,14 @@ migration is part of Stage 13.
 
 ## 14. Publication workflow
 
-Implement private artifact storage, review, publication, withdrawal, regeneration, and supersession.
+Stage 14 implements private artifact storage, review, publication, withdrawal,
+regeneration through new immutable report versions, and publication-aware
+supersession. Artifact bytes are rendered by the Stage 13 server path and
+transported through a narrow server-only Storage wrapper; user-session
+authorization remains authoritative for report reads, workflow RPCs, and
+access audits. Migration 33 also rejects future-dated role grants and
+preserves published/withdrawn predecessor history during Stage 12 generation.
+See `docs/report-publication.md` for the trust and correction model.
 
 **Acceptance criteria**
 
@@ -347,6 +354,27 @@ Implement private artifact storage, review, publication, withdrawal, regeneratio
 - Generation and publication remain distinct authorized actions.
 - Only a reviewed version can be published, and withdrawal takes effect promptly.
 - Publication lifecycle events and artifact access are audited and tested.
+
+**Implementation evidence (2026-09-01)**
+
+- Migration 33 is additive and leaves Migration 32 byte-for-byte unchanged. It
+  requires `granted_at <= now()` plus a null `revoked_at`, removes direct
+  authenticated report-artifact Storage policies, derives registration
+  metadata from the canonical object, and applies publication-aware automatic
+  supersession.
+- `storage-admin.ts` is a server-only, narrow transport for report-artifact
+  upload, verified download, and unregistered orphan cleanup only. Authorization,
+  report reads, workflow RPCs, and audit attribution remain user-session and
+  database controlled.
+- The database behavior fixture covers live transitions and denial paths. The
+  signed-in integration suite covers the trust boundary; the dedicated
+  concurrency runner uses independent PostgreSQL connections and explicit row
+  lock barriers for 12 race classes plus successor/immutability lifecycle
+  proofs; the publication browser suite contains 46 scenarios.
+- The retained Stage 10 reopen RPC rejects downstream reports by design and its
+  existing tests assert that behavior. Stage 14 does not rewrite that contract,
+  so a post-publication Stage 10 reopen cannot be claimed as completed here.
+  No Stage 15 work has started and no remote Supabase project is modified.
 
 ## 15. Parent portal
 
@@ -415,3 +443,10 @@ school isolation, exact bound-teacher authority, stale writes, all nine
 workflow race classes, roster freezing, correction lineage, stable revision
 navigation, browser console cleanliness, privacy, and the Stage 11 boundary.
 Stage 11 calculations remain unstarted.
+
+## Stage 14 — Secure report publication workflow
+
+Implemented on the Stage 14 feature branch: private checksum-verified PDF
+artifacts, staff review/publication/withdrawal workflow, publication-aware
+supersession, selected-membership authorization, audit events, and staff UI.
+Parent access and public publication remain future Stage 15 work.
