@@ -94,7 +94,7 @@ describe
         [ids.section, ids.year, ids.grade],
       );
       await db!.query(
-        `insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Term One',1,'2026-01-01','2026-04-30','LOCKED')`,
+        `insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Term One',1,'2026-01-01','2026-04-30','MARKS_ENTRY')`,
         [ids.term, ids.year],
       );
       await db!.query(
