@@ -33,6 +33,7 @@ let schoolBMembershipId = "";
 let registrarGenerateMappingExisted = false;
 let lifecycleV1ReportId = "";
 let lifecycleV2ReportId = "";
+let lifecycleV2ReportVersion = 0;
 let withdrawnPredecessorReportId = "";
 let withdrawnSuccessorReportId = "";
 type BrowserClient = SupabaseClient<Database>;
@@ -366,6 +367,13 @@ async function prepareBrowserLifecyclePair() {
   });
   if (published.error) throw published.error;
   lifecycleV2ReportId = await fixtureSuccessor(lifecycleV1ReportId, client);
+  const v2 = await db.query<{ report_version: number }>(
+    "select version as report_version from public.reports where id=$1",
+    [lifecycleV2ReportId],
+  );
+  if (!v2.rows[0])
+    throw new Error("The browser successor report version was not found.");
+  lifecycleV2ReportVersion = v2.rows[0].report_version;
 }
 
 async function prepareWithdrawnBrowserPair() {
@@ -790,7 +798,7 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
     await expect(
       page
         .locator(`a[href="/dashboard/reports/${lifecycleV2ReportId}"]`)
-        .filter({ hasText: "Report v2" }),
+        .filter({ hasText: `Report v${lifecycleV2ReportVersion}` }),
     ).toHaveCount(1);
     await openReport(
       page,
