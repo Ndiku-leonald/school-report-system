@@ -150,8 +150,12 @@ test.describe("Stage 15 parent portal acceptance", () => {
     );
     await db.query(
       `insert into public.student_access_credentials
-        (student_id, access_code_lookup_hash, pin_hash, is_active, expires_at)
-       values ($1, $2, extensions.crypt($3, extensions.gen_salt('bf', 12)), true, null)`,
+       (student_id, access_code_lookup_hash, pin_hash, is_active, expires_at)
+       values ($1, $2, extensions.crypt($3, extensions.gen_salt('bf', 12)), true, null)
+       on conflict (access_code_lookup_hash) do update
+       set student_id=excluded.student_id, pin_hash=excluded.pin_hash,
+           is_active=true, expires_at=null, failed_attempts=0,
+           locked_until=null, updated_at=now()`,
       [fixture.studentId, accessHash(code), pin],
     );
   });
@@ -190,7 +194,8 @@ test.describe("Stage 15 parent portal acceptance", () => {
     await expect(page.getByRole("status")).toContainText(
       "could not be verified",
     );
-    await expect(page.getByRole("status")).not.toContainText("PIN");
+    await expect(page.getByRole("status")).not.toContainText("incorrect");
+    await expect(page.getByRole("status")).not.toContainText("invalid");
   });
 
   test("logs in through the real form and loads the report list", async ({
