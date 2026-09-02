@@ -733,10 +733,6 @@ describe
         session_token_hash: createHash("sha256").update(token).digest("hex"),
       });
       expect(validation.data).toEqual([]);
-      await db!.query(
-        "update public.student_access_credentials set is_active=true where student_id=$1",
-        [fixture.studentA],
-      );
     });
 
     it("supports logout and denies absolute and idle-expired sessions", async () => {
@@ -767,7 +763,7 @@ describe
         await parentLogin(issued.access_code, issued.pin, "session-expiry")
       ).data![0]!.session_token!;
       await db!.query(
-        "update public.parent_access_sessions set expires_at=now()-interval '1 second' where session_token_hash=$1",
+        "update public.parent_access_sessions set created_at=now()-interval '2 hours', expires_at=now()-interval '1 second' where session_token_hash=$1",
         [createHash("sha256").update(next).digest("hex")],
       );
       expect(
@@ -1190,7 +1186,8 @@ describe
         target_report_id: fixture.reportCurrent,
         verified_checksum: "0".repeat(64),
       });
-      expect(result.error).not.toBeNull();
+      expect(result.error).toBeNull();
+      expect(result.data).toBe(false);
       const count = await db!.query<{ count: string }>(
         "select count(*)::text from public.parent_security_events where event_type='PARENT_REPORT_ARTIFACT_ACCESSED' and student_id=$1",
         [fixture.studentA],
