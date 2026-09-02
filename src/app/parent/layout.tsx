@@ -23,6 +23,14 @@ export default function ParentLayout({ children }: { children: ReactNode }) {
             <ArrowLeft aria-hidden="true" className="size-4" />
             Home
           </Link>
+          <form action="/parent/api/logout" method="post">
+            <button
+              type="submit"
+              className="text-muted-foreground hover:bg-surface-muted hover:text-foreground rounded-lg px-3 py-2 text-sm font-semibold"
+            >
+              Sign out
+            </button>
+          </form>
         </div>
       </header>
       <div className="mx-auto grid max-w-5xl gap-10 px-4 py-12 sm:px-6 sm:py-16 md:grid-cols-[0.8fr_1.2fr] md:items-center lg:gap-16">
@@ -37,9 +45,9 @@ export default function ParentLayout({ children }: { children: ReactNode }) {
             View a student&apos;s published reports.
           </h1>
           <p className="text-muted-foreground mt-4 text-base leading-7">
-            This portal will provide restricted access after a valid student
-            code and secure PIN are verified. Verification is not connected
-            during this foundation stage.
+            Sign in with the one-time access code and PIN issued by the school.
+            Only published report-card artifacts for an eligible student are
+            available here.
           </p>
         </aside>
         {children}

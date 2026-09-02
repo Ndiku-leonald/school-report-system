@@ -8,7 +8,7 @@ The product must remain configurable for different schools. School identity, sub
 
 ## Current status
 
-**Stage 13: secure report-card PDF generation is implemented for review.** The repository
+**Stage 15: secure parent and guardian report access is implemented on the feature branch.** The repository
 contains the Stage 3 database foundation plus cookie-based Supabase Auth,
 server-authoritative staff membership checks, invitation and recovery flows,
 active-school selection, authentication audit events, and local-only Auth test
@@ -32,7 +32,9 @@ immutable term-and-grade results only from the latest locked mark-sheet
 revisions. Stage 12 report snapshots are now rendered by a Node-only A4 PDF
 route for authorized staff. PDF rendering uses PDFKit 0.20.1, immutable
 snapshot values, measured multipage layout, buffered `Page X of Y` footers,
-and traced local fonts. Publication, parent access, analytics, and
+and traced local fonts. Stage 14 publication is private and review-gated; Stage
+15 adds one-time parent credentials, custom sessions, publication-aware
+filtering and checksum-verified private artifact delivery. Analytics and
 promotion processing remain later-stage work.
 
 Stage 7 adds `/dashboard/students`, admission and profile workflows, guarded
@@ -185,6 +187,9 @@ npm run test:e2e:marks-workflow
 npm run test:e2e:results-engine
 npm run test:e2e:report-snapshots
 npm run test:e2e:report-pdf
+npm run test:parent-portal
+npm run test:parent-portal:concurrency
+npm run test:e2e:parent-portal
 ```
 
 Use `npx playwright install chromium` once if the local Playwright browser is not installed.
@@ -248,8 +253,8 @@ unchanged retired-scheme reference for later workflow transitions. Referenced
 schemes and all active or retired versioned configuration are immutable, and
 component or grading-band display order is the saved field-array order. No-op
 lifecycle requests fail without creating audits. Stage 8 teacher-assignment
-management, Stage 15 parent access, and all remote Supabase changes remain out
-of scope.
+management is implemented through the local Stage 15 parent portal. Remote
+Supabase changes remain out of scope for this repository workflow.
 
 ## Project documentation
 

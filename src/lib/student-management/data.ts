@@ -5,6 +5,7 @@ import { notFound } from "next/navigation";
 import { requireAnyPermission } from "@/lib/authorization/guards";
 import { createServerSupabaseClient } from "@/lib/supabase/server";
 import type { Database } from "@/types/database.generated";
+import type { ParentAccessStatus } from "@/lib/parent-portal/actions";
 
 export type StudentListRow =
   Database["public"]["Functions"]["list_students"]["Returns"][number];
@@ -178,7 +179,7 @@ export async function getStudentDirectory(filters: StudentFilters) {
 export async function getStudentRecord(studentId: string) {
   const reference = await getStudentReferenceData();
   const supabase = await createServerSupabaseClient();
-  const [detail, history, guardians] = await Promise.all([
+  const [detail, history, guardians, parentAccess] = await Promise.all([
     supabase.rpc("get_student_details", { target_student_id: studentId }),
     supabase.rpc("get_student_enrollment_history", {
       target_student_id: studentId,
@@ -186,13 +187,25 @@ export async function getStudentRecord(studentId: string) {
     reference.canViewGuardians
       ? supabase.rpc("get_student_guardians", { target_student_id: studentId })
       : Promise.resolve({ data: [], error: null }),
+    reference.canManage
+      ? (supabase.rpc(
+          "get_student_parent_access_status" as never,
+          {
+            target_student_id: studentId,
+          } as never,
+        ) as unknown as Promise<{
+          data: ParentAccessStatus[] | null;
+          error: { code?: string; message: string } | null;
+        }>)
+      : Promise.resolve({ data: [], error: null }),
   ]);
-  if (detail.error || history.error || guardians.error) {
+  if (detail.error || history.error || guardians.error || parentAccess.error) {
     console.error("Student detail query failed.", {
       resources: [
         detail.error?.code,
         history.error?.code,
         guardians.error?.code,
+        parentAccess.error?.code,
       ].filter(Boolean),
     });
     throw new Error("The student record could not be loaded.");
@@ -211,6 +224,7 @@ export async function getStudentRecord(studentId: string) {
     student,
     history: history.data ?? [],
     guardians: guardians.data ?? [],
+    parentAccess: parentAccess.data?.[0] ?? null,
     photoUrl,
   };
 }

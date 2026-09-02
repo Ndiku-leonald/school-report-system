@@ -5,9 +5,8 @@
 This repository is intended to contain a web application for managing sensitive primary-school academic records. The planned system boundary includes the Next.js staff dashboard, teacher workspace, parent report portal, server-side application interfaces, report-generation services, Supabase PostgreSQL, Supabase Auth, Row Level Security policies, private Supabase Storage, migrations, and Vercel deployments.
 
 Staff authentication is implemented with cookie-based Supabase sessions.
-Stage 5 adds active-membership, school-scoped role permissions and
-assignment-scoped academic-read RLS. Parent verification and storage controls
-remain future work, so no real academic data is permitted.
+Stage 15 adds a separate custom parent session boundary for published reports;
+no real academic data or production credentials are permitted in local tests.
 
 Stage 6 keeps configuration table writes denied to browser roles. Narrow
 configuration RPCs derive the school from the JWT-session-selected membership,
@@ -101,6 +100,24 @@ Only variables explicitly prefixed with `NEXT_PUBLIC_` may be considered for bro
 
 Use local ignored environment files and the hosting provider's encrypted environment configuration. Rotate a credential immediately if it is committed, published, logged, or otherwise exposed; deleting it from the latest revision is not sufficient because Git history and external copies may retain it.
 
+## Stage 15 parent portal boundary
+
+Parent access uses the dormant `student_access_credentials` and
+`parent_access_sessions` tables. Migration 35 adds only persistent throttling
+and append-only parent security events. Access codes are high-entropy random
+values with hashed lookup, PINs use bcrypt hashes, and session tokens are
+256-bit random values stored only as hashes. The raw session exists only in an
+HttpOnly, `/parent`-scoped cookie.
+
+Every parent request revalidates the session, credential, active guardian
+relationship and current report eligibility. Only current `PUBLISHED` reports
+or previously published `SUPERSEDED` reports are eligible. Parent detail is
+built from the immutable snapshot after removing staff-only and sensitive
+fields. PDF downloads read the private Stage 14 artifact, verify its signature,
+size and checksum, and audit the access only after verification. Parent RPCs
+are service-role-only and the service-role client is confined to the narrow
+server module and approved artifact transport.
+
 ## Reportable findings and severity context
 
 Please report suspected vulnerabilities involving unauthorized student-data access, privilege escalation, cross-school or cross-student data exposure, bypass of marks locking or approval, report disclosure, parent-account enumeration, credential leakage, missing server-side authorization, ineffective Row Level Security, audit-log tampering, or unsafe file/report handling.
@@ -138,11 +155,11 @@ not user metadata, JWT role claims, navigation visibility, or browser cookies.
 The verified JWT `session_id` identifies only the selection row; active
 membership, school, roles, revocation, and assignments remain live database
 checks. A stale row therefore cannot grant a new or unavailable session access.
-Stage 5 grants no browser academic mutations and exposes no guardian, parent
-credential, or parent session records. Same-school actor triggers remain
-integrity controls rather than business authorization. Before any real data is
-introduced, the later workflow controls and production security work must be
-completed.
+Stage 15 exposes no parent credential or session tables to browser roles.
+Parent access is limited to eligible active-guardian sessions and published
+snapshot artifacts; same-school actor triggers remain integrity controls rather
+than business authorization. Before any real data is introduced, the later
+production security work must be completed.
 
 Database-specific controls and limitations are documented in [docs/database-security.md](docs/database-security.md).
 

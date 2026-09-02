@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
+import { redirect } from "next/navigation";
 
-import { Alert } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import {
   Card,
   CardContent,
@@ -9,67 +9,66 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
+import { getParentReports, getParentSession } from "@/lib/parent-portal/server";
+import Link from "next/link";
 
 export const metadata: Metadata = {
   title: "Parent report access",
   robots: { index: false, follow: false },
 };
 
-export default function ParentPortalPage() {
+export default async function ParentPortalPage() {
+  const session = await getParentSession();
+  if (!session) redirect("/parent/login");
+  const reports = await getParentReports();
+  if (!reports) redirect("/parent/login");
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle>Verify student access</CardTitle>
-        <CardDescription>
-          Enter the code and secure PIN issued through the school&apos;s
-          approved process.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <form className="space-y-5" aria-describedby="parent-privacy-guidance">
-          <div className="grid gap-2">
-            <Label htmlFor="student-code">Student code</Label>
-            <Input
-              id="student-code"
-              name="studentCode"
-              type="text"
-              autoComplete="off"
-              autoCapitalize="characters"
-              placeholder="Enter student code"
-            />
-            <p className="text-muted-foreground text-xs leading-5">
-              Use the exact code supplied by the school.
+    <div className="space-y-6 md:col-span-2">
+      <Card>
+        <CardHeader>
+          <CardTitle>Published report cards</CardTitle>
+          <CardDescription>
+            Reports available for the verified student are listed below.
+            Previous published versions remain available when the school
+            supersedes one.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {reports.length ? (
+            <div className="grid gap-3">
+              {reports.map((report) => (
+                <Link
+                  key={report.report_id}
+                  href={`/parent/reports/${report.report_id}`}
+                  className="border-border hover:bg-surface-muted focus-visible:ring-focus/30 grid gap-2 rounded-lg border p-4 outline-none focus-visible:ring-3 sm:grid-cols-[1fr_auto] sm:items-center"
+                >
+                  <span>
+                    <span className="block font-semibold">
+                      {report.academic_year_label} · {report.term_label}
+                    </span>
+                    <span className="text-muted-foreground mt-1 block text-sm">
+                      {report.grade_label} · {report.class_label} · Version{" "}
+                      {report.report_version}
+                    </span>
+                  </span>
+                  <Badge variant={report.is_current ? "success" : "neutral"}>
+                    {report.is_current
+                      ? "Current"
+                      : "Previous published version"}
+                  </Badge>
+                </Link>
+              ))}
+            </div>
+          ) : (
+            <p className="text-muted-foreground text-sm">
+              No published report artifact is currently available.
             </p>
-          </div>
-          <div className="grid gap-2">
-            <Label htmlFor="secure-pin">Secure PIN</Label>
-            <Input
-              id="secure-pin"
-              name="securePin"
-              type="password"
-              inputMode="numeric"
-              autoComplete="off"
-              placeholder="Enter secure PIN"
-            />
-            <p className="text-muted-foreground text-xs leading-5">
-              Keep this PIN private and do not share it in messages.
-            </p>
-          </div>
-          <Button className="w-full" type="button">
-            Continue
-          </Button>
-        </form>
-        <Alert
-          id="parent-privacy-guidance"
-          className="mt-5"
-          title="Protect student information"
-        >
-          Use a private device where possible and close the browser after
-          viewing a report. Verification will be rate-limited when implemented.
-        </Alert>
-      </CardContent>
-    </Card>
+          )}
+        </CardContent>
+      </Card>
+      <p className="text-muted-foreground text-center text-xs">
+        Report access is private, temporary and rechecked on every request.
+      </p>
+    </div>
   );
 }

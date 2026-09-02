@@ -378,7 +378,9 @@ See `docs/report-publication.md` for the trust and correction model.
 
 ## 15. Parent portal
 
-Implement rate-limited student-code and secure-PIN verification, restricted sessions, and current and historical published-report access.
+Implemented on the Stage 15 feature branch: rate-limited access-code and
+secure-PIN verification, restricted custom sessions, guardian eligibility
+checks, and current and historical published-report access.
 
 **Acceptance criteria**
 
@@ -386,6 +388,9 @@ Implement rate-limited student-code and secure-PIN verification, restricted sess
 - Verification responses resist student or account enumeration and brute-force attempts.
 - A parent session can access only the verified student's published reports.
 - Session expiry, revocation, withdrawal, cross-student attempts, and accessible responsive behavior are tested.
+
+See [Parent portal](parent-portal.md) for the session, report-snapshot and
+private-artifact trust boundaries.
 
 ## 16. Analytics
 
@@ -449,4 +454,8 @@ Stage 11 calculations remain unstarted.
 Implemented on the Stage 14 feature branch: private checksum-verified PDF
 artifacts, staff review/publication/withdrawal workflow, publication-aware
 supersession, selected-membership authorization, audit events, and staff UI.
-Parent access and public publication remain future Stage 15 work.
+Stage 15 adds the separate parent/guardian portal, one-time credential
+issuance/reset/revocation, hashed custom sessions, guardian eligibility
+revalidation, publication-aware report filtering, parent-safe snapshot detail,
+and checksum-verified private artifact delivery. Public publication remains
+out of scope.

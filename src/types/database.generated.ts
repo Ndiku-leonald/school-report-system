@@ -1455,6 +1455,36 @@ export type Database = {
           },
         ];
       };
+      parent_access_rate_limits: {
+        Row: {
+          client_key_hash: string;
+          created_at: string;
+          id: string;
+          last_failed_at: string | null;
+          request_count: number;
+          updated_at: string;
+          window_started_at: string;
+        };
+        Insert: {
+          client_key_hash: string;
+          created_at?: string;
+          id?: string;
+          last_failed_at?: string | null;
+          request_count?: number;
+          updated_at?: string;
+          window_started_at?: string;
+        };
+        Update: {
+          client_key_hash?: string;
+          created_at?: string;
+          id?: string;
+          last_failed_at?: string | null;
+          request_count?: number;
+          updated_at?: string;
+          window_started_at?: string;
+        };
+        Relationships: [];
+      };
       parent_access_sessions: {
         Row: {
           created_at: string;
@@ -1489,6 +1519,61 @@ export type Database = {
             columns: ["student_access_credential_id"];
             isOneToOne: false;
             referencedRelation: "student_access_credentials";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      parent_security_events: {
+        Row: {
+          client_key_hash: string | null;
+          created_at: string;
+          credential_id: string | null;
+          event_type: string;
+          id: string;
+          metadata: Json;
+          session_id: string | null;
+          student_id: string | null;
+        };
+        Insert: {
+          client_key_hash?: string | null;
+          created_at?: string;
+          credential_id?: string | null;
+          event_type: string;
+          id?: string;
+          metadata?: Json;
+          session_id?: string | null;
+          student_id?: string | null;
+        };
+        Update: {
+          client_key_hash?: string | null;
+          created_at?: string;
+          credential_id?: string | null;
+          event_type?: string;
+          id?: string;
+          metadata?: Json;
+          session_id?: string | null;
+          student_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "parent_security_events_credential_id_fkey";
+            columns: ["credential_id"];
+            isOneToOne: false;
+            referencedRelation: "student_access_credentials";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "parent_security_events_session_id_fkey";
+            columns: ["session_id"];
+            isOneToOne: false;
+            referencedRelation: "parent_access_sessions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "parent_security_events_student_id_fkey";
+            columns: ["student_id"];
+            isOneToOne: false;
+            referencedRelation: "students";
             referencedColumns: ["id"];
           },
         ];
@@ -3796,6 +3881,52 @@ export type Database = {
           workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
         }[];
       };
+      get_parent_published_reports: {
+        Args: { session_token_hash: string };
+        Returns: {
+          academic_year_label: string;
+          admission_number: string;
+          class_label: string;
+          grade_label: string;
+          is_current: boolean;
+          published_at: string;
+          report_id: string;
+          report_version: number;
+          status: Database["public"]["Enums"]["report_status"];
+          student_name: string;
+          term_label: string;
+        }[];
+      };
+      get_parent_report_artifact_descriptor: {
+        Args: { session_token_hash: string; target_report_id: string };
+        Returns: {
+          academic_year_label: string;
+          credential_id: string;
+          file_checksum: string;
+          file_size: number;
+          published_at: string;
+          report_id: string;
+          report_version: number;
+          school_id: string;
+          session_id: string;
+          status: Database["public"]["Enums"]["report_status"];
+          storage_path: string;
+          student_id: string;
+          student_name: string;
+          term_label: string;
+        }[];
+      };
+      get_parent_report_detail: {
+        Args: { session_token_hash: string; target_report_id: string };
+        Returns: {
+          is_current: boolean;
+          parent_data: Json;
+          published_at: string;
+          report_id: string;
+          report_version: number;
+          status: Database["public"]["Enums"]["report_status"];
+        }[];
+      };
       get_report_artifact_descriptor: {
         Args: { target_report_id: string };
         Returns: {
@@ -3970,6 +4101,20 @@ export type Database = {
           relationship_updated_at: string;
         }[];
       };
+      get_student_parent_access_status: {
+        Args: { target_student_id: string };
+        Returns: {
+          credential_active: boolean;
+          credential_created_at: string;
+          credential_id: string;
+          expires_at: string;
+          guardian_access_eligible: boolean;
+          last_used_at: string;
+          locked_until: string;
+          school_id: string;
+          student_id: string;
+        }[];
+      };
       get_student_report_history: {
         Args: { target_enrollment_id: string; target_term_id: string };
         Returns: {
@@ -4031,6 +4176,17 @@ export type Database = {
           term_status: Database["public"]["Enums"]["term_status"];
           term_updated_at: string;
           under_review_sheets: number;
+        }[];
+      };
+      issue_student_parent_access_credential: {
+        Args: { credential_expires_at?: string; target_student_id: string };
+        Returns: {
+          access_code: string;
+          credential_id: string;
+          expires_at: string;
+          operation: string;
+          pin: string;
+          student_id: string;
         }[];
       };
       link_guardian_to_student: {
@@ -4511,6 +4667,22 @@ export type Database = {
           workflow_version: number;
         }[];
       };
+      record_parent_report_access: {
+        Args: {
+          session_token_hash: string;
+          target_report_id: string;
+          verified_checksum: string;
+        };
+        Returns: boolean;
+      };
+      record_parent_report_artifact_access: {
+        Args: {
+          session_token_hash: string;
+          target_report_id: string;
+          verified_checksum: string;
+        };
+        Returns: boolean;
+      };
       record_report_artifact_access: {
         Args: { target_report_id: string; verified_checksum: string };
         Returns: boolean;
@@ -4616,6 +4788,14 @@ export type Database = {
           status: Database["public"]["Enums"]["report_status"];
           workflow_version: number;
         }[];
+      };
+      revoke_parent_access_session: {
+        Args: { session_token_hash: string };
+        Returns: boolean;
+      };
+      revoke_student_parent_access_credential: {
+        Args: { target_student_id: string };
+        Returns: boolean;
       };
       save_aggregate_classification_scale: {
         Args: {
@@ -4998,6 +5178,27 @@ export type Database = {
           entity_id: string;
           entity_status: string;
           updated_at: string;
+        }[];
+      };
+      validate_parent_access_session: {
+        Args: { session_token_hash: string };
+        Returns: {
+          credential_id: string;
+          school_id: string;
+          session_id: string;
+          student_id: string;
+        }[];
+      };
+      verify_parent_access: {
+        Args: {
+          access_code_lookup_hash: string;
+          client_key_hash: string;
+          pin_text: string;
+        };
+        Returns: {
+          ok: boolean;
+          retry_after_seconds: number;
+          session_token: string;
         }[];
       };
       withdraw_published_report: {
