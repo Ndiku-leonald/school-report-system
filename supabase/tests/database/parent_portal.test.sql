@@ -42,24 +42,24 @@ select extensions.throws_ok($$select public.revoke_student_parent_access_credent
 reset role;
 
 select extensions.is((select count(*) from information_schema.routines where routine_schema='public' and routine_name='verify_parent_access'), 1::bigint, 'P35. login remains a single public routine signature');
-select extensions.like(
-  pg_get_functiondef('public.get_parent_report_detail(text,uuid)'::regprocedure),
-  '%result.subject_code%',
+select extensions.is(
+  position('result.subject_code' in pg_get_functiondef('public.get_parent_report_detail(text,uuid)'::regprocedure)) > 0,
+  true,
   'P36. parent detail reads frozen subject codes'
 );
-select extensions.like(
-  pg_get_functiondef('public.get_parent_report_detail(text,uuid)'::regprocedure),
-  '%result.subject_name%',
+select extensions.is(
+  position('result.subject_name' in pg_get_functiondef('public.get_parent_report_detail(text,uuid)'::regprocedure)) > 0,
+  true,
   'P37. parent detail reads frozen subject names'
 );
-select extensions.unlike(
-  lower(pg_get_functiondef('public.get_parent_report_detail(text,uuid)'::regprocedure)),
-  '%join public.subjects%',
+select extensions.is(
+  position('join public.subjects' in lower(pg_get_functiondef('public.get_parent_report_detail(text,uuid)'::regprocedure))) = 0,
+  true,
   'P38. parent detail does not join live subject identity'
 );
-select extensions.like(
-  pg_get_functiondef('public.verify_parent_access(text,text,text)'::regprocedure),
-  '%parent_has_report_eligibility%',
+select extensions.is(
+  position('parent_has_report_eligibility' in pg_get_functiondef('public.verify_parent_access(text,text,text)'::regprocedure)) > 0,
+  true,
   'P39. login performs a database eligibility check'
 );
 select * from finish();
