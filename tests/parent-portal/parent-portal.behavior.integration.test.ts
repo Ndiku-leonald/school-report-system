@@ -570,14 +570,20 @@ describe
           "inactive",
         ),
       );
-      await db!.query(
-        "update public.student_access_credentials set is_active=true, expires_at=now()-interval '1 minute' where student_id=$1",
-        [fixture.studentA],
+      const expiring = await registrar.client.rpc(
+        "issue_student_parent_access_credential",
+        { target_student_id: fixture.studentA },
       );
+      const expiringCredential = expiring.data![0]!;
+      await db!.query(
+        "update public.student_access_credentials set expires_at=now()+interval '1 second' where id=$1",
+        [expiringCredential.credential_id],
+      );
+      await db!.query("select pg_sleep(1.2)");
       genericLoginResult(
         await parentLogin(
-          "00000000-00000000-00000000-00000000",
-          "12345678",
+          expiringCredential.access_code,
+          expiringCredential.pin,
           "expired",
         ),
       );
