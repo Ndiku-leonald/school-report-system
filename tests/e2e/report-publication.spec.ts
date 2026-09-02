@@ -170,12 +170,15 @@ async function login(
   page: Page,
   email = generatorEmail,
   membershipId = generatorMembershipId,
+  next = "/dashboard",
 ) {
   let lastError: unknown;
   for (let attempt = 0; attempt < 3; attempt += 1) {
     try {
       await page.context().clearCookies();
-      await page.goto("/staff-login", { waitUntil: "domcontentloaded" });
+      await page.goto(`/staff-login?next=${encodeURIComponent(next)}`, {
+        waitUntil: "domcontentloaded",
+      });
       await expect(page.getByLabel("Email address")).toBeVisible({
         timeout: 5000,
       });
@@ -206,7 +209,12 @@ async function openReport(
   membershipId = generatorMembershipId,
   targetReportId = reportId,
 ) {
-  await login(page, email, membershipId);
+  await login(
+    page,
+    email,
+    membershipId,
+    `/dashboard/reports/${targetReportId}`,
+  );
   await page.goto(`/dashboard/reports/${targetReportId}`);
 }
 
