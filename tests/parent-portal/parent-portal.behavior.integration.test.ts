@@ -651,7 +651,7 @@ describe
         ),
       );
       const after = await db!.query<{ sessions: string; successes: string }>(
-        "select (select count(*)::text from public.parent_access_sessions where student_access_credential_id=$1 and revoked_at is null),(select count(*)::text from public.parent_security_events where event_type='PARENT_LOGIN_SUCCEEDED' and credential_id=$1)",
+        "select (select count(*)::text from public.parent_access_sessions where student_access_credential_id=$1 and revoked_at is null) as sessions,(select count(*)::text from public.parent_security_events where event_type='PARENT_LOGIN_SUCCEEDED' and credential_id=$1) as successes",
         [issued.credential_id],
       );
       expect(after.rows[0]!.successes).toBe(before.rows[0]!.count);
