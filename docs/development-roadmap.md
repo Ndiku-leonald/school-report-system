@@ -388,9 +388,17 @@ checks, and current and historical published-report access.
 - Verification responses resist student or account enumeration and brute-force attempts.
 - A parent session can access only the verified student's published reports.
 - Session expiry, revocation, withdrawal, cross-student attempts, and accessible responsive behavior are tested.
+- Login and every protected request recheck live guardian eligibility; removal
+  before login creates no session or success audit.
+- Parent detail uses frozen Stage 12 subject identity, and later live subject
+  renames cannot change historical HTML or PDF identity.
 
-See [Parent portal](parent-portal.md) for the session, report-snapshot and
-private-artifact trust boundaries.
+The acceptance hardening adds Migration 36 without rewriting Migration 35,
+real signed-in database behavior coverage, a runtime pgTAP boundary file, nine
+distinct deterministic concurrency races, and a fixture-backed Playwright
+acceptance suite with more than 45 meaningful parent flows. See [Parent
+portal](parent-portal.md) for the session, report-snapshot and private-artifact
+trust boundaries.
 
 ## 16. Analytics
 

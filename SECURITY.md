@@ -109,11 +109,15 @@ values with hashed lookup, PINs use bcrypt hashes, and session tokens are
 256-bit random values stored only as hashes. The raw session exists only in an
 HttpOnly, `/parent`-scoped cookie.
 
-Every parent request revalidates the session, credential, active guardian
-relationship and current report eligibility. Only current `PUBLISHED` reports
+Parent login and every later parent request revalidate the session, credential,
+active guardian relationship and current report eligibility. Login performs
+that eligibility decision before creating a session or success audit, so a
+credential with a correct PIN cannot create a usable session after the last
+eligible guardian relationship is removed. Only current `PUBLISHED` reports
 or previously published `SUPERSEDED` reports are eligible. Parent detail is
 built from the immutable snapshot after removing staff-only and sensitive
-fields. PDF downloads read the private Stage 14 artifact, verify its signature,
+fields; frozen subject code/name are read from report results rather than live
+subject identity. PDF downloads read the private Stage 14 artifact, verify its signature,
 size and checksum, and audit the access only after verification. Parent RPCs
 are service-role-only and the service-role client is confined to the narrow
 server module and approved artifact transport.

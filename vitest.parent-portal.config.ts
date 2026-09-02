@@ -7,7 +7,10 @@ export default defineConfig({
   test: {
     ...baseConfig.test,
     environment: "node",
-    include: ["tests/parent-portal/parent-portal.integration.test.ts"],
+    include: [
+      "tests/parent-portal/parent-portal.integration.test.ts",
+      "tests/parent-portal/parent-portal.behavior.integration.test.ts",
+    ],
     fileParallelism: false,
   },
 });
