@@ -130,7 +130,7 @@ async function createStaff(label: string, role: string): Promise<Staff> {
       membershipId,
       ids.school,
       created.data.user.id,
-      `ST15-${label}-${randomUUID()}`,
+      `ST15-${label}-${randomUUID().slice(0, 8)}`,
     ],
   );
   await db!.query(
