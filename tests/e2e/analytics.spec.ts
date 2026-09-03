@@ -394,7 +394,7 @@ test.describe
       ["delete from public.schools where id=$1", [ids.school]],
     ];
     const immutableFixtureRows =
-      /public\.(student_guardians|guardians|enrollments|students|class_sections|subjects|grade_levels|terms|academic_years|schools|profiles|teaching_assignments|marks|mark_sheets|calculated_subject_results|calculated_student_results|calculated_component_explanations|calculated_subject_performance|calculated_grade_subject_performance|result_calculation_sources|result_calculation_runs|assessment_components|assessment_schemes|aggregate_classification_bands|aggregate_classification_scales|grading_bands|grading_scales|ranking_rules)\b/;
+      /public\.(student_guardians|guardians|enrollments|students|class_sections|subjects|grade_levels|terms|academic_years|schools|profiles|teaching_assignments|marks|mark_sheets|grade_level_subjects|calculated_subject_results|calculated_student_results|calculated_component_explanations|calculated_subject_performance|calculated_grade_subject_performance|result_calculation_sources|result_calculation_runs|assessment_components|assessment_schemes|aggregate_classification_bands|aggregate_classification_scales|grading_bands|grading_scales|ranking_rules)\b/;
     for (const [statement, values] of cleanup) {
       if (immutableFixtureRows.test(statement)) continue;
       await database.query(statement, values);
