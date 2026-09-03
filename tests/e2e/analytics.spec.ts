@@ -629,7 +629,9 @@ test.describe
   });
   test("40. class subject mean is displayed", async ({ page }) => {
     await page.goto(classPath());
-    await expect(page.getByText("82.5", { exact: true })).toBeVisible();
+    await expect(
+      page.getByRole("paragraph").filter({ hasText: /^82\.5$/ }),
+    ).toBeVisible();
   });
   test("41. class top learners are displayed", async ({ page }) => {
     await page.goto(classPath());
