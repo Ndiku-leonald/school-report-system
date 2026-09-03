@@ -557,7 +557,9 @@ test.describe
   });
   test("28. grade distribution count is exact", async ({ page }) => {
     await page.goto(gradePath());
-    await expect(page.getByText(/4 · 100%/)).toBeVisible();
+    await expect(
+      page.getByRole("img", { name: /^A: 4 learners, 100%/ }),
+    ).toHaveCount(1);
   });
   test("29. ungraded count is displayed", async ({ page }) => {
     await page.goto(gradePath());
