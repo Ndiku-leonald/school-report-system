@@ -4,7 +4,6 @@ import { createClient, type SupabaseClient } from "@supabase/supabase-js";
 import { Client } from "pg";
 import { afterAll, beforeAll, describe, expect, it } from "vitest";
 
-import { downloadPrivateReportArtifact } from "../../src/lib/report-publication/storage-admin";
 import type { Database } from "../../src/types/database.generated";
 
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
@@ -728,9 +727,11 @@ describe
           },
         );
         expect(descriptor.data).toHaveLength(1);
-        const bytes = await downloadPrivateReportArtifact(
-          descriptor.data![0]!.storage_path,
-        );
+        const artifact = await admin!.storage
+          .from("report-artifacts")
+          .download(descriptor.data![0]!.storage_path);
+        expect(artifact.error).toBeNull();
+        const bytes = Buffer.from(await artifact.data!.arrayBuffer());
         expect(bytes.subarray(0, 5).toString("ascii")).toBe("%PDF-");
         const checksum = createHash("sha256").update(bytes).digest("hex");
         expect(checksum).toBe(descriptor.data![0]!.file_checksum);
