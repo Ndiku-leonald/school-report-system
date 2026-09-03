@@ -460,7 +460,6 @@ test.describe("Stage 15 parent portal acceptance", () => {
     await page.keyboard.press("Tab");
     await expect(page.getByLabel("PIN")).toBeFocused();
     await page.keyboard.press("Tab");
-    await page.keyboard.press("Tab");
     await expect(
       page.getByRole("button", { name: "Sign in securely" }),
     ).toBeFocused();
