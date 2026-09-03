@@ -73,10 +73,17 @@ The repository keeps the previous suites and adds:
 
 The local integration wrappers require the Supabase local stack. The behavioral
 integration suite uses signed-in registrar/head/class/subject/other-school
-actors and real parent RPC/application boundaries. The concurrency runner
-proves nine distinct lock-ordered races, while the browser suite contains more
-than 45 fixture-backed parent workflows including real login, report detail,
-cross-student/cross-school denial, cookie attributes, logout, and PDF download.
+actors and real parent RPC/application boundaries. It retains the sequential
+credential, session, eligibility, publication-filtering, frozen-identity, and
+artifact lifecycle checks. The separate concurrency runner proves nine genuine
+deterministic races: two overlapping failed-login counter races, authorized
+credential rotation, both eligibility/login orderings, both revocation/login
+orderings, session validation versus rotation, and final artifact authorization
+versus withdrawal. Each lock-ordered proof observes the competing production
+operation waiting before releasing the controlling transaction. The browser
+suite contains more than 45 fixture-backed parent workflows including real
+login, report detail, cross-student/cross-school denial, cookie attributes,
+logout, and PDF download.
 Browser tests use Playwright traces on failure and must be run against the
 local, synthetic dataset; no production credentials or real student data belong
 in fixtures.

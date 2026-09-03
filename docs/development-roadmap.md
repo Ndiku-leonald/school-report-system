@@ -394,11 +394,12 @@ checks, and current and historical published-report access.
   renames cannot change historical HTML or PDF identity.
 
 The acceptance hardening adds Migration 36 without rewriting Migration 35,
-real signed-in database behavior coverage, a runtime pgTAP boundary file, nine
-distinct deterministic concurrency races, and a fixture-backed Playwright
-acceptance suite with more than 45 meaningful parent flows. See [Parent
-portal](parent-portal.md) for the session, report-snapshot and private-artifact
-trust boundaries.
+real signed-in database behavior coverage, a runtime pgTAP boundary file, and
+nine genuine deterministic concurrent race scenarios. The sequential lifecycle
+checks remain in the behavioral integration suite, and the fixture-backed
+Playwright acceptance suite contains more than 45 meaningful parent flows.
+See [Parent portal](parent-portal.md) for the session, report-snapshot and
+private-artifact trust boundaries.
 
 ## 16. Analytics
 
