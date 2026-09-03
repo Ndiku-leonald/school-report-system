@@ -15,6 +15,7 @@ import {
   formatPercentage,
   rankingText,
 } from "@/lib/analytics/format";
+import { requirePermission } from "@/lib/authorization/guards";
 
 export default async function AnalyticsClassPage({
   params,
@@ -22,6 +23,7 @@ export default async function AnalyticsClassPage({
   params: Promise<{ calculationRunId: string; classSectionId: string }>;
 }) {
   const { calculationRunId, classSectionId } = await params;
+  await requirePermission("ANALYTICS_VIEW");
   const summary = await getAnalyticsClass(calculationRunId, classSectionId);
   if (!summary)
     return (

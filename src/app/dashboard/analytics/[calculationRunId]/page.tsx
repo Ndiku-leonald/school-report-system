@@ -17,6 +17,7 @@ import {
   formatPercentage,
   rankingText,
 } from "@/lib/analytics/format";
+import { requirePermission } from "@/lib/authorization/guards";
 
 function Distribution({
   title,
@@ -102,6 +103,7 @@ export default async function AnalyticsGradePage({
   params: Promise<{ calculationRunId: string }>;
 }) {
   const { calculationRunId } = await params;
+  await requirePermission("ANALYTICS_VIEW");
   const grade = await getAnalyticsGrade(calculationRunId);
   if (!grade)
     return (

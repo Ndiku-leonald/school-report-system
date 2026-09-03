@@ -23,14 +23,14 @@ select extensions.ok(pg_get_functiondef('internal.current_analytics_reader()'::r
 select extensions.ok(pg_get_functiondef('internal.current_analytics_reader()'::regprocedure) ~* 'school.is_active', 'reader requires active school');
 select extensions.ok(not has_function_privilege('anon', 'internal.current_analytics_reader()', 'EXECUTE'), 'anon cannot execute internal reader');
 select extensions.ok(not has_function_privilege('authenticated', 'internal.current_analytics_reader()', 'EXECUTE'), 'authenticated cannot execute internal reader');
-select extensions.ok(not has_function_privilege('anon', 'internal.current_analytics_reader()', 'EXECUTE'), 'public cannot execute internal reader');
+select extensions.ok(not has_function_privilege('public', 'internal.current_analytics_reader()', 'EXECUTE'), 'public cannot execute internal reader');
 
 select extensions.ok(has_function_privilege('authenticated', 'public.list_analytics_scopes()', 'EXECUTE'), 'authenticated can execute public scope RPC');
 select extensions.ok(has_function_privilege('authenticated', 'public.get_school_analytics(uuid)', 'EXECUTE'), 'authenticated can execute school RPC');
 select extensions.ok(has_function_privilege('authenticated', 'public.get_grade_analytics(uuid)', 'EXECUTE'), 'authenticated can execute grade RPC');
 select extensions.ok(has_function_privilege('authenticated', 'public.list_analytics_top_students(uuid,uuid,integer)', 'EXECUTE'), 'authenticated can execute ranking RPC');
 select extensions.ok(not has_function_privilege('anon', 'public.list_analytics_scopes()', 'EXECUTE'), 'anon cannot execute scope RPC');
-select extensions.ok(not has_function_privilege('anon', 'public.list_analytics_scopes()', 'EXECUTE'), 'public cannot execute scope RPC');
+select extensions.ok(not has_function_privilege('public', 'public.list_analytics_scopes()', 'EXECUTE'), 'public cannot execute scope RPC');
 
 select extensions.ok(not has_table_privilege('authenticated', 'public.calculated_student_results', 'INSERT,UPDATE,DELETE'), 'analytics adds no student result writes');
 select extensions.ok(not has_table_privilege('authenticated', 'public.calculated_subject_results', 'INSERT,UPDATE,DELETE'), 'analytics adds no subject result writes');

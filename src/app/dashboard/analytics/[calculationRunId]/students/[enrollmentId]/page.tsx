@@ -2,6 +2,7 @@ import { PageHeader } from "@/components/layout/page-header";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent } from "@/components/ui/card";
+import { requirePermission } from "@/lib/authorization/guards";
 import { getAnalyticsStudent } from "@/lib/analytics/data";
 import { displayNumber, rankingText } from "@/lib/analytics/format";
 
@@ -11,6 +12,7 @@ export default async function AnalyticsStudentPage({
   params: Promise<{ calculationRunId: string; enrollmentId: string }>;
 }) {
   const { calculationRunId, enrollmentId } = await params;
+  await requirePermission("ANALYTICS_VIEW");
   const data = await getAnalyticsStudent(calculationRunId, enrollmentId);
   if (!data)
     return (
