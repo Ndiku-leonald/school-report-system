@@ -21,7 +21,14 @@ export async function POST(request: Request) {
     new URL("/parent/login", request.url),
     303,
   );
-  response.cookies.delete({ name: PARENT_SESSION_COOKIE, path: "/parent" });
+  response.cookies.set(PARENT_SESSION_COOKIE, "", {
+    httpOnly: true,
+    sameSite: "lax",
+    secure: process.env.NODE_ENV === "production",
+    path: "/parent",
+    maxAge: 0,
+    expires: new Date(0),
+  });
   response.headers.set("Cache-Control", "private, no-store");
   return response;
 }
