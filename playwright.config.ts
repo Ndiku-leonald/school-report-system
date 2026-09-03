@@ -34,6 +34,11 @@ export default defineConfig({
       AUTH_FLOW_SIGNING_SECRET:
         process.env.AUTH_FLOW_SIGNING_SECRET ??
         "synthetic-auth-flow-secret-for-browser-smoke-tests-0123456789",
+      SUPABASE_SERVICE_ROLE_KEY:
+        process.env.SUPABASE_SERVICE_ROLE_KEY ?? "synthetic-service-role-key",
+      PARENT_ACCESS_RATE_LIMIT_SECRET:
+        process.env.PARENT_ACCESS_RATE_LIMIT_SECRET ??
+        "synthetic-parent-rate-limit-secret-for-browser-tests-0123456789",
     },
     url: baseURL,
     reuseExistingServer: !process.env.CI,

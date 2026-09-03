@@ -16,6 +16,7 @@ import {
   LifecycleForm,
   PhotoForm,
 } from "@/components/student-management/management-panels";
+import { ParentAccessManager } from "@/components/parent-portal/parent-access-manager";
 import { Alert } from "@/components/ui/alert";
 import { Badge } from "@/components/ui/badge";
 import { buttonStyles } from "@/components/ui/button";
@@ -348,6 +349,10 @@ export default async function StudentDetailPage({
                   <PhotoForm student={student} />
                 </CardContent>
               </Card>
+              <ParentAccessManager
+                studentId={studentId}
+                status={data.parentAccess}
+              />
             </>
           ) : (
             <Alert title="View-only access">

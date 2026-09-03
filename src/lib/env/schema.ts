@@ -40,6 +40,18 @@ export const authenticationFlowEnvironmentSchema = z.object({
   AUTH_FLOW_SIGNING_SECRET: authenticationFlowSecret,
 });
 
+const parentAccessRateLimitSecret = requiredSecret(
+  "PARENT_ACCESS_RATE_LIMIT_SECRET",
+).refine(
+  (value) => Buffer.byteLength(value, "utf8") >= 32,
+  "PARENT_ACCESS_RATE_LIMIT_SECRET must contain at least 32 bytes.",
+);
+
+export const parentPortalEnvironmentSchema =
+  administrativeEnvironmentSchema.extend({
+    PARENT_ACCESS_RATE_LIMIT_SECRET: parentAccessRateLimitSecret,
+  });
+
 export type PublicEnvironment = z.infer<typeof publicEnvironmentSchema>;
 export type ServerEnvironment = z.infer<typeof serverEnvironmentSchema>;
 export type AdministrativeEnvironment = z.infer<
@@ -47,6 +59,9 @@ export type AdministrativeEnvironment = z.infer<
 >;
 export type AuthenticationFlowEnvironment = z.infer<
   typeof authenticationFlowEnvironmentSchema
+>;
+export type ParentPortalEnvironment = z.infer<
+  typeof parentPortalEnvironmentSchema
 >;
 
 export class EnvironmentConfigurationError extends Error {
@@ -114,6 +129,20 @@ export function parseAuthenticationFlowEnvironment(
   environment: Record<string, string | undefined>,
 ) {
   const result = authenticationFlowEnvironmentSchema.safeParse(environment);
+
+  if (!result.success) {
+    throw new EnvironmentConfigurationError(
+      getInvalidVariableNames(result.error),
+    );
+  }
+
+  return result.data;
+}
+
+export function parseParentPortalEnvironment(
+  environment: Record<string, string | undefined>,
+) {
+  const result = parentPortalEnvironmentSchema.safeParse(environment);
 
   if (!result.success) {
     throw new EnvironmentConfigurationError(
