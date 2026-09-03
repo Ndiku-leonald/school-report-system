@@ -355,14 +355,14 @@ async function setup() {
     [ids.classification],
   );
   await query(
-    "select set_config('app.marks_workflow_transition','allowed',true)",
+    "select set_config('app.marks_workflow_transition','allowed',false)",
   );
   await query(
     "update public.mark_sheets set workflow_status='LOCKED',locked_by=$2,locked_at=now() where id=$1",
     [ids.sheet, schoolAdmin.membershipId],
   );
   await query(
-    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+    "select set_config('app.term_marks_workflow_transition','allowed',false)",
   );
   await query("update public.terms set status='LOCKED' where id=$1", [
     ids.termA,
@@ -1008,7 +1008,7 @@ describe.sequential("Stage 16 real analytics integration", () => {
   });
   it("55. unlocked latest source makes the run unavailable", async () => {
     await query(
-      "select set_config('app.marks_workflow_transition','allowed',true)",
+      "select set_config('app.marks_workflow_transition','allowed',false)",
     );
     await query(
       "update public.mark_sheets set workflow_status='DRAFT' where id=$1",
