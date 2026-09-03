@@ -159,7 +159,7 @@ export default async function AnalyticsGradePage({
       <PageHeader
         eyebrow={`${grade.academic_year_name} · ${grade.term_name} · ${grade.grade_name}`}
         title="Grade analytics"
-        description="Read-only metrics from the current authoritative Stage 11 calculation. No promotion or repetition recommendation is produced."
+        description="Read-only metrics from the current authoritative Stage 11 calculation. This view reports results and attention indicators only."
         actions={
           <div className="flex flex-wrap gap-2">
             <Badge variant="success">Current authoritative</Badge>
@@ -426,8 +426,8 @@ export default async function AnalyticsGradePage({
           <CardContent className="pt-5">
             <h2 className="font-bold">Academic attention</h2>
             <p className="text-muted-foreground mt-1 text-xs">
-              Factual completeness and subject concerns only; this is not a
-              promotion recommendation.
+              Factual completeness and subject concerns only; final academic
+              decisions remain outside analytics.
             </p>
             <div className="mt-4 space-y-2">
               {attention.length ? (

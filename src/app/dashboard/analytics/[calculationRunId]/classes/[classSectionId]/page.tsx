@@ -54,7 +54,7 @@ export default async function AnalyticsClassPage({
       />
       <Alert title="Academic attention" variant="info">
         Attention indicators describe incomplete results and failed complete
-        subjects. They do not recommend promotion, repetition, or progression.
+        subjects. They do not make advancement decisions.
       </Alert>
       <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
         {[
