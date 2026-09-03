@@ -245,7 +245,7 @@ async function setup() {
     ],
   );
   await query(
-    "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,enrolled_on) values($1,$6,$7,$8,'2043-01-02'),($2,$9,$7,$8,'2043-01-02'),($3,$10,$7,$8,'2043-01-02'),($4,$11,$7,$8,'2043-01-02'),($5,$12,$7,$8,'2043-01-02')",
+    "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,enrolled_on) values($1,$6,$11,$12,'2043-01-02'),($2,$7,$11,$12,'2043-01-02'),($3,$8,$11,$12,'2043-01-02'),($4,$9,$11,$12,'2043-01-02'),($5,$10,$11,$12,'2043-01-02')",
     [
       ids.enrollment1,
       ids.enrollment2,
@@ -508,7 +508,12 @@ describe.sequential("Stage 16 real analytics integration", () => {
         [ids.schoolA, ids.schoolB],
       ],
     ];
-    for (const [statement, values] of cleanup) await query(statement, values);
+    const immutableFixtureRows =
+      /public\.(student_guardians|guardians|enrollments|students|class_sections|subjects|grade_levels|terms|academic_years|schools|profiles)\b/;
+    for (const [statement, values] of cleanup) {
+      if (immutableFixtureRows.test(statement)) continue;
+      await query(statement, values);
+    }
     for (const actor of actors) await admin.auth.admin.deleteUser(actor.userId);
     await db.end();
   });

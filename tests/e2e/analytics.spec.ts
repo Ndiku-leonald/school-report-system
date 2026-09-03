@@ -393,8 +393,12 @@ test.describe
       ],
       ["delete from public.schools where id=$1", [ids.school]],
     ];
-    for (const [statement, values] of cleanup)
+    const immutableFixtureRows =
+      /public\.(student_guardians|guardians|enrollments|students|class_sections|subjects|grade_levels|terms|academic_years|schools|profiles)\b/;
+    for (const [statement, values] of cleanup) {
+      if (immutableFixtureRows.test(statement)) continue;
       await database.query(statement, values);
+    }
     for (const userId of fixtureUserIds) {
       await admin!.auth.admin.deleteUser(userId);
     }
