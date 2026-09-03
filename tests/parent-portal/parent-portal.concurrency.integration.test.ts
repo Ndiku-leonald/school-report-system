@@ -471,24 +471,39 @@ describe
           "select (select count(*)::text from public.parent_security_events where event_type='PARENT_LOGIN_SUCCEEDED' and student_id=$1) as successes,(select count(*)::text from public.parent_access_sessions where student_access_credential_id=$2 and revoked_at is null) as sessions",
           [ids.student, ids.credential],
         );
+        const current = await db!.query<{ updated_at: string }>(
+          "select updated_at::text as updated_at from public.student_guardians where id=$1",
+          [ids.relationship],
+        );
         const blocker = await openConnection();
-        let pending: Promise<unknown> | undefined;
+        let pending: ReturnType<typeof login> | undefined;
+        let removalCall: Promise<RpcResult<unknown[]>> | undefined;
         try {
           await blocker.query("begin");
           await blocker.query(
             "select id from public.student_guardians where id=$1 for update",
             [ids.relationship],
           );
-          await blocker.query(
-            "update public.student_guardians set can_access_reports=false where id=$1",
-            [ids.relationship],
+          removalCall = rpcCall(
+            registrar.client,
+            "update_student_guardian_relationship",
+            {
+              target_relationship_id: ids.relationship,
+              expected_updated_at: current.rows[0]!.updated_at,
+              relationship: "Parent",
+              primary_guardian: true,
+              report_access_eligible: false,
+            },
           );
+          await waitForBlockedCall("update_student_guardian_relationship");
           pending = login(parentClient(), "eligibility-removal-wins");
           await waitForBlockedCall("verify_parent_access");
           await blocker.query("commit");
-          const result = (await pending) as {
-            data?: Array<{ ok: boolean; session_token: string | null }>;
-          };
+          const [removalResult, result] = await Promise.all([
+            removalCall,
+            pending,
+          ]);
+          expect(removalResult.error).toBeNull();
           expect(result.data?.[0]).toMatchObject({
             ok: false,
             session_token: null,
@@ -508,6 +523,7 @@ describe
         } finally {
           await blocker.query("rollback").catch(() => undefined);
           await pending?.catch(() => undefined);
+          await removalCall?.catch(() => undefined);
           await blocker.end();
           await resetCredential();
         }
