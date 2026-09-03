@@ -254,11 +254,11 @@ async function setup() {
       ids.enrollment5,
       ids.student1,
       ids.student2,
-      ids.yearA,
-      ids.classA,
       ids.student3,
       ids.student4,
       ids.student5,
+      ids.yearA,
+      ids.classA,
     ],
   );
   await query(
