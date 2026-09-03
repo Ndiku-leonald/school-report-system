@@ -204,7 +204,7 @@ async function setup() {
     [ids.scale, ids.school, ids.year, ids.grade, ids.membership],
   );
   await database.query(
-    "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,49,'B',1,false,1),($1,50,79,'A',2,true,2),($1,80,100,'A',3,true,3)",
+    "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,50,'B',1,false,1),($1,50,80,'A',2,true,2),($1,80,100,'A',3,true,3)",
     [ids.scale],
   );
   await database.query(
@@ -394,7 +394,7 @@ test.describe
       ["delete from public.schools where id=$1", [ids.school]],
     ];
     const immutableFixtureRows =
-      /public\.(student_guardians|guardians|enrollments|students|class_sections|subjects|grade_levels|terms|academic_years|schools|profiles|teaching_assignments)\b/;
+      /public\.(student_guardians|guardians|enrollments|students|class_sections|subjects|grade_levels|terms|academic_years|schools|profiles|teaching_assignments|marks|mark_sheets)\b/;
     for (const [statement, values] of cleanup) {
       if (immutableFixtureRows.test(statement)) continue;
       await database.query(statement, values);

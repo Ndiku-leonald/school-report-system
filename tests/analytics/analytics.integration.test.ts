@@ -312,7 +312,7 @@ async function setup() {
     [ids.scale, ids.schoolA, ids.yearA, ids.gradeA, schoolAdmin.membershipId],
   );
   await query(
-    "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,49,'B',1,false,1),($1,50,79,'A',2,true,2),($1,80,100,'A',3,true,3)",
+    "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,50,'B',1,false,1),($1,50,80,'A',2,true,2),($1,80,100,'A',3,true,3)",
     [ids.scale],
   );
   await query("update public.grading_scales set is_active=true where id=$1", [
@@ -509,7 +509,7 @@ describe.sequential("Stage 16 real analytics integration", () => {
       ],
     ];
     const immutableFixtureRows =
-      /public\.(student_guardians|guardians|enrollments|students|class_sections|subjects|grade_levels|terms|academic_years|schools|profiles|teaching_assignments)\b/;
+      /public\.(student_guardians|guardians|enrollments|students|class_sections|subjects|grade_levels|terms|academic_years|schools|profiles|teaching_assignments|marks|mark_sheets)\b/;
     for (const [statement, values] of cleanup) {
       if (immutableFixtureRows.test(statement)) continue;
       await query(statement, values);
