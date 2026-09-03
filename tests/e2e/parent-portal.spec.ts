@@ -43,6 +43,16 @@ async function loggedIn(page: Page) {
   ).toBeVisible();
 }
 
+async function signOut(page: Page) {
+  const responsePromise = page.waitForResponse(
+    (response) =>
+      response.url().endsWith("/parent/api/logout") &&
+      response.request().method() === "POST",
+  );
+  await page.getByRole("button", { name: "Sign out" }).click();
+  expect((await responsePromise).status()).toBe(303);
+}
+
 test.describe.configure({ mode: "serial" });
 
 test.describe("Stage 15 parent portal acceptance", () => {
@@ -546,14 +556,14 @@ test.describe("Stage 15 parent portal acceptance", () => {
 
   test("signs out and clears access to the report list", async ({ page }) => {
     await loggedIn(page);
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await signOut(page);
     await page.goto("/parent");
     await expect(page).toHaveURL(/\/parent\/login$/);
   });
 
   test("signs out before a direct detail request", async ({ page }) => {
     await loggedIn(page);
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await signOut(page);
     const response = await page.goto(`/parent/reports/${fixture.currentId}`);
     expect(response?.status()).toBe(200);
     await expect(page).toHaveURL(/\/parent\/login$/);
@@ -561,7 +571,7 @@ test.describe("Stage 15 parent portal acceptance", () => {
 
   test("denies a direct artifact request after logout", async ({ page }) => {
     await loggedIn(page);
-    await page.getByRole("button", { name: "Sign out" }).click();
+    await signOut(page);
     const response = await page.request.get(
       `/parent/api/reports/${fixture.currentId}/artifact`,
     );
