@@ -79,21 +79,25 @@ update public.mark_sheets set workflow_status = 'LOCKED', locked_by = 'f3000000-
 where id = 'f4b00000-0000-4000-8000-000000000001';
 
 insert into public.grading_scales (id, school_id, academic_year_id, grade_level_id, name, version, is_active, effective_from, created_by)
-values ('f4d00000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000001', 'f4000000-0000-4000-8000-000000000001', 'f4200000-0000-4000-8000-000000000001', 'Duplicate Grade Labels', 1, true, '2042-01-02', 'f3000000-0000-4000-8000-000000000001');
+values ('f4d00000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000001', 'f4000000-0000-4000-8000-000000000001', 'f4200000-0000-4000-8000-000000000001', 'Duplicate Grade Labels', 1, false, '2042-01-02', 'f3000000-0000-4000-8000-000000000001');
 insert into public.grading_bands (grading_scale_id, minimum_score, maximum_score, grade, aggregate_points, is_pass, sort_order)
 values
   ('f4d00000-0000-4000-8000-000000000001', 0, 49, 'B', 1, false, 1),
   ('f4d00000-0000-4000-8000-000000000001', 50, 79, 'A', 2, true, 2),
   ('f4d00000-0000-4000-8000-000000000001', 80, 100, 'A', 3, true, 3);
+update public.grading_scales set is_active = true
+where id = 'f4d00000-0000-4000-8000-000000000001';
 insert into public.ranking_rules (id, school_id, academic_year_id, grade_level_id, name, version, ranking_basis, tie_method, configuration, is_active, created_by)
 values ('f4e00000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000001', 'f4000000-0000-4000-8000-000000000001', 'f4200000-0000-4000-8000-000000000001', 'Analytics Ranking', 1, 'AVERAGE', 'DENSE', '{"direction":"DESC","include_incomplete":true,"minimum_subjects":1}', true, 'f3000000-0000-4000-8000-000000000001');
 insert into public.aggregate_classification_scales (id, school_id, academic_year_id, grade_level_id, name, version, is_active, created_by)
-values ('f4f00000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000001', 'f4000000-0000-4000-8000-000000000001', 'f4200000-0000-4000-8000-000000000001', 'Duplicate Classification Labels', 1, true, 'f3000000-0000-4000-8000-000000000001');
+values ('f4f00000-0000-4000-8000-000000000001', 'f1000000-0000-4000-8000-000000000001', 'f4000000-0000-4000-8000-000000000001', 'f4200000-0000-4000-8000-000000000001', 'Duplicate Classification Labels', 1, false, 'f3000000-0000-4000-8000-000000000001');
 insert into public.aggregate_classification_bands (scale_id, minimum_aggregate, maximum_aggregate, label, sort_order)
 values
   ('f4f00000-0000-4000-8000-000000000001', 0, 2, 'Good', 1),
   ('f4f00000-0000-4000-8000-000000000001', 3, 5, 'Good', 2),
   ('f4f00000-0000-4000-8000-000000000001', 6, 10, 'Needs support', 3);
+update public.aggregate_classification_scales set is_active = true
+where id = 'f4f00000-0000-4000-8000-000000000001';
 
 insert into public.grading_scales (id, school_id, academic_year_id, grade_level_id, name, version, is_active, effective_from)
 values ('f4d00000-0000-4000-8000-000000000002', 'f1000000-0000-4000-8000-000000000002', 'f4000000-0000-4000-8000-000000000002', 'f4200000-0000-4000-8000-000000000004', 'Other Scale', 1, true, '2042-01-02');
