@@ -477,7 +477,11 @@ test.describe
   });
   test("14. current grade scope is labeled", async ({ page }) => {
     await page.goto(landing);
-    await expect(page.getByText("Current", { exact: true })).toBeVisible();
+    await expect(
+      page.getByLabel("Calculation scopes").getByText("Current", {
+        exact: true,
+      }),
+    ).toBeVisible();
   });
   test("15. unused active grade is not a bogus scope", async ({ page }) => {
     await page.goto(landing);
