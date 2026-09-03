@@ -307,50 +307,94 @@ test.describe
   test.beforeAll(setup);
   test.afterAll(async () => {
     if (!enabled) return;
-    const cleanup = [
-      "delete from public.calculated_subject_results where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1)",
-      "delete from public.calculated_student_results where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1)",
-      "delete from public.calculated_component_explanations where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1)",
-      "delete from public.calculated_subject_performance where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1)",
-      "delete from public.calculated_grade_subject_performance where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1)",
-      "delete from public.result_calculation_sources where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1)",
-      "delete from public.result_calculation_runs where term_id=$1",
-      "delete from public.marks where mark_sheet_id in (select id from public.mark_sheets where term_id=$1)",
-      "delete from public.mark_sheets where term_id=$1",
-      "delete from public.assessment_components where assessment_scheme_id in (select id from public.assessment_schemes where term_id=$1)",
-      "delete from public.assessment_schemes where term_id=$1",
-      "delete from public.teaching_assignments where term_id=$1",
-      "delete from public.aggregate_classification_bands where scale_id=$2",
-      "delete from public.aggregate_classification_scales where id=$2",
-      "delete from public.grading_bands where grading_scale_id=$3",
-      "delete from public.grading_scales where id=$3",
-      "delete from public.ranking_rules where id=$4",
-      "delete from public.grade_level_subjects where grade_level_id=$5",
-      "delete from public.enrollments where academic_year_id=$6",
-      "delete from public.students where school_id=$7",
-      "delete from public.class_sections where academic_year_id=$6",
-      "delete from public.subjects where id=$8",
-      "delete from public.grade_levels where school_id=$7",
-      "delete from public.terms where academic_year_id=$6",
-      "delete from public.academic_years where id=$6",
-      "delete from internal.staff_session_active_memberships where profile_id = any($9::uuid[])",
-      "delete from public.staff_role_assignments where membership_id in (select id from public.school_staff_memberships where school_id=$7)",
-      "delete from public.school_staff_memberships where school_id=$7",
-      "delete from public.profiles where id = any($9::uuid[])",
-      "delete from public.schools where id=$7",
+    const cleanup: Array<[string, unknown[]]> = [
+      [
+        "delete from public.calculated_subject_results where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1)",
+        [ids.term],
+      ],
+      [
+        "delete from public.calculated_student_results where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1)",
+        [ids.term],
+      ],
+      [
+        "delete from public.calculated_component_explanations where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1)",
+        [ids.term],
+      ],
+      [
+        "delete from public.calculated_subject_performance where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1)",
+        [ids.term],
+      ],
+      [
+        "delete from public.calculated_grade_subject_performance where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1)",
+        [ids.term],
+      ],
+      [
+        "delete from public.result_calculation_sources where calculation_run_id in (select id from public.result_calculation_runs where term_id=$1)",
+        [ids.term],
+      ],
+      [
+        "delete from public.result_calculation_runs where term_id=$1",
+        [ids.term],
+      ],
+      [
+        "delete from public.marks where mark_sheet_id in (select id from public.mark_sheets where term_id=$1)",
+        [ids.term],
+      ],
+      ["delete from public.mark_sheets where term_id=$1", [ids.term]],
+      [
+        "delete from public.assessment_components where assessment_scheme_id in (select id from public.assessment_schemes where term_id=$1)",
+        [ids.term],
+      ],
+      ["delete from public.assessment_schemes where term_id=$1", [ids.term]],
+      ["delete from public.teaching_assignments where term_id=$1", [ids.term]],
+      [
+        "delete from public.aggregate_classification_bands where scale_id=$1",
+        [ids.classification],
+      ],
+      [
+        "delete from public.aggregate_classification_scales where id=$1",
+        [ids.classification],
+      ],
+      [
+        "delete from public.grading_bands where grading_scale_id=$1",
+        [ids.scale],
+      ],
+      ["delete from public.grading_scales where id=$1", [ids.scale]],
+      ["delete from public.ranking_rules where id=$1", [ids.rule]],
+      [
+        "delete from public.grade_level_subjects where grade_level_id=$1",
+        [ids.grade],
+      ],
+      ["delete from public.enrollments where academic_year_id=$1", [ids.year]],
+      ["delete from public.students where school_id=$1", [ids.school]],
+      [
+        "delete from public.class_sections where academic_year_id=$1",
+        [ids.year],
+      ],
+      ["delete from public.subjects where id=$1", [ids.subject]],
+      ["delete from public.grade_levels where school_id=$1", [ids.school]],
+      ["delete from public.terms where academic_year_id=$1", [ids.year]],
+      ["delete from public.academic_years where id=$1", [ids.year]],
+      [
+        "delete from internal.staff_session_active_memberships where profile_id = any($1::uuid[])",
+        [fixtureUserIds],
+      ],
+      [
+        "delete from public.staff_role_assignments where membership_id in (select id from public.school_staff_memberships where school_id=$1)",
+        [ids.school],
+      ],
+      [
+        "delete from public.school_staff_memberships where school_id=$1",
+        [ids.school],
+      ],
+      [
+        "delete from public.profiles where id = any($1::uuid[])",
+        [fixtureUserIds],
+      ],
+      ["delete from public.schools where id=$1", [ids.school]],
     ];
-    const values = [
-      ids.term,
-      ids.classification,
-      ids.scale,
-      ids.rule,
-      ids.grade,
-      ids.year,
-      ids.school,
-      ids.subject,
-      fixtureUserIds,
-    ];
-    for (const statement of cleanup) await database.query(statement, values);
+    for (const [statement, values] of cleanup)
+      await database.query(statement, values);
     for (const userId of fixtureUserIds) {
       await admin!.auth.admin.deleteUser(userId);
     }
