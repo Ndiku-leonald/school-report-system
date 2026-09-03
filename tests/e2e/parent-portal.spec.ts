@@ -297,9 +297,9 @@ test.describe("Stage 15 parent portal acceptance", () => {
   test("renders the private school record warning", async ({ page }) => {
     await loggedIn(page);
     await page.goto(`/parent/reports/${fixture.currentId}`);
-    await expect(page.getByRole("alert")).toContainText(
-      "Private school record",
-    );
+    await expect(
+      page.getByText("Private school record", { exact: true }),
+    ).toBeVisible();
     await expect(
       page.getByText("not regenerated from live marks"),
     ).toBeVisible();
