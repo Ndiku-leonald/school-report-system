@@ -1,6 +1,6 @@
 begin;
 
-select extensions.no_plan();
+select plan(44);
 
 -- This fixture is deliberately small but complete enough to exercise the live
 -- Stage 16 read functions. It represents persisted Stage 11 output; no
@@ -171,7 +171,7 @@ select extensions.is((select count(*) from public.list_analytics_top_students('f
 select extensions.is((select min(rank_position) from public.list_analytics_top_students('f4c00000-0000-4000-8000-000000000001', null, 2)), 1, 'top list preserves persisted grade positions');
 select extensions.is((select max(tie_size) from public.list_analytics_top_students('f4c00000-0000-4000-8000-000000000001', null, 2)), 2, 'top list preserves persisted tie size');
 select extensions.is((select array_agg(admission_number order by rank_position, admission_number, enrollment_id)::text[] from public.list_analytics_top_students('f4c00000-0000-4000-8000-000000000001', 'f4300000-0000-4000-8000-000000000001', 2)), array['ABA-001','ABA-002','ABA-010','ABA-011']::text[], 'class top list has deterministic ordering');
-select extensions.ok(not exists (select 1 from public.list_analytics_top_students('f4c00000-0000-4000-8000-000000000001', null, 0) where true), 'bounded minimum top position is safe');
+select extensions.is((select count(*) from public.list_analytics_top_students('f4c00000-0000-4000-8000-000000000001', null, 0)), 2::bigint, 'bounded minimum top position retains the first persisted tie');
 
 select extensions.is((select mean_score from public.list_analytics_subject_performance('f4c00000-0000-4000-8000-000000000001', null)), 82::numeric, 'subject mean comes from Stage 11 output');
 select extensions.is((select pass_rate from public.list_analytics_subject_performance('f4c00000-0000-4000-8000-000000000001', null)), 50::numeric, 'subject pass rate comes from Stage 11 output');
