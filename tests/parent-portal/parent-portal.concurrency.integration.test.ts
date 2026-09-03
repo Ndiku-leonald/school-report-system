@@ -87,9 +87,11 @@ function rpcCall<T>(
   functionName: string,
   args: Record<string, unknown>,
 ) {
-  return client.rpc(functionName as never, args as never) as unknown as Promise<
-    RpcResult<T>
-  >;
+  return Promise.resolve(
+    client.rpc(functionName as never, args as never) as unknown as PromiseLike<
+      RpcResult<T>
+    >,
+  );
 }
 
 async function login(
