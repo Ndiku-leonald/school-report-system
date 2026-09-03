@@ -456,27 +456,18 @@ begin
   if not internal.analytics_run_is_current(target_run_id, actor.school_id) then return; end if;
   limit_position := least(greatest(coalesce(max_position, 10), 1), 50);
   select * into run_row from public.result_calculation_runs where id = target_run_id;
-  return query
-  select ranked.enrollment_id, ranked.admission_number, ranked.student_name, ranked.class_section_id,
-    ranked.class_name, ranked.overall_average, ranked.overall_grade, ranked.rank_position,
-    ranked.tie_size, ranked.is_tied
-  from (
-    select result.enrollment_id, student.admission_number,
-      concat_ws(' ', student.first_name, student.middle_name, student.last_name) as student_name,
-      result.class_section_id, section.name as class_name, result.overall_average, result.overall_grade,
-      case when target_class_section_id is null then result.grade_level_position else result.class_position end as rank_position,
-      case when target_class_section_id is null then result.grade_level_tie_size else result.class_tie_size end as tie_size,
-      case when target_class_section_id is null then result.grade_level_is_tied else result.class_is_tied end as is_tied,
-      student.id as student_id
-    from public.calculated_student_results result
-    join public.enrollments enrollment on enrollment.id = result.enrollment_id
-    join public.students student on student.id = enrollment.student_id
-    join public.class_sections section on section.id = result.class_section_id
-    where result.calculation_run_id = target_run_id and result.ranking_eligible
-      and (target_class_section_id is null or result.class_section_id = target_class_section_id)
-      and (case when target_class_section_id is null then result.grade_level_position else result.class_position end) <= limit_position
-  ) ranked
-  ;
+  return query select result.enrollment_id, student.admission_number, concat_ws(' ', student.first_name, student.middle_name, student.last_name),
+    result.class_section_id, section.name, result.overall_average, result.overall_grade,
+    case when target_class_section_id is null then result.grade_level_position else result.class_position end,
+    case when target_class_section_id is null then result.grade_level_tie_size else result.class_tie_size end,
+    case when target_class_section_id is null then result.grade_level_is_tied else result.class_is_tied end
+  from public.calculated_student_results result
+  join public.enrollments enrollment on enrollment.id = result.enrollment_id
+  join public.students student on student.id = enrollment.student_id
+  join public.class_sections section on section.id = result.class_section_id
+  where result.calculation_run_id = target_run_id and result.ranking_eligible
+    and (target_class_section_id is null or result.class_section_id = target_class_section_id)
+    and (case when target_class_section_id is null then result.grade_level_position else result.class_position end) <= limit_position;
 end;
 $$;
 
