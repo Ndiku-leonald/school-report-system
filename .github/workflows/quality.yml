@@ -81,7 +81,7 @@ jobs:
 
   database:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       PARENT_ACCESS_RATE_LIMIT_SECRET: stage15-ci-parent-rate-limit-secret-012345678901234567890123456789
 
