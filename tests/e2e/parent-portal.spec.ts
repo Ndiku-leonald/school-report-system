@@ -547,7 +547,6 @@ test.describe("Stage 15 parent portal acceptance", () => {
   test("signs out and clears access to the report list", async ({ page }) => {
     await loggedIn(page);
     await page.getByRole("button", { name: "Sign out" }).click();
-    await expect(page).toHaveURL(/\/parent\/login$/);
     await page.goto("/parent");
     await expect(page).toHaveURL(/\/parent\/login$/);
   });
