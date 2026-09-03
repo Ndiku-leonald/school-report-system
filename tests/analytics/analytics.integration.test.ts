@@ -262,7 +262,7 @@ async function setup() {
     ],
   );
   await query(
-    "insert into public.guardians(id,school_id,first_name,last_name,phone,email) values($1,$2,'privacy-canary-guardian','privacy-canary-family','privacy-canary-phone','privacy-canary-email')",
+    "insert into public.guardians(id,school_id,first_name,last_name,phone,email) values($1,$2,'privacy-canary-guardian','privacy-canary-family','+256700000001','privacy.canary@example.com')",
     [ids.guardian, ids.schoolA],
   );
   await query(
