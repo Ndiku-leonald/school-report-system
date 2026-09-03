@@ -408,8 +408,17 @@ authorized school, grade, class, student, aggregate-distribution, subject-
 performance, ranking, academic-attention, and aggregate-export views. The
 workspace consumes only current authoritative Stage 11 calculation runs,
 uses the independent `ANALYTICS_VIEW` permission, discloses partial coverage,
-and excludes guardian/parent data. It is not merged to `main`; promotion
-remains Stage 17 and production hardening remains Stage 18.
+and excludes guardian/parent data. Migration 37 is preserved unchanged;
+Migration 38 hardens the shared term-year scope definition, deduplicates
+repeated configured output labels, and makes top-student tie presentation
+deterministic. It is not merged to `main`; promotion remains Stage 17 and
+production hardening remains Stage 18.
+
+Acceptance evidence is separated by layer: 19 helper/unit cases, 43
+structural pgTAP assertions, 44 behavioral pgTAP assertions, 55 real
+DB-backed integration scenarios, and 53 fixture-backed browser scenarios.
+The integration and browser runners use synthetic local-Supabase fixtures and
+real signed-in staff sessions; helper tests are not reported as integration.
 
 **Acceptance criteria**
 

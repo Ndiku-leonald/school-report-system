@@ -110,6 +110,9 @@ jobs:
       - name: Run database tests
         run: npm run db:test
 
+      - name: Run analytics behavioral pgTAP
+        run: npx supabase test db supabase/tests/database/analytics_behavior.test.sql --local
+
       - name: Run local authentication integration tests
         run: npm run test:auth
 
@@ -212,7 +215,7 @@ jobs:
       - name: Run local parent portal browser tests
         run: npm run test:e2e:parent-portal
 
-      - name: Run analytics browser tests
+      - name: Run analytics browser acceptance
         run: npm run test:e2e:analytics
 
       - name: Stop local Supabase

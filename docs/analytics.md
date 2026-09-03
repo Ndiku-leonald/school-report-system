@@ -35,6 +35,13 @@ coverage is disclosed and is never labelled as a full-school population.
 Grade, class, student, subject, top-student, attention, and export calls all
 bind to an explicit `calculation_run_id` and independently recheck currentness.
 
+The authoritative term-year grade scope is an active grade in the selected
+school and term academic year with at least one active `class_sections` row for
+that grade. An active grade with no class in that academic year is not an
+analytics scope and cannot inflate excluded counts or source population. A real
+class with incomplete academic configuration remains a visible unavailable
+scope so the missing readiness is not hidden.
+
 ## Metric definitions
 
 - Analytics population is the count of authoritative calculated student rows.
@@ -47,7 +54,10 @@ bind to an explicit `calculation_run_id` and independently recheck currentness.
 - Classified learners have a non-null `aggregate_classification`; an absent
   classification scale is displayed as “No classification scale”.
 - Grade and classification percentages use their corresponding non-null
-  populations and preserve configured band order.
+  populations and preserve configured band order. Each configured output label
+  is emitted once; repeated grade or classification labels use the minimum
+  configured band `sort_order` and counts match the persisted output label,
+  rather than multiplying by matching bands.
 - Subject min, max, mean, counts, grade distribution, and pass rate use
   Stage 11 subject output. Passing is never recomputed from a hard-coded
   threshold.
@@ -55,6 +65,9 @@ bind to an explicit `calculation_run_id` and independently recheck currentness.
   `complete_count > 0` and non-null `mean_score`, using maximum/minimum mean.
 - Top lists use Stage 11 positions and eligibility. They preserve tie size and
   include every learner whose position is within the bounded display cutoff.
+  Presentation order is deterministic: persisted position ascending, then
+  admission number ascending, then enrollment UUID ascending. Stage 16 never
+  recalculates rank positions.
 - Academic attention is factual only: incomplete overall results, incomplete
   subjects, and failed complete subjects. Exempted subjects are not failures.
   The feature makes no promotion, repetition, progression, or risk prediction.
@@ -91,6 +104,25 @@ npm run test:e2e:analytics
 npm run db:reset
 npm run db:test
 ```
+
+Migration 37 is the original Stage 16 implementation and is preserved
+byte-for-byte. Migration 38 (`analytics_acceptance_hardening`) is the additive
+correction for term-year scope eligibility, duplicate configured output-label
+aggregation, and deterministic top-student ordering. It adds no analytics
+tables, cache, snapshot, service-role production read, or promotion logic.
+
+Coverage is reported by layer: 19 helper/unit cases in
+`src/lib/analytics/format.test.ts`, 43 structural pgTAP assertions in
+`analytics.test.sql`, 44 fixture-backed behavioral pgTAP assertions in
+`analytics_behavior.test.sql`, 55 real local-Supabase DB-backed integration
+scenarios in `tests/analytics/analytics.integration.test.ts`, and 53
+fixture-backed Playwright scenarios in `tests/e2e/analytics.spec.ts`. The
+helper cases are unit tests, not integration tests.
+
+The dedicated integration runner provisions only synthetic fixtures with the
+local service role, then authenticates staff clients and invokes the public
+analytics RPCs. The browser runner uses the same local-only principle and
+exercises the actual server pages, drill-down links, and aggregate CSV route.
 
 Do not link to, migrate, read, or write a remote Supabase project. Production
 hardening, deployment, monitoring, and operational policy remain Stage 18.
