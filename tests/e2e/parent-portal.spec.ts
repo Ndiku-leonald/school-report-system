@@ -505,7 +505,9 @@ test.describe("Stage 15 parent portal acceptance", () => {
     await loggedIn(page);
     await page.goto(`/parent/reports/${fixture.currentId}`);
     await expect(page.getByText("Academic Summary")).toBeVisible();
-    await expect(page.getByText("86")).toBeVisible();
+    const summaryScores = page.getByText("86", { exact: true });
+    await expect(summaryScores).toHaveCount(2);
+    await expect(summaryScores.first()).toBeVisible();
   });
 
   test("renders the snapshot comments without live joins", async ({ page }) => {
