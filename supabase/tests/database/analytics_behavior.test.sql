@@ -67,9 +67,11 @@ values
 insert into public.teaching_assignments (id, term_id, class_section_id, subject_id, staff_membership_id, starts_on)
 values ('f4800000-0000-4000-8000-000000000001', 'f4100000-0000-4000-8000-000000000001', 'f4300000-0000-4000-8000-000000000001', 'f4400000-0000-4000-8000-000000000001', 'f3000000-0000-4000-8000-000000000001', '2042-01-02');
 insert into public.assessment_schemes (id, term_id, grade_level_id, subject_id, name, status, effective_from, created_by)
-values ('f4900000-0000-4000-8000-000000000001', 'f4100000-0000-4000-8000-000000000001', 'f4200000-0000-4000-8000-000000000001', 'f4400000-0000-4000-8000-000000000001', 'Analytics Scheme', 'ACTIVE', '2042-01-02', 'f3000000-0000-4000-8000-000000000001');
+values ('f4900000-0000-4000-8000-000000000001', 'f4100000-0000-4000-8000-000000000001', 'f4200000-0000-4000-8000-000000000001', 'f4400000-0000-4000-8000-000000000001', 'Analytics Scheme', 'DRAFT', '2042-01-02', 'f3000000-0000-4000-8000-000000000001');
 insert into public.assessment_components (id, assessment_scheme_id, name, component_code, maximum_score, weight_percentage, sort_order)
 values ('f4a00000-0000-4000-8000-000000000001', 'f4900000-0000-4000-8000-000000000001', 'Analytics Exam', 'AB-EXAM', 100, 100, 1);
+update public.assessment_schemes set status = 'ACTIVE'
+where id = 'f4900000-0000-4000-8000-000000000001';
 insert into public.mark_sheets (id, term_id, class_section_id, subject_id, assessment_scheme_id, teaching_assignment_id)
 values ('f4b00000-0000-4000-8000-000000000001', 'f4100000-0000-4000-8000-000000000001', 'f4300000-0000-4000-8000-000000000001', 'f4400000-0000-4000-8000-000000000001', 'f4900000-0000-4000-8000-000000000001', 'f4800000-0000-4000-8000-000000000001');
 select set_config('app.marks_workflow_transition', 'allowed', true);
