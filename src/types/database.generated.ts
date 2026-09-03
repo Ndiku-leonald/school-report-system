@@ -3803,6 +3803,25 @@ export type Database = {
           updated_at: string;
         }[];
       };
+      get_generated_report: {
+        Args: { target_report_id: string };
+        Returns: {
+          calculation_run_id: string;
+          calculation_version: number;
+          created_at: string;
+          enrollment_id: string;
+          input_checksum: string;
+          output_checksum: string;
+          report_id: string;
+          report_version: number;
+          snapshot_checksum: string;
+          snapshot_data: Json;
+          snapshot_id: string;
+          snapshot_schema_version: number;
+          status: Database["public"]["Enums"]["report_status"];
+          superseded_by: string;
+        }[];
+      };
       get_grade_analytics: {
         Args: { target_run_id: string };
         Returns: {
@@ -3824,25 +3843,6 @@ export type Database = {
           run_id: string;
           term_id: string;
           term_name: string;
-        }[];
-      };
-      get_generated_report: {
-        Args: { target_report_id: string };
-        Returns: {
-          calculation_run_id: string;
-          calculation_version: number;
-          created_at: string;
-          enrollment_id: string;
-          input_checksum: string;
-          output_checksum: string;
-          report_id: string;
-          report_version: number;
-          snapshot_checksum: string;
-          snapshot_data: Json;
-          snapshot_id: string;
-          snapshot_schema_version: number;
-          status: Database["public"]["Enums"]["report_status"];
-          superseded_by: string;
         }[];
       };
       get_mark_entry_grid: {
