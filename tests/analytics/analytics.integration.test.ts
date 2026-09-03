@@ -284,12 +284,12 @@ async function setup() {
     [ids.scheme, ids.termA, ids.gradeA, ids.subject, schoolAdmin.membershipId],
   );
   await query(
-    "update public.assessment_schemes set status='ACTIVE' where id=$1",
-    [ids.scheme],
-  );
-  await query(
     "insert into public.assessment_components(id,assessment_scheme_id,name,component_code,maximum_score,weight_percentage,sort_order) values($1,$2,'Analytics Exam','AN-EXAM',100,100,1)",
     [ids.component, ids.scheme],
+  );
+  await query(
+    "update public.assessment_schemes set status='ACTIVE' where id=$1",
+    [ids.scheme],
   );
   await query(
     "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id) values($1,$2,$3,$4,$5,$6)",
@@ -509,7 +509,7 @@ describe.sequential("Stage 16 real analytics integration", () => {
       ],
     ];
     const immutableFixtureRows =
-      /public\.(student_guardians|guardians|enrollments|students|class_sections|subjects|grade_levels|terms|academic_years|schools|profiles)\b/;
+      /public\.(student_guardians|guardians|enrollments|students|class_sections|subjects|grade_levels|terms|academic_years|schools|profiles|teaching_assignments)\b/;
     for (const [statement, values] of cleanup) {
       if (immutableFixtureRows.test(statement)) continue;
       await query(statement, values);
