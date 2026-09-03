@@ -403,7 +403,13 @@ private-artifact trust boundaries.
 
 ## 16. Analytics
 
-Implement authorized school, class, student, aggregate-distribution, and subject-performance views.
+Implemented on the `feature/stage-16-analytics` feature branch for review:
+authorized school, grade, class, student, aggregate-distribution, subject-
+performance, ranking, academic-attention, and aggregate-export views. The
+workspace consumes only current authoritative Stage 11 calculation runs,
+uses the independent `ANALYTICS_VIEW` permission, discloses partial coverage,
+and excludes guardian/parent data. It is not merged to `main`; promotion
+remains Stage 17 and production hardening remains Stage 18.
 
 **Acceptance criteria**
 

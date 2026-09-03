@@ -67,8 +67,8 @@ export const dashboardNavigation: NavigationItem[] = [
   {
     label: "Analytics",
     icon: BarChart3,
+    href: "/dashboard/analytics",
     permissions: ["ANALYTICS_VIEW"],
-    unavailable: true,
   },
   {
     label: "Promotion",

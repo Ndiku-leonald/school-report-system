@@ -152,6 +152,9 @@ jobs:
       - name: Run deterministic parent portal concurrency tests
         run: npm run test:parent-portal:concurrency
 
+      - name: Run analytics integration tests
+        run: npm run test:analytics
+
       - name: Verify generated database types
         run: |
           npm run db:types
@@ -208,6 +211,9 @@ jobs:
 
       - name: Run local parent portal browser tests
         run: npm run test:e2e:parent-portal
+
+      - name: Run analytics browser tests
+        run: npm run test:e2e:analytics
 
       - name: Stop local Supabase
         if: always()
