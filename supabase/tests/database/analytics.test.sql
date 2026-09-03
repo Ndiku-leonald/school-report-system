@@ -15,7 +15,7 @@ select extensions.has_function('public', 'list_analytics_attention_students', ar
 select extensions.has_function('public', 'get_analytics_student', array['uuid','uuid'], 'student RPC exists');
 select extensions.has_function('public', 'list_analytics_student_subjects', array['uuid','uuid'], 'student subjects RPC exists');
 
-select extensions.ok(pg_get_functiondef('internal.current_analytics_reader()'::regprocedure) ~* 'set search_path = pg_catalog, public, internal', 'reader helper fixes search path');
+select extensions.is((select proconfig[1] from pg_proc where oid = 'internal.current_analytics_reader()'::regprocedure), 'search_path=pg_catalog, public, internal', 'reader helper fixes search path');
 select extensions.ok(pg_get_functiondef('internal.require_analytics_reader()'::regprocedure) ~* 'ANALYTICS_FORBIDDEN', 'reader helper fails closed');
 select extensions.ok(pg_get_functiondef('internal.current_analytics_reader()'::regprocedure) ~* 'current_auth_session_id', 'reader uses verified session');
 select extensions.ok(pg_get_functiondef('internal.current_analytics_reader()'::regprocedure) ~* 'ANALYTICS_VIEW', 'reader uses independent analytics permission');
