@@ -3723,21 +3723,6 @@ export type Database = {
           term_name: string;
         }[];
       };
-      get_class_analytics: {
-        Args: { target_class_section_id: string; target_run_id: string };
-        Returns: {
-          aggregate_classified_count: number;
-          analytics_population: number;
-          average_population_count: number;
-          class_name: string;
-          class_section_id: string;
-          complete_count: number;
-          graded_count: number;
-          incomplete_count: number;
-          mean_overall_average: number;
-          ranking_eligible_count: number;
-        }[];
-      };
       get_calculated_student_result: {
         Args: { target_enrollment_id: string; target_run_id: string };
         Returns: {
@@ -3759,27 +3744,19 @@ export type Database = {
           term_name: string;
         }[];
       };
-      get_grade_analytics: {
-        Args: { target_run_id: string };
+      get_class_analytics: {
+        Args: { target_class_section_id: string; target_run_id: string };
         Returns: {
-          academic_year_name: string;
           aggregate_classified_count: number;
           analytics_population: number;
           average_population_count: number;
-          calculation_version: number;
-          class_count: number;
+          class_name: string;
+          class_section_id: string;
           complete_count: number;
-          grade_level_id: string;
-          grade_name: string;
           graded_count: number;
           incomplete_count: number;
-          input_checksum: string;
           mean_overall_average: number;
-          output_checksum: string;
           ranking_eligible_count: number;
-          run_id: string;
-          term_id: string;
-          term_name: string;
         }[];
       };
       get_class_roster: {
@@ -3824,6 +3801,29 @@ export type Database = {
           term_starts_on: string;
           total_count: number;
           updated_at: string;
+        }[];
+      };
+      get_grade_analytics: {
+        Args: { target_run_id: string };
+        Returns: {
+          academic_year_name: string;
+          aggregate_classified_count: number;
+          analytics_population: number;
+          average_population_count: number;
+          calculation_version: number;
+          class_count: number;
+          complete_count: number;
+          grade_level_id: string;
+          grade_name: string;
+          graded_count: number;
+          incomplete_count: number;
+          input_checksum: string;
+          mean_overall_average: number;
+          output_checksum: string;
+          ranking_eligible_count: number;
+          run_id: string;
+          term_id: string;
+          term_name: string;
         }[];
       };
       get_generated_report: {
