@@ -524,7 +524,7 @@ describe
         let removalCall: Promise<RpcResult<unknown[]>> | undefined;
         try {
           const current = await db!.query<{ updated_at: string }>(
-            "select updated_at from public.student_guardians where id=$1",
+            "select updated_at::text as updated_at from public.student_guardians where id=$1",
             [ids.relationship],
           );
           await blocker.query("begin");
@@ -577,6 +577,10 @@ describe
       "makes the real revoke RPC win before a pending parent login",
       async () => {
         await resetCredential();
+        const before = await db!.query<{ count: string }>(
+          "select count(*)::text from public.parent_security_events where event_type='PARENT_LOGIN_SUCCEEDED' and student_id=$1",
+          [ids.student],
+        );
         const blocker = await openConnection();
         let revokeCall: Promise<RpcResult<boolean>> | undefined;
         let loginCall: ReturnType<typeof login> | undefined;
@@ -612,7 +616,9 @@ describe
             "select count(*)::text from public.parent_security_events where event_type='PARENT_LOGIN_SUCCEEDED' and student_id=$1",
             [ids.student],
           );
-          expect(Number(successes.rows[0]!.count)).toBe(0);
+          expect(Number(successes.rows[0]!.count)).toBe(
+            Number(before.rows[0]!.count),
+          );
         } finally {
           await blocker.query("rollback").catch(() => undefined);
           await revokeCall?.catch(() => undefined);
