@@ -120,7 +120,7 @@ export type AnalyticsTopStudent = {
   class_name: string;
   overall_average: number | null;
   overall_grade: string | null;
-  position: number;
+  rank_position: number;
   tie_size: number;
   is_tied: boolean;
 };

@@ -154,7 +154,7 @@ export default async function AnalyticsClassPage({
                     </Link>
                     <span className="font-mono">
                       {rankingText(
-                        student.position,
+                        student.rank_position,
                         student.is_tied,
                         student.tie_size,
                       )}

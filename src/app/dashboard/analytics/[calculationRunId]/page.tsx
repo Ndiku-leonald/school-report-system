@@ -404,7 +404,7 @@ export default async function AnalyticsGradePage({
                     </div>
                     <p className="font-mono text-sm">
                       {rankingText(
-                        student.position,
+                        student.rank_position,
                         student.is_tied,
                         student.tie_size,
                       )}{" "}

@@ -446,7 +446,7 @@ $$;
 
 create or replace function public.list_analytics_top_students(target_run_id uuid, target_class_section_id uuid default null, max_position integer default 10)
 returns table(enrollment_id uuid, admission_number text, student_name text, class_section_id uuid, class_name text,
-  overall_average numeric, overall_grade text, position integer, tie_size integer, is_tied boolean)
+  overall_average numeric, overall_grade text, rank_position integer, tie_size integer, is_tied boolean)
 language plpgsql stable security definer
 set search_path = pg_catalog, public, internal
 as $$
