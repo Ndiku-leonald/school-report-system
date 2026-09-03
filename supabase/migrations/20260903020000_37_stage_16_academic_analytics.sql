@@ -468,9 +468,7 @@ begin
   where result.calculation_run_id = target_run_id and result.ranking_eligible
     and (target_class_section_id is null or result.class_section_id = target_class_section_id)
     and (case when target_class_section_id is null then result.grade_level_position else result.class_position end) <= limit_position
-  order by
-    case when target_class_section_id is null then result.grade_level_position else result.class_position end,
-    student.admission_number, student.id, result.enrollment_id;
+  order by 8, 2, student.id, 1;
 end;
 $$;
 
