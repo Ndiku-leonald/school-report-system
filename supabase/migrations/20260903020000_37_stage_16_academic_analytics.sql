@@ -476,7 +476,7 @@ begin
       and (target_class_section_id is null or result.class_section_id = target_class_section_id)
       and (case when target_class_section_id is null then result.grade_level_position else result.class_position end) <= limit_position
   ) ranked
-  order by ranked.rank_position, ranked.admission_number, ranked.student_id, ranked.enrollment_id;
+  ;
 end;
 $$;
 
