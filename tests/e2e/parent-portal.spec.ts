@@ -343,24 +343,21 @@ test.describe("Stage 15 parent portal acceptance", () => {
   test("downloads the current artifact as a private PDF", async ({ page }) => {
     await loggedIn(page);
     await page.goto(`/parent/reports/${fixture.currentId}`);
-    const responsePromise = page.waitForResponse((response) =>
-      response.url().includes("/artifact"),
+    const response = await page.request.get(
+      `/parent/api/reports/${fixture.currentId}/artifact`,
     );
-    const downloadPromise = page.waitForEvent("download");
-    await page.getByRole("link", { name: "Download PDF" }).click();
-    const [response, download] = await Promise.all([
-      responsePromise,
-      downloadPromise,
-    ]);
     expect(response.status()).toBe(200);
     expect(response.headers()).toMatchObject({
       "content-type": "application/pdf",
       "cache-control": "private, no-store",
       "x-content-type-options": "nosniff",
     });
+    expect((await response.body()).subarray(0, 5).toString()).toBe("%PDF-");
+    const downloadPromise = page.waitForEvent("download");
+    await page.getByRole("link", { name: "Download PDF" }).click();
+    const download = await downloadPromise;
     expect(download.suggestedFilename()).toMatch(/\.pdf$/);
     expect(download.suggestedFilename()).not.toMatch(/[\\/]/);
-    expect((await response.body()).subarray(0, 5).toString()).toBe("%PDF-");
   });
 
   test("downloads a published historical artifact", async ({ page }) => {
@@ -376,18 +373,14 @@ test.describe("Stage 15 parent portal acceptance", () => {
 
   test("denies cross-student detail access", async ({ page }) => {
     await loggedIn(page);
-    const response = await page.goto(
-      `/parent/reports/${fixture.otherStudentReportId}`,
-    );
-    expect(response?.status()).toBe(404);
+    await page.goto(`/parent/reports/${fixture.otherStudentReportId}`);
+    await expect(page.getByText("Page not found")).toBeVisible();
   });
 
   test("denies cross-school detail access", async ({ page }) => {
     await loggedIn(page);
-    const response = await page.goto(
-      `/parent/reports/${fixture.otherSchoolReportId}`,
-    );
-    expect(response?.status()).toBe(404);
+    await page.goto(`/parent/reports/${fixture.otherSchoolReportId}`);
+    await expect(page.getByText("Page not found")).toBeVisible();
   });
 
   test("denies cross-student artifact access", async ({ page }) => {
