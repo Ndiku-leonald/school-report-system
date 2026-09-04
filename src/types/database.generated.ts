@@ -3697,6 +3697,32 @@ export type Database = {
           supersedes_report_id: string;
         }[];
       };
+      get_analytics_student: {
+        Args: { target_enrollment_id: string; target_run_id: string };
+        Returns: {
+          academic_year_name: string;
+          admission_number: string;
+          aggregate_classification: string;
+          aggregate_total: number;
+          calculation_version: number;
+          class_is_tied: boolean;
+          class_name: string;
+          class_position: number;
+          class_tie_size: number;
+          enrollment_id: string;
+          grade_level_is_tied: boolean;
+          grade_level_position: number;
+          grade_level_tie_size: number;
+          grade_name: string;
+          is_complete: boolean;
+          overall_average: number;
+          overall_grade: string;
+          overall_total: number;
+          ranking_eligible: boolean;
+          student_name: string;
+          term_name: string;
+        }[];
+      };
       get_calculated_student_result: {
         Args: { target_enrollment_id: string; target_run_id: string };
         Returns: {
@@ -3716,6 +3742,21 @@ export type Database = {
           ranking_eligible: boolean;
           student_name: string;
           term_name: string;
+        }[];
+      };
+      get_class_analytics: {
+        Args: { target_class_section_id: string; target_run_id: string };
+        Returns: {
+          aggregate_classified_count: number;
+          analytics_population: number;
+          average_population_count: number;
+          class_name: string;
+          class_section_id: string;
+          complete_count: number;
+          graded_count: number;
+          incomplete_count: number;
+          mean_overall_average: number;
+          ranking_eligible_count: number;
         }[];
       };
       get_class_roster: {
@@ -3779,6 +3820,29 @@ export type Database = {
           snapshot_schema_version: number;
           status: Database["public"]["Enums"]["report_status"];
           superseded_by: string;
+        }[];
+      };
+      get_grade_analytics: {
+        Args: { target_run_id: string };
+        Returns: {
+          academic_year_name: string;
+          aggregate_classified_count: number;
+          analytics_population: number;
+          average_population_count: number;
+          calculation_version: number;
+          class_count: number;
+          complete_count: number;
+          grade_level_id: string;
+          grade_name: string;
+          graded_count: number;
+          incomplete_count: number;
+          input_checksum: string;
+          mean_overall_average: number;
+          output_checksum: string;
+          ranking_eligible_count: number;
+          run_id: string;
+          term_id: string;
+          term_name: string;
         }[];
       };
       get_mark_entry_grid: {
@@ -4051,6 +4115,27 @@ export type Database = {
           up_to_date: boolean;
         }[];
       };
+      get_school_analytics: {
+        Args: { target_term_id: string };
+        Returns: {
+          academic_year_name: string;
+          aggregate_classified_count: number;
+          analytics_population: number;
+          average_population_count: number;
+          complete_count: number;
+          coverage: Json;
+          current_grade_count: number;
+          eligible_grade_count: number;
+          excluded_grade_count: number;
+          graded_count: number;
+          incomplete_count: number;
+          mean_overall_average: number;
+          ranking_eligible_count: number;
+          source_student_population: number;
+          term_id: string;
+          term_name: string;
+        }[];
+      };
       get_student_details: {
         Args: { target_student_id: string };
         Returns: {
@@ -4214,6 +4299,124 @@ export type Database = {
           retired_at: string;
           updated_at: string;
           version: number;
+        }[];
+      };
+      list_analytics_attention_students: {
+        Args: { target_class_section_id?: string; target_run_id: string };
+        Returns: {
+          admission_number: string;
+          attention_reason: string;
+          class_name: string;
+          class_section_id: string;
+          enrollment_id: string;
+          failed_subject_count: number;
+          incomplete_subject_count: number;
+          is_complete: boolean;
+          overall_average: number;
+          overall_grade: string;
+          student_name: string;
+        }[];
+      };
+      list_analytics_class_summaries: {
+        Args: { target_run_id: string };
+        Returns: {
+          aggregate_classified_count: number;
+          analytics_population: number;
+          average_population_count: number;
+          class_name: string;
+          class_section_id: string;
+          complete_count: number;
+          graded_count: number;
+          incomplete_count: number;
+          mean_overall_average: number;
+          ranking_eligible_count: number;
+        }[];
+      };
+      list_analytics_distributions: {
+        Args: { target_class_section_id?: string; target_run_id: string };
+        Returns: {
+          classification_scale_present: boolean;
+          distribution_population: number;
+          distribution_type: string;
+          label: string;
+          percentage: number;
+          row_count: number;
+          sort_order: number;
+          unclassified_count: number;
+          ungraded_count: number;
+        }[];
+      };
+      list_analytics_scopes: {
+        Args: never;
+        Returns: {
+          academic_year_id: string;
+          academic_year_name: string;
+          analytics_population: number;
+          calculation_version: number;
+          current_locked_source_scopes: number;
+          current_run_id: string;
+          expected_source_scopes: number;
+          grade_level_id: string;
+          grade_name: string;
+          input_checksum: string;
+          output_checksum: string;
+          readiness_state: string;
+          run_created_at: string;
+          term_id: string;
+          term_name: string;
+          term_status: Database["public"]["Enums"]["term_status"];
+        }[];
+      };
+      list_analytics_student_subjects: {
+        Args: { target_enrollment_id: string; target_run_id: string };
+        Returns: {
+          aggregate_points: number;
+          grade: string;
+          has_absence: boolean;
+          has_exemption: boolean;
+          is_pass: boolean;
+          subject_id: string;
+          subject_is_tied: boolean;
+          subject_name: string;
+          subject_position: number;
+          subject_score: number;
+          subject_status: Database["public"]["Enums"]["calculated_subject_status"];
+          subject_tie_size: number;
+        }[];
+      };
+      list_analytics_subject_performance: {
+        Args: { target_class_section_id?: string; target_run_id: string };
+        Returns: {
+          class_section_id: string;
+          complete_count: number;
+          exempted_count: number;
+          grade_distribution: Json;
+          incomplete_count: number;
+          maximum_score: number;
+          mean_score: number;
+          minimum_score: number;
+          pass_rate: number;
+          subject_id: string;
+          subject_name: string;
+        }[];
+      };
+      list_analytics_top_students: {
+        Args: {
+          max_position?: number;
+          target_class_section_id?: string;
+          target_run_id: string;
+        };
+        Returns: {
+          admission_number: string;
+          class_name: string;
+          class_section_id: string;
+          enrollment_id: string;
+          is_tied: boolean;
+          overall_average: number;
+          overall_grade: string;
+          rank_position: number;
+          student_name: string;
+          tie_size: number;
         }[];
       };
       list_assignment_teachers: {

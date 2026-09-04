@@ -177,3 +177,15 @@ Stage 11 uses the existing `REPORTS_GENERATE` permission for calculation and
 `MARKS_VIEW_ALL` as a generation grant and does not union memberships or
 assignment-scoped teacher roles. The selected active school membership remains
 authoritative for every calculation and result read.
+
+## Stage 16 analytics authorization
+
+`ANALYTICS_VIEW` is the only permission for the staff analytics workspace.
+`REPORTS_*`, `MARKS_*`, `STUDENTS_VIEW_ALL`, and `DASHBOARD_VIEW` permissions
+do not substitute for it. Head teachers, academic registrars, school admins,
+and super admins retain the existing analytics grant; class and subject
+teachers do not gain analytics access through an assignment. Every analytics
+page, RPC, and export rechecks the single active membership selected for the
+verified Auth session. Switching schools, suspending or disabling a
+membership, revoking the role grant, disabling the school, or signing out
+takes effect on the next authoritative request.

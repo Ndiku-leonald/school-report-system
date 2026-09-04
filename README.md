@@ -8,7 +8,7 @@ The product must remain configurable for different schools. School identity, sub
 
 ## Current status
 
-**Stage 15: secure parent and guardian report access is implemented on the feature branch.** The repository
+**Stage 16: secure academic analytics and acceptance hardening are implemented for review on the feature branch.** Migration 37 remains unchanged and Migration 38 corrects term-year scope eligibility, repeated configured output-label aggregation, and deterministic tied ranking presentation. Promotion remains Stage 17 and production hardening remains Stage 18. The repository
 contains the Stage 3 database foundation plus cookie-based Supabase Auth,
 server-authoritative staff membership checks, invitation and recovery flows,
 active-school selection, authentication audit events, and local-only Auth test
@@ -190,6 +190,8 @@ npm run test:e2e:report-pdf
 npm run test:parent-portal
 npm run test:parent-portal:concurrency
 npm run test:e2e:parent-portal
+npm run test:analytics
+npm run test:e2e:analytics
 ```
 
 Use `npx playwright install chromium` once if the local Playwright browser is not installed.

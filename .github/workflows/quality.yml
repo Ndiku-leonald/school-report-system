@@ -12,7 +12,7 @@ permissions:
 jobs:
   validate:
     runs-on: ubuntu-24.04
-    timeout-minutes: 20
+    timeout-minutes: 45
     env:
       PARENT_ACCESS_RATE_LIMIT_SECRET: stage15-ci-parent-rate-limit-secret-012345678901234567890123456789
 
@@ -34,8 +34,24 @@ jobs:
 
       - name: Report dependency audit
         run: |
-          npm audit --audit-level=critical
-          npm audit --omit=dev --audit-level=critical
+          for attempt in 1 2 3; do
+            if npm audit --audit-level=critical; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep 10
+          done
+          for attempt in 1 2 3; do
+            if npm audit --omit=dev --audit-level=critical; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep 10
+          done
 
       - name: Check formatting
         run: npm run format:check
@@ -81,7 +97,7 @@ jobs:
 
   database:
     runs-on: ubuntu-24.04
-    timeout-minutes: 30
+    timeout-minutes: 45
     env:
       PARENT_ACCESS_RATE_LIMIT_SECRET: stage15-ci-parent-rate-limit-secret-012345678901234567890123456789
 
@@ -109,6 +125,9 @@ jobs:
 
       - name: Run database tests
         run: npm run db:test
+
+      - name: Run analytics behavioral pgTAP
+        run: npx supabase test db supabase/tests/database/analytics_behavior.test.sql --local
 
       - name: Run local authentication integration tests
         run: npm run test:auth
@@ -151,6 +170,9 @@ jobs:
 
       - name: Run deterministic parent portal concurrency tests
         run: npm run test:parent-portal:concurrency
+
+      - name: Run analytics integration tests
+        run: npm run test:analytics
 
       - name: Verify generated database types
         run: |
@@ -208,6 +230,9 @@ jobs:
 
       - name: Run local parent portal browser tests
         run: npm run test:e2e:parent-portal
+
+      - name: Run analytics browser acceptance
+        run: npm run test:e2e:analytics
 
       - name: Stop local Supabase
         if: always()
