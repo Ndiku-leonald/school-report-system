@@ -661,7 +661,7 @@ test.describe
   });
   test("45. student academic fields are rendered", async ({ page }) => {
     await page.goto(studentPath());
-    await expect(page.getByText("AB-002", { exact: true })).toBeVisible();
+    await expect(page.getByRole("banner").getByText(/AB-002/)).toBeVisible();
   });
   test("46. student overall average is rendered", async ({ page }) => {
     await page.goto(studentPath());
