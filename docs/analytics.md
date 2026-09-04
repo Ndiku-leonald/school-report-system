@@ -114,8 +114,8 @@ tables, cache, snapshot, service-role production read, or promotion logic.
 Coverage is reported by layer: 19 helper/unit cases in
 `src/lib/analytics/format.test.ts`, 43 structural pgTAP assertions in
 `analytics.test.sql`, 44 fixture-backed behavioral pgTAP assertions in
-`analytics_behavior.test.sql`, 55 real local-Supabase DB-backed integration
-scenarios in `tests/analytics/analytics.integration.test.ts`, and 53
+`analytics_behavior.test.sql`, 59 real local-Supabase DB-backed integration
+scenarios in `tests/analytics/analytics.integration.test.ts`, and 69
 fixture-backed Playwright scenarios in `tests/e2e/analytics.spec.ts`. The
 helper cases are unit tests, not integration tests.
 
