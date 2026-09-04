@@ -475,6 +475,9 @@ async function setup() {
     [ids.classificationB],
   );
   await database.query(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await database.query(
     "update public.mark_sheets set workflow_status='LOCKED',locked_by=$2,locked_at=now() where id=$1",
     [ids.sheetB, ids.membershipB],
   );
