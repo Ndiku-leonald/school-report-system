@@ -699,7 +699,7 @@ test.describe
     await database.end();
   });
   test.beforeEach(async ({ page }, info) => {
-    if (/^(01|02|50|51|52|53)\./.test(info.title)) return;
+    if (/^(01|02|50|51|52|53|54|55|56|57|58|64)\./.test(info.title)) return;
     await login(page);
   });
 
