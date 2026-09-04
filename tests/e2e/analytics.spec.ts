@@ -666,7 +666,12 @@ test.describe
   });
   test("46. student overall average is rendered", async ({ page }) => {
     await page.goto(studentPath());
-    await expect(page.getByText("95", { exact: true })).toBeVisible();
+    await expect(
+      page
+        .getByText("Overall average", { exact: true })
+        .locator("..")
+        .getByText(/95/),
+    ).toBeVisible();
   });
   test("47. student subject row is rendered", async ({ page }) => {
     await page.goto(studentPath());
