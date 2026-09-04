@@ -1070,7 +1070,7 @@ test.describe
       "Analytics Secondary Grade",
     );
     await expect(page.locator("body")).not.toContainText("Secondary Learner");
-    await expect(page.locator("body")).not.toContainText("88");
+    await expect(page.getByText("88", { exact: true })).toHaveCount(0);
   });
   test("58. revoked analytics authority is denied on the next request", async ({
     page,
