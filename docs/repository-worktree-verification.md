@@ -1,6 +1,6 @@
 # Repository Worktree Verification
 
-This file contains point-in-time local Git verification records.  It is not a
+This file contains point-in-time local Git verification records. It is not a
 live status endpoint.
 
 ## Stage 16 post-merge verification
@@ -65,3 +65,43 @@ Stage 16 commit and tree during this verification.
 
 Verification conclusion: The local Stage 16 post-merge worktree was clean and
 synchronized with `origin/main` before the Stage 17 branch was created.
+
+## Stage 17 feature-branch handoff verification
+
+Verification time:
+
+- Local: 2026-09-05T02:48:42.0403488+03:00
+- UTC: 2026-09-04T23:48:42.0413497Z
+
+Branch:
+
+- `feature/stage-17-promotion-progression`
+
+Local HEAD:
+
+- `9726ae6ab7a67f382a470cf8c1bb77715c3c8153`
+
+HEAD tree:
+
+- `ceb567cdaf3ff5477ecfc6f3ff36f98981402d50`
+
+Remote feature branch SHA:
+
+- `9726ae6ab7a67f382a470cf8c1bb77715c3c8153`
+
+`git status --porcelain=v1` before this handoff append:
+
+```text
+ M docs/repository-worktree-verification.md
+```
+
+`git status --short --branch` before this handoff append:
+
+```text
+## feature/stage-17-promotion-progression...origin/feature/stage-17-promotion-progression
+ M docs/repository-worktree-verification.md
+```
+
+The handoff documentation update is committed separately. The final commit
+and remote synchronization are recorded by the commit that contains this
+section.
