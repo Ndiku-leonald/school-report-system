@@ -1053,7 +1053,7 @@ test.describe
     await page.goto(landing);
     await expect(page.getByText(schoolBName, { exact: true })).toBeVisible();
     await expect(
-      page.getByText("Analytics Secondary Grade", { exact: true }),
+      page.getByRole("heading", { name: "Analytics Secondary Grade" }),
     ).toBeVisible();
     await expect(page.getByText(schoolAName, { exact: true })).toHaveCount(0);
   });
