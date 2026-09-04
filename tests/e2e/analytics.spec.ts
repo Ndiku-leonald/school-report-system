@@ -373,7 +373,7 @@ async function setup() {
     [ids.yearB, ids.schoolB, `Analytics Browser Secondary Year ${nonce}`],
   );
   await database.query(
-    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Analytics Browser Secondary Term',1,'2044-01-01','2044-06-30','LOCKED')",
+    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status) values($1,$2,'Analytics Browser Secondary Term',1,'2044-01-01','2044-06-30','MARKS_ENTRY')",
     [ids.termB, ids.yearB],
   );
   await database.query(
