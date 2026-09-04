@@ -500,7 +500,7 @@ begin
     end if;
     insert into public.promotion_recommendation_snapshots(school_id,term_id,enrollment_id,calculation_run_id,promotion_rule_id,schema_version,snapshot_data,snapshot_checksum,created_by)
       values(actor.school_id,target_term_id,enrollment_row.id,built.calculation_run_id,built.promotion_rule_id,1,built.snapshot_data,built.snapshot_checksum,actor.membership_id)
-      on conflict (term_id,enrollment_id,calculation_run_id,promotion_rule_id,snapshot_checksum) do nothing returning * into created_snapshot;
+      on conflict on constraint promotion_snapshot_term_enrollment_run_unique do nothing returning * into created_snapshot;
     if not found then select * into created_snapshot from public.promotion_recommendation_snapshots s where s.term_id=target_term_id and s.enrollment_id=enrollment_row.id and s.calculation_run_id=built.calculation_run_id and s.promotion_rule_id=built.promotion_rule_id and s.snapshot_checksum=built.snapshot_checksum; end if;
     if created.id is not null then
       old_decision_id := created.id;
@@ -543,7 +543,7 @@ end; $$;
 create or replace function public.reopen_promotion_decision(target_decision_id uuid, reopen_reason text)
 returns table(decision_id uuid, decision_version integer, snapshot_id uuid, system_recommendation public.promotion_outcome, snapshot_checksum text)
 language plpgsql security definer set search_path = pg_catalog, public, internal as $$
-declare actor record; old public.promotion_decisions%rowtype; built record; snap public.promotion_recommendation_snapshots%rowtype; created public.promotion_decisions%rowtype; current_progression boolean;
+declare actor record; old public.promotion_decisions%rowtype; built record; snap public.promotion_recommendation_snapshots%rowtype; created public.promotion_decisions%rowtype;
 begin
   select * into actor from internal.require_promotion_actor(); if reopen_reason is null or length(btrim(reopen_reason))<3 or length(btrim(reopen_reason))>2000 then raise exception 'PROMOTION_REOPEN_REASON_REQUIRED' using errcode='22023'; end if;
   select d.* into old from public.promotion_decisions d join public.terms term on term.id=d.term_id join public.academic_years year on year.id=term.academic_year_id where d.id=target_decision_id and year.school_id=actor.school_id and d.superseded_by is null for update;
