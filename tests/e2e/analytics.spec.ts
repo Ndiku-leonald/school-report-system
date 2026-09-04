@@ -641,7 +641,12 @@ test.describe
   });
   test("42. tie labels are displayed", async ({ page }) => {
     await page.goto(classPath());
-    await expect(page.getByText(/tie of/)).toBeVisible();
+    await expect(
+      page
+        .getByRole("heading", { name: "Top class learners" })
+        .locator("..")
+        .getByText(/tie of/),
+    ).toHaveCount(4);
   });
   test("43. incomplete learner appears in attention", async ({ page }) => {
     await page.goto(classPath());
