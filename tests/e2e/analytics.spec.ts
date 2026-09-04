@@ -482,6 +482,15 @@ async function setup() {
     [ids.sheetB, ids.membershipB],
   );
   await database.query(
+    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+  );
+  await database.query("update public.terms set status='LOCKED' where id=$1", [
+    ids.termB,
+  ]);
+  await database.query(
+    "select set_config('app.term_marks_workflow_transition','allowed',false)",
+  );
+  await database.query(
     "select set_config('app.marks_workflow_transition','allowed',false)",
   );
   await database.query(
