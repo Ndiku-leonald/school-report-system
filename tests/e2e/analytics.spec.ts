@@ -1225,8 +1225,9 @@ test.describe
   }) => {
     await page.setViewportSize({ width: 320, height: 900 });
     await page.goto(gradePath());
-    await expect(page.getByRole("table")).toBeVisible();
-    const contained = await page.getByRole("table").evaluate((table) => {
+    const table = page.getByRole("table").first();
+    await expect(table).toBeVisible();
+    const contained = await table.evaluate((table) => {
       const container = table.parentElement;
       return Boolean(
         container &&
