@@ -122,6 +122,35 @@ async function createActor(
   return actor;
 }
 
+async function withRolePermissions<T>(
+  role: string,
+  permissions: string[],
+  callback: () => Promise<T>,
+) {
+  const original = await query(
+    "select permission::text from public.role_permissions where role=$1 order by permission",
+    [role],
+  );
+  try {
+    await query("delete from public.role_permissions where role=$1", [role]);
+    for (const permission of permissions) {
+      await query(
+        "insert into public.role_permissions(role,permission) values($1,$2)",
+        [role, permission],
+      );
+    }
+    return await callback();
+  } finally {
+    await query("delete from public.role_permissions where role=$1", [role]);
+    for (const row of original.rows) {
+      await query(
+        "insert into public.role_permissions(role,permission) values($1,$2)",
+        [role, row.permission],
+      );
+    }
+  }
+}
+
 async function signIn(actor: Actor) {
   const client = createClient(url!, anonKey!, {
     auth: {
@@ -173,12 +202,16 @@ async function setup() {
     ],
   );
   const schoolAdmin = await createActor("school-admin", "SCHOOL_ADMIN");
+  await createActor("super-admin", "SUPER_ADMIN");
   await createActor("head-teacher", "HEAD_TEACHER");
   await createActor("registrar", "ACADEMIC_REGISTRAR");
   await createActor("class-teacher", "CLASS_TEACHER");
   await createActor("subject-teacher", "SUBJECT_TEACHER");
   await createActor("reports-only", "HEAD_TEACHER");
   await createActor("marks-only", "SUBJECT_TEACHER");
+  await createActor("reports-view-substitute", "HEAD_TEACHER");
+  await createActor("reports-generate-substitute", "HEAD_TEACHER");
+  await createActor("marks-substitute", "SUBJECT_TEACHER");
   await createActor("suspended", "SCHOOL_ADMIN", ids.schoolA, "SUSPENDED");
   const multi = await createActor("multi-school", "SCHOOL_ADMIN");
   const multiBMembership = randomUUID();
@@ -1026,4 +1059,37 @@ describe.sequential("Stage 16 real analytics integration", () => {
       ],
     );
   });
+  it("56. super admin is allowed", async () =>
+    expect(
+      (
+        await rows(
+          await signIn(actors.find((item) => item.role === "SUPER_ADMIN")!),
+          "list_analytics_scopes",
+        )
+      ).length,
+    ).toBeGreaterThan(0));
+  it("57. REPORTS_VIEW_ALL does not substitute for analytics authority", async () =>
+    withRolePermissions("HEAD_TEACHER", ["REPORTS_VIEW_ALL"], async () => {
+      const actor = actors.find((item) =>
+        item.email.includes("reports-view-substitute"),
+      )!;
+      const result = await (await signIn(actor)).rpc("list_analytics_scopes");
+      expect(result.error).not.toBeNull();
+    }));
+  it("58. REPORTS_GENERATE does not substitute for analytics authority", async () =>
+    withRolePermissions("HEAD_TEACHER", ["REPORTS_GENERATE"], async () => {
+      const actor = actors.find((item) =>
+        item.email.includes("reports-generate-substitute"),
+      )!;
+      const result = await (await signIn(actor)).rpc("list_analytics_scopes");
+      expect(result.error).not.toBeNull();
+    }));
+  it("59. marks authority does not substitute for analytics authority", async () =>
+    withRolePermissions("SUBJECT_TEACHER", ["MARKS_VIEW_ALL"], async () => {
+      const actor = actors.find((item) =>
+        item.email.includes("marks-substitute"),
+      )!;
+      const result = await (await signIn(actor)).rpc("list_analytics_scopes");
+      expect(result.error).not.toBeNull();
+    }));
 });

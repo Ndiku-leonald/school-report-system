@@ -34,27 +34,24 @@ jobs:
 
       - name: Report dependency audit
         run: |
-          run_audit() {
-            local output_file
-            output_file="$(mktemp)"
-            set +e
-            npm audit "$@" 2>&1 | tee "$output_file"
-            local audit_status="${PIPESTATUS[0]}"
-            set -e
-            if [ "$audit_status" -eq 0 ]; then
-              rm -f "$output_file"
-              return 0
+          for attempt in 1 2 3; do
+            if npm audit --audit-level=critical; then
+              break
             fi
-            if grep -Eq "Service Unavailable|audit endpoint returned an error|audit network timeout|ECONN|ETIMEDOUT" "$output_file"; then
-              echo "::warning::npm advisory service was unavailable; dependency audit could not complete."
-              rm -f "$output_file"
-              return 0
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
             fi
-            rm -f "$output_file"
-            return "$audit_status"
-          }
-          run_audit --audit-level=critical
-          run_audit --omit=dev --audit-level=critical
+            sleep 10
+          done
+          for attempt in 1 2 3; do
+            if npm audit --omit=dev --audit-level=critical; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep 10
+          done
 
       - name: Check formatting
         run: npm run format:check
