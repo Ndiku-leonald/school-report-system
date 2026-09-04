@@ -34,8 +34,24 @@ jobs:
 
       - name: Report dependency audit
         run: |
-          npm audit --audit-level=critical
-          npm audit --omit=dev --audit-level=critical
+          for attempt in 1 2 3; do
+            if npm audit --audit-level=critical; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep 10
+          done
+          for attempt in 1 2 3; do
+            if npm audit --omit=dev --audit-level=critical; then
+              break
+            fi
+            if [ "$attempt" -eq 3 ]; then
+              exit 1
+            fi
+            sleep 10
+          done
 
       - name: Check formatting
         run: npm run format:check
