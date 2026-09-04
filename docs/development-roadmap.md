@@ -429,7 +429,10 @@ real signed-in staff sessions; helper tests are not reported as integration.
 
 ## 17. Promotion system
 
-Implement configurable final-term promotion recommendations and controlled final decisions.
+Implemented on `feature/stage-17-promotion-progression` for review. Migration
+39 adds configurable final-term recommendations, immutable evidence, versioned
+decisions, controlled repetition, explicit progression, final-grade completion,
+capacity locking, privacy-safe audits, and selected-membership authorization.
 
 **Acceptance criteria**
 
@@ -437,6 +440,8 @@ Implement configurable final-term promotion recommendations and controlled final
 - Recommendations are reproducible from finalized results and do not become decisions automatically.
 - Authorized head teachers confirm decisions and provide reasons for overrides.
 - Historical decisions remain stable, auditable, and linked to their source snapshot.
+
+Stage 18 remains unstarted.
 
 ## 18. Security testing, deployment and documentation
 

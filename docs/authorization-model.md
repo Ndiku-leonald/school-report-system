@@ -189,3 +189,18 @@ page, RPC, and export rechecks the single active membership selected for the
 verified Auth session. Switching schools, suspending or disabling a
 membership, revoking the role grant, disabling the school, or signing out
 takes effect on the next authoritative request.
+
+## Stage 17 promotion authorization
+
+`PROMOTION_VIEW` is the read boundary for Promotion and `PROMOTION_CONFIRM` is
+the mutation boundary. The server and database both require the caller's one
+selected active membership; memberships are never unioned. School
+administrators and super administrators retain their existing all-permission
+behavior. Head teachers can view and confirm promotion decisions. Academic
+registrars can view promotion data but have no confirmation or progression
+authority. Class teachers and subject teachers have neither Promotion
+navigation nor direct URL/RPC access. Revoking either permission, suspending a
+membership, switching the selected school, or signing out takes effect on the
+next request. `ANALYTICS_VIEW`, `REPORTS_VIEW_ALL`, `REPORTS_GENERATE`, and
+`MARKS_VIEW_ALL` do not substitute for `PROMOTION_VIEW`; `PROMOTION_VIEW` does
+not substitute for `PROMOTION_CONFIRM`.
