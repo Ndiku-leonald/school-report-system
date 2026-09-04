@@ -493,7 +493,7 @@ begin
     begin select * into built from internal.promotion_snapshot_for(actor.school_id,target_term_id,enrollment_row.id); exception when others then raise; end;
     select d.* into created from public.promotion_decisions d where d.term_id=target_term_id and d.enrollment_id=enrollment_row.id and d.superseded_by is null for update;
     if found and created.final_decision is not null then
-      enrollment_id:=enrollment_row.id;decision_id:=created.id;decision_version:=created.version;snapshot_id:=created.recommendation_snapshot_id;system_recommendation:=created.system_recommendation;snapshot_checksum:=coalesce((select snapshot_checksum from public.promotion_recommendation_snapshots where id=created.recommendation_snapshot_id),'');state:='CONFIRMED';return next;continue;
+      enrollment_id:=enrollment_row.id;decision_id:=created.id;decision_version:=created.version;snapshot_id:=created.recommendation_snapshot_id;system_recommendation:=created.system_recommendation;snapshot_checksum:=coalesce((select snapshot.snapshot_checksum from public.promotion_recommendation_snapshots snapshot where snapshot.id=created.recommendation_snapshot_id),'');state:='CONFIRMED';return next;continue;
     end if;
     if found and created.recommendation_snapshot_id is not null and exists(select 1 from public.promotion_recommendation_snapshots s where s.id=created.recommendation_snapshot_id and s.snapshot_checksum=built.snapshot_checksum) then
       enrollment_id:=enrollment_row.id;decision_id:=created.id;decision_version:=created.version;snapshot_id:=created.recommendation_snapshot_id;system_recommendation:=created.system_recommendation;snapshot_checksum:=built.snapshot_checksum;state:='CURRENT';return next;continue;
@@ -553,7 +553,7 @@ begin
   select * into built from internal.promotion_snapshot_for(actor.school_id,old.term_id,old.enrollment_id);
   insert into public.promotion_recommendation_snapshots(school_id,term_id,enrollment_id,calculation_run_id,promotion_rule_id,schema_version,snapshot_data,snapshot_checksum,created_by)
     values(actor.school_id,old.term_id,old.enrollment_id,built.calculation_run_id,built.promotion_rule_id,1,built.snapshot_data,built.snapshot_checksum,actor.membership_id)
-    on conflict (term_id,enrollment_id,calculation_run_id,promotion_rule_id,snapshot_checksum) do nothing returning * into snap;
+    on conflict on constraint promotion_snapshot_term_enrollment_run_unique do nothing returning * into snap;
   if not found then select * into snap from public.promotion_recommendation_snapshots s where s.term_id=old.term_id and s.enrollment_id=old.enrollment_id and s.calculation_run_id=built.calculation_run_id and s.promotion_rule_id=built.promotion_rule_id and s.snapshot_checksum=built.snapshot_checksum; end if;
   insert into public.promotion_decisions(term_id,enrollment_id,version,recommendation_snapshot_id,promotion_rule_id,system_recommendation,superseded_by) values(old.term_id,old.enrollment_id,old.version+1,snap.id,built.promotion_rule_id,built.system_recommendation,old.id) returning * into created;
   update public.promotion_decisions set superseded_by=created.id where id=old.id;
@@ -604,14 +604,14 @@ begin
   progression_id:=progression.id;outcome:=progression.outcome;target_grade_level_id:=progression.target_grade_level_id;idempotent:=false;return next;
 end; $$;
 
-create or replace function public.list_promotion_decision_history(target_enrollment_id uuid)
+create or replace function public.list_promotion_decision_history(target_enrollment_id_arg uuid)
 returns table(decision_id uuid, version integer, recommendation_snapshot_id uuid, system_recommendation public.promotion_outcome, final_decision public.promotion_outcome, reason text, was_overridden boolean, confirmed_at timestamptz, superseded_by uuid, progression_id uuid)
 language plpgsql stable security definer set search_path = pg_catalog, public, internal as $$
 declare actor record;
 begin
   select * into actor from internal.require_promotion_reader();
   return query select d.id,d.version,d.recommendation_snapshot_id,d.system_recommendation,d.final_decision,d.reason,d.was_overridden,d.confirmed_at,d.superseded_by,p.id
-    from public.promotion_decisions d join public.enrollments e on e.id=d.enrollment_id join public.students s on s.id=e.student_id left join public.student_progressions p on p.source_decision_id=d.id where d.enrollment_id=target_enrollment_id and s.school_id=actor.school_id order by d.version;
+    from public.promotion_decisions d join public.enrollments e on e.id=d.enrollment_id join public.students s on s.id=e.student_id left join public.student_progressions p on p.source_decision_id=d.id where d.enrollment_id=target_enrollment_id_arg and s.school_id=actor.school_id order by d.version;
 end; $$;
 
 create or replace function public.list_promotion_recommendations(target_term_id uuid, target_grade_level_id uuid)
