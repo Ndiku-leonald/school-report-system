@@ -661,7 +661,8 @@ test.describe
   });
   test("45. student academic fields are rendered", async ({ page }) => {
     await page.goto(studentPath());
-    await expect(page.getByRole("banner").getByText(/AB-002/)).toBeVisible();
+    await expect(page.getByRole("heading", { name: "Tie Two" })).toBeVisible();
+    await expect(page.getByText(/Analytics Browser Class/)).toBeVisible();
   });
   test("46. student overall average is rendered", async ({ page }) => {
     await page.goto(studentPath());
