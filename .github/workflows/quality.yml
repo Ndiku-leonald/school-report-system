@@ -189,13 +189,6 @@ jobs:
           npx prettier --write src/types/database.generated.ts
           git diff --exit-code -- src/types/database.generated.ts
 
-      - name: Export generated database types for Stage 17 handoff
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: stage17-generated-database-types
-          path: src/types/database.generated.ts
-
       - name: Install Chromium for authentication tests
         run: npx playwright install --with-deps chromium
 
