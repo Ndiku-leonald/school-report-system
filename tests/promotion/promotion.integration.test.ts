@@ -170,13 +170,16 @@ async function expectError(
 
 async function setup() {
   await db.connect();
+  const fixtureCode = `PROMO-${Date.now()}`;
   await query(
-    "insert into public.schools(id,name,slug,school_code) values($1,'Promotion Integration School',$2,'PROMO-A'),($3,'Promotion Other School',$4,'PROMO-B')",
+    "insert into public.schools(id,name,slug,school_code) values($1,'Promotion Integration School',$2,$5),($3,'Promotion Other School',$4,$6)",
     [
       ids.school,
       `promotion-integration-${Date.now()}`,
       ids.otherSchool,
       `promotion-other-${Date.now()}`,
+      `${fixtureCode}-A`,
+      `${fixtureCode}-B`,
     ],
   );
   schoolAdmin = await actor("school-admin", "SCHOOL_ADMIN");
