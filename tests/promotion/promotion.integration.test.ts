@@ -381,11 +381,11 @@ async function setup() {
   if (generated.error) throw generated.error;
   decisions = (
     generated.data as Array<{
-    decision_id: string;
-    decision_version: number;
-    enrollment_id: string;
-    system_recommendation: string;
-  }>
+      decision_id: string;
+      decision_version: number;
+      enrollment_id: string;
+      system_recommendation: string;
+    }>
   ).filter((row) => row.enrollment_id !== ids.otherEnrollment);
   const reviewIndex = decisions.findIndex(
     (row) => row.system_recommendation === "ACADEMIC_REVIEW",
@@ -397,8 +397,7 @@ async function setup() {
     ];
   }
   const promotableIndex = decisions.findIndex(
-    (row, index) =>
-      index !== 6 && row.system_recommendation === "PROMOTED",
+    (row, index) => index !== 6 && row.system_recommendation === "PROMOTED",
   );
   if (promotableIndex >= 0 && promotableIndex !== 7) {
     [decisions[7], decisions[promotableIndex]] = [
