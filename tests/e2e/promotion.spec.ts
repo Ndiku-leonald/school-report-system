@@ -130,12 +130,16 @@ async function setup() {
     [ids.assignment, ids.term, ids.sourceClass, ids.subject, membership],
   );
   await sql(
-    "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$2,$3,$4,'Browser Scheme','ACTIVE','2049-01-02',$5)",
+    "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$2,$3,$4,'Browser Scheme','DRAFT','2049-01-02',$5)",
     [ids.scheme, ids.term, ids.grade, ids.subject, membership],
   );
   await sql(
     "insert into public.assessment_components(id,assessment_scheme_id,name,component_code,maximum_score,weight_percentage,sort_order) values($1,$2,'Browser Exam','BP-EXAM',100,100,1)",
     [ids.component, ids.scheme],
+  );
+  await sql(
+    "update public.assessment_schemes set status='ACTIVE' where id=$1",
+    [ids.scheme],
   );
   await sql(
     "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id,workflow_status,locked_by,locked_at) values($1,$2,$3,$4,$5,$6,'LOCKED',$7,now())",
