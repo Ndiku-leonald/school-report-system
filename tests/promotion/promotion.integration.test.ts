@@ -316,7 +316,7 @@ async function setup() {
     ],
   );
   await query(
-    "insert into public.aggregate_classification_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,created_by) values($1,$2,$3,$4,'Promotion Classification',1,true,$5)",
+    "insert into public.aggregate_classification_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,created_by) values($1,$2,$3,$4,'Promotion Classification',1,false,$5)",
     [
       ids.classification,
       ids.school,
@@ -327,6 +327,10 @@ async function setup() {
   );
   await query(
     "insert into public.aggregate_classification_bands(scale_id,minimum_aggregate,maximum_aggregate,label,sort_order) values($1,0,5,'Ready',1)",
+    [ids.classification],
+  );
+  await query(
+    "update public.aggregate_classification_scales set is_active=true where id=$1",
     [ids.classification],
   );
   await query(
