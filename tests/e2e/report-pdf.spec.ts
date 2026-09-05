@@ -343,10 +343,14 @@ test.describe
       page.getByRole("link", { name: /parent access/i }),
     ).toHaveCount(0);
   });
-  test("32. no promotion control is shown", async ({ page }) => {
+  test("32. promotion navigation is available without a report control", async ({
+    page,
+  }) => {
     await openReport(page);
     await expect(page.getByRole("button", { name: /Promot/i })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /Promot/i })).toHaveCount(0);
+    const promotionLink = page.getByRole("link", { name: /Promot/i });
+    await expect(promotionLink).toHaveCount(1);
+    await expect(promotionLink).toHaveAttribute("href", "/dashboard/promotion");
   });
   test("33. subject teacher direct URL is denied", async ({ page }) => {
     await login(page, subjectEmail, subjectMembershipId);
