@@ -330,7 +330,7 @@ begin
   where run.term_id = term_row.id and run.grade_level_id = grade_row.id
   order by run.version desc, run.id desc limit 1;
   if run_row.id is null
-     or not internal.analytics_run_is_current(run_row.id, target_school_id) then
+     or not internal.promotion_analytics_run_is_current(run_row.id, target_school_id) then
     raise exception 'PROMOTION_RESULTS_UNAVAILABLE' using errcode = 'P0002';
   end if;
 
@@ -489,6 +489,158 @@ begin
 end;
 $$;
 
+-- Stage 11's input checksum intentionally follows the live ACTIVE/REPEATING
+-- enrollment population. A successful Stage 17 application closes the source
+-- enrollment, so promotion reads need the same authority check with that one
+-- audited transition retained as evidence. Any other source/configuration
+-- drift still makes the run unavailable.
+create or replace function internal.promotion_results_input_checksum(
+  target_term_id uuid,
+  target_grade_level_id uuid,
+  target_grading_scale_id uuid,
+  target_ranking_rule_id uuid,
+  target_classification_scale_id uuid default null
+)
+returns text
+language sql stable security definer
+set search_path = pg_catalog, public, internal
+as $$
+with latest as (
+  select sheet.id as mark_sheet_id, sheet.class_section_id, sheet.subject_id,
+    sheet.version as mark_sheet_version, sheet.assessment_scheme_id,
+    sheet.workflow_status, mapping.id as grade_level_subject_id,
+    mapping.is_required as curriculum_is_required,
+    mapping.contributes_to_aggregate as curriculum_contributes_to_aggregate,
+    mapping.sort_order as curriculum_sort_order,
+    row_number() over (
+      partition by sheet.class_section_id, sheet.subject_id
+      order by sheet.version desc, sheet.id desc
+    ) as source_rank
+  from public.mark_sheets sheet
+  join public.class_sections section on section.id = sheet.class_section_id
+  join public.grade_level_subjects mapping
+    on mapping.grade_level_id = target_grade_level_id
+   and mapping.subject_id = sheet.subject_id
+  where sheet.term_id = target_term_id
+    and section.grade_level_id = target_grade_level_id
+    and section.is_active
+), selected_sources as (
+  select * from latest where source_rank = 1
+), component_context as (
+  select string_agg(concat_ws('|', source.class_section_id, source.subject_id,
+    enrollment.id, component.id, mark.id, mark.row_version,
+    coalesce(mark.attendance_status::text, ''), coalesce(mark.score::text, ''),
+    component.maximum_score, component.weight_percentage, component.is_required),
+    ';' order by source.class_section_id, source.subject_id, enrollment.id,
+      component.sort_order, component.id, mark.id) as value
+  from selected_sources source
+  join public.assessment_components component
+    on component.assessment_scheme_id = source.assessment_scheme_id
+  join public.enrollments enrollment
+    on enrollment.class_section_id = source.class_section_id
+   and (enrollment.status in ('ACTIVE', 'REPEATING') or exists (
+     select 1 from public.student_progressions progression
+     where progression.source_enrollment_id = enrollment.id
+   ))
+  left join public.marks mark
+    on mark.mark_sheet_id = source.mark_sheet_id
+   and mark.assessment_component_id = component.id
+   and mark.enrollment_id = enrollment.id
+), grading_context as (
+  select concat_ws('|', scale.id, scale.version, coalesce((
+    select string_agg(concat_ws('|', band.id, band.score_range::text,
+      band.grade, band.aggregate_points, band.is_pass), ';' order by band.id)
+    from public.grading_bands band where band.grading_scale_id = scale.id
+  ), '')) as value
+  from public.grading_scales scale where scale.id = target_grading_scale_id
+), ranking_context as (
+  select concat_ws('|', rule.id, rule.version, rule.ranking_basis::text,
+    rule.tie_method::text, rule.configuration::text) as value
+  from public.ranking_rules rule where rule.id = target_ranking_rule_id
+), classification_context as (
+  select concat_ws('|', scale.id, scale.version, coalesce((
+    select string_agg(concat_ws('|', band.id, band.minimum_aggregate,
+      band.maximum_aggregate, band.label), ';' order by band.id)
+    from public.aggregate_classification_bands band where band.scale_id = scale.id
+  ), '')) as value
+  from public.aggregate_classification_scales scale
+  where scale.id = target_classification_scale_id
+)
+select encode(extensions.digest(concat_ws(':', target_term_id,
+  target_grade_level_id,
+  coalesce((select string_agg(concat_ws('|', mark_sheet_id, class_section_id,
+    subject_id, mark_sheet_version, assessment_scheme_id, workflow_status::text,
+    grade_level_subject_id, curriculum_is_required,
+    curriculum_contributes_to_aggregate, curriculum_sort_order), ';'
+    order by class_section_id, subject_id, mark_sheet_version, mark_sheet_id)
+    from selected_sources), ''),
+  coalesce((select value from component_context), ''),
+  coalesce((select value from grading_context), ''),
+  coalesce((select value from ranking_context), ''),
+  coalesce((select value from classification_context), '')), 'sha256'), 'hex');
+$$;
+
+create or replace function internal.promotion_analytics_run_is_current(
+  target_run_id uuid,
+  target_school_id uuid
+)
+returns boolean
+language plpgsql stable security definer
+set search_path = pg_catalog, public, internal
+as $$
+declare run_row public.result_calculation_runs%rowtype;
+  expected_count bigint; locked_latest_count bigint; latest_run_id uuid;
+begin
+  if internal.analytics_run_is_current(target_run_id, target_school_id) then
+    return true;
+  end if;
+  select run.* into run_row
+  from public.result_calculation_runs run
+  join public.terms term on term.id = run.term_id
+  join public.academic_years year on year.id = term.academic_year_id
+  join public.grade_levels grade on grade.id = run.grade_level_id
+  where run.id = target_run_id and year.school_id = target_school_id
+    and grade.school_id = target_school_id;
+  if not found or not exists (
+    select 1 from public.terms term
+    where term.id = run_row.term_id and term.status = 'LOCKED') then
+    return false;
+  end if;
+  select run.id into latest_run_id
+  from public.result_calculation_runs run
+  where run.term_id = run_row.term_id and run.grade_level_id = run_row.grade_level_id
+  order by run.version desc, run.id desc limit 1;
+  if latest_run_id is distinct from run_row.id then return false; end if;
+  select count(*) into expected_count
+  from public.class_sections section
+  join public.grade_level_subjects mapping
+    on mapping.grade_level_id = run_row.grade_level_id
+  where section.academic_year_id = (select term.academic_year_id
+    from public.terms term where term.id = run_row.term_id)
+    and section.grade_level_id = run_row.grade_level_id and section.is_active;
+  select count(*) into locked_latest_count
+  from public.class_sections section
+  join public.grade_level_subjects mapping
+    on mapping.grade_level_id = run_row.grade_level_id
+  join lateral (
+    select sheet.workflow_status
+    from public.mark_sheets sheet
+    where sheet.term_id = run_row.term_id
+      and sheet.class_section_id = section.id
+      and sheet.subject_id = mapping.subject_id
+    order by sheet.version desc, sheet.id desc limit 1
+  ) latest on true
+  where section.academic_year_id = (select term.academic_year_id
+    from public.terms term where term.id = run_row.term_id)
+    and section.grade_level_id = run_row.grade_level_id
+    and section.is_active and latest.workflow_status = 'LOCKED';
+  if expected_count = 0 or locked_latest_count <> expected_count then return false; end if;
+  return run_row.input_checksum = internal.promotion_results_input_checksum(
+    run_row.term_id, run_row.grade_level_id, run_row.grading_scale_id,
+    run_row.ranking_rule_id, run_row.aggregate_classification_scale_id);
+end;
+$$;
+
 create or replace function internal.validate_student_progression_application()
 returns trigger
 language plpgsql
@@ -602,7 +754,7 @@ begin
     elsif not internal.validate_promotion_required_subjects(rule, actor.school_id, item.grade_id)
       or not internal.validate_promotion_additional_rules(rule) then state := 'UNSUPPORTED_RULE';
     elsif run_id is null then state := 'NO_RUN';
-    elsif not internal.analytics_run_is_current(run_id, actor.school_id) then state := 'STALE_RUN';
+    elsif not internal.promotion_analytics_run_is_current(run_id, actor.school_id) then state := 'STALE_RUN';
     else state := 'CURRENT'; end if;
     academic_year_id := item.year_id; academic_year_name := item.year_name;
     term_id := item.term_id; term_name := item.term_name;
@@ -1239,6 +1391,10 @@ end;
 $$;
 
 revoke all on function internal.promotion_additional_rule_values(public.promotion_rules)
+  from public, anon, authenticated;
+revoke all on function internal.promotion_results_input_checksum(uuid, uuid, uuid, uuid, uuid)
+  from public, anon, authenticated;
+revoke all on function internal.promotion_analytics_run_is_current(uuid, uuid)
   from public, anon, authenticated;
 revoke all on function internal.validate_promotion_additional_rules(public.promotion_rules)
   from public, anon, authenticated;

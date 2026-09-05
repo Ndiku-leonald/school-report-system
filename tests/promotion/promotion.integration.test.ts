@@ -912,6 +912,14 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     expect(result.error).toBeNull();
   });
   it("42. returns the exact progression on retry", async () => {
+    const retryDiagnostics = await query(
+      "select source_decision_id,target_academic_year_id,target_class_section_id from public.student_progressions where source_decision_id=$1",
+      [decisions[1].decision_id],
+    );
+    console.log("promotion retry diagnostics", {
+      decision: decisions[1],
+      progression: retryDiagnostics.rows[0],
+    });
     const result = await rpc(adminClient, "apply_student_progression", {
       target_decision_id: decisions[1].decision_id,
       expected_decision_version: decisions[1].decision_version,
