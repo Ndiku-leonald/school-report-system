@@ -1093,6 +1093,9 @@ begin
     if not found then
       raise exception 'PROMOTION_DECISION_NOT_FOUND' using errcode = 'P0002';
     end if;
+    if decision.version is distinct from expected_decision_version then
+      raise exception 'PROMOTION_DECISION_VERSION_CONFLICT' using errcode = 'PT409';
+    end if;
     supplied_conflict := progression.target_academic_year_id is distinct from target_academic_year_id
       or progression.target_class_section_id is distinct from target_class_section_id;
     if supplied_conflict then
@@ -1100,7 +1103,7 @@ begin
     end if;
     progression_id := progression.id; target_enrollment_id := progression.target_enrollment_id;
     outcome := progression.outcome; target_grade_level_id := progression.target_grade_level_id;
-    idempotent := true; return;
+    idempotent := true; return next; return;
   end if;
   select source_decision.* into decision
   from public.promotion_decisions source_decision
