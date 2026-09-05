@@ -1087,7 +1087,6 @@ begin
   join public.academic_years source_year_scope
     on source_year_scope.id = source_term.academic_year_id
   where source_progression.source_decision_id = target_decision_id
-    and source_progression.school_id = actor.school_id
     and source_year_scope.school_id = actor.school_id;
   if found then
     supplied_conflict := progression.target_academic_year_id is distinct from target_academic_year_id
