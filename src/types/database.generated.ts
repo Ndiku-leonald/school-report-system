@@ -4947,8 +4947,8 @@ export type Database = {
           decision_version: number;
           enrollment_id: string;
           final_decision: Database["public"]["Enums"]["promotion_outcome"];
-          progression_id: string;
           progression_application_checksum: string;
+          progression_id: string;
           reason: string;
           snapshot_checksum: string;
           snapshot_data: Json;
