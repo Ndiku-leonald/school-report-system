@@ -537,10 +537,14 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
       page.getByRole("link", { name: /parent|guardian/i }),
     ).toHaveCount(0);
   });
-  test("16. promotion controls are absent", async ({ page }) => {
+  test("16. promotion navigation is available without report controls", async ({
+    page,
+  }) => {
     await openReport(page);
     await expect(page.getByRole("button", { name: /promot/i })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /promot/i })).toHaveCount(0);
+    const promotionLink = page.getByRole("link", { name: /promot/i });
+    await expect(promotionLink).toHaveCount(1);
+    await expect(promotionLink).toHaveAttribute("href", "/dashboard/promotion");
   });
   test("17. view-only registrar cannot materialize", async ({ page }) => {
     await openReport(page, viewOnlyEmail, viewOnlyMembershipId);
