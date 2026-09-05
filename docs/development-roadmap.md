@@ -414,9 +414,10 @@ repeated configured output labels, and makes top-student tie presentation
 deterministic. It is not merged to `main`; promotion remains Stage 17 and
 production hardening remains Stage 18.
 
-Acceptance evidence is separated by layer: 19 helper/unit cases, 43
-structural pgTAP assertions, 44 behavioral pgTAP assertions, 55 real
-DB-backed integration scenarios, and 53 fixture-backed browser scenarios.
+Acceptance evidence is separated by layer: 6 helper/unit cases, 56
+structural pgTAP assertions, 46 behavioral pgTAP assertions, 75 real
+DB-backed integration scenarios, 12 independent-client concurrency races, and
+66 fixture-backed browser scenarios.
 The integration and browser runners use synthetic local-Supabase fixtures and
 real signed-in staff sessions; helper tests are not reported as integration.
 
@@ -429,7 +430,14 @@ real signed-in staff sessions; helper tests are not reported as integration.
 
 ## 17. Promotion system
 
-Implement configurable final-term promotion recommendations and controlled final decisions.
+Implemented on `feature/stage-17-promotion-progression` for review. Migration
+39 adds configurable final-term recommendations, immutable evidence, versioned
+decisions, controlled repetition, explicit progression, final-grade completion,
+capacity locking, privacy-safe audits, and selected-membership authorization.
+Migration 40 is the additive acceptance hardening layer. It freezes the
+additional-rule schema, fails closed on unavailable attendance and lifecycle
+drift, requires expected decision versions, exposes `CONFIRMED_STALE`, and
+stores progression application evidence.
 
 **Acceptance criteria**
 
@@ -437,6 +445,8 @@ Implement configurable final-term promotion recommendations and controlled final
 - Recommendations are reproducible from finalized results and do not become decisions automatically.
 - Authorized head teachers confirm decisions and provide reasons for overrides.
 - Historical decisions remain stable, auditable, and linked to their source snapshot.
+
+Stage 18 remains unstarted.
 
 ## 18. Security testing, deployment and documentation
 
