@@ -80,7 +80,7 @@ async function setup() {
   );
   await sql(
     "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,$4,'ACTIVE')",
-    [membership, ids.school, fixtureUserId, `PB-${nonce}`],
+    [membership, ids.school, fixtureUserId, `PB-${nonce.slice(0, 8)}`],
   );
   await sql(
     "insert into public.staff_role_assignments(membership_id,role,granted_at) values($1,'SCHOOL_ADMIN',now()-interval '1 day')",
