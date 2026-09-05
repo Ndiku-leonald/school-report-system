@@ -939,8 +939,7 @@ begin
   end if;
   select source_progression.* into progression
   from public.student_progressions source_progression
-  where source_progression.source_decision_id = decision.id
-    and source_progression.school_id = actor.school_id;
+  where source_progression.source_decision_id = decision.id;
   if found then
     supplied_conflict := progression.target_academic_year_id is distinct from target_academic_year_id
       or progression.target_class_section_id is distinct from target_class_section_id;
