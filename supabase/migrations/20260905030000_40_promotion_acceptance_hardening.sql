@@ -833,10 +833,10 @@ begin
   if decision.final_decision is null then
     raise exception 'PROMOTION_DECISION_CONFIRMATION_REQUIRED' using errcode = '23514';
   end if;
-  select progression.* into progression
-  from public.student_progressions progression
-  where progression.source_decision_id = decision.id
-    and progression.school_id = actor.school_id;
+  select source_progression.* into progression
+  from public.student_progressions source_progression
+  where source_progression.source_decision_id = decision.id
+    and source_progression.school_id = actor.school_id;
   if found then
     supplied_conflict := progression.target_academic_year_id is distinct from target_academic_year_id
       or progression.target_class_section_id is distinct from target_class_section_id;
