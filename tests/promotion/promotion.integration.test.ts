@@ -912,15 +912,6 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     expect(result.error).toBeNull();
   });
   it("42. returns the exact progression on retry", async () => {
-    const retryDiagnostics = await query(
-      "select source_decision_id,target_academic_year_id,target_class_section_id from public.student_progressions where source_decision_id=$1",
-      [decisions[1].decision_id],
-    );
-    console.log("promotion retry diagnostics", {
-      decision: decisions[1],
-      progression: retryDiagnostics.rows[0],
-      requested: { targetYear: ids.nextYear, targetClass: ids.targetClass },
-    });
     const result = await rpc(adminClient, "apply_student_progression", {
       target_decision_id: decisions[1].decision_id,
       expected_decision_version: decisions[1].decision_version,
@@ -965,10 +956,15 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     );
   });
   it("46. creates an active target enrollment", async () => {
+    const source = (
+      await query("select student_id from public.enrollments where id=$1", [
+        decisions[1].enrollment_id,
+      ])
+    ).rows[0];
     const row = (
       await query(
         "select status,academic_year_id from public.enrollments where student_id=$1 and academic_year_id=$2",
-        [students[1], ids.nextYear],
+        [source.student_id, ids.nextYear],
       )
     ).rows[0];
     expect(row.status).toBe("ACTIVE");
@@ -977,9 +973,10 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
   it("47. keeps the learner active after promotion", async () =>
     expect(
       (
-        await query("select status from public.students where id=$1", [
-          students[1],
-        ])
+        await query(
+          "select status from public.students where id=(select student_id from public.enrollments where id=$1)",
+          [decisions[1].enrollment_id],
+        )
       ).rows[0].status,
     ).toBe("ACTIVE"));
   it("48. rejects a progression version conflict", async () =>
@@ -1081,11 +1078,6 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
       "update public.term_attendance set days_open=0,days_present=0,days_absent=0 where term_id=$1 and enrollment_id=$2",
       [ids.term, enrollment],
     );
-    const diagnostics = await query(
-      "select internal.analytics_run_is_current($1,$2) as current, (select count(*) from public.enrollments e join public.class_sections s on s.id=e.class_section_id join public.students st on st.id=e.student_id where e.academic_year_id=$3 and s.grade_level_id=$4 and e.status in ('ACTIVE','REPEATING') and st.status='ACTIVE') as active_population, (select count(*) from public.calculated_student_results where calculation_run_id=$1) as result_population, (select count(*) from public.enrollments e join public.class_sections s on s.id=e.class_section_id join public.students st on st.id=e.student_id where e.academic_year_id=$3 and s.grade_level_id=$4 and e.status in ('ACTIVE','REPEATING') and st.status='ACTIVE' and not exists (select 1 from public.calculated_student_results r where r.calculation_run_id=$1 and r.enrollment_id=e.id)) as missing_results",
-      [runId, ids.school, ids.year, ids.grade],
-    );
-    console.log("promotion regeneration diagnostics", diagnostics.rows[0]);
     const result = await rpc(
       adminClient,
       "generate_promotion_recommendations",
@@ -1564,14 +1556,16 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
         ]),
       );
       const row = (
-        await query("select status from public.students where id=$1", [
-          students[19],
-        ])
+        await query(
+          "select status from public.students where id=(select student_id from public.enrollments where id=$1)",
+          [value.enrollment_id],
+        )
       ).rows[0];
       expect(["ACTIVE", "WITHDRAWN"]).toContain(row.status);
-      await query("update public.students set status='ACTIVE' where id=$1", [
-        students[19],
-      ]);
+      await query(
+        "update public.students set status='ACTIVE' where id=(select student_id from public.enrollments where id=$1)",
+        [value.enrollment_id],
+      );
     });
     it("C11. progression and permission transition do not duplicate applications", async () => {
       await confirm(20);

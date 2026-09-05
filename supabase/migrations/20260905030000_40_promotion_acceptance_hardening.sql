@@ -1075,6 +1075,30 @@ begin
   -- The decision is scoped and locked before the idempotency lookup. This is
   -- the cross-school leak prevention boundary.
   select * into actor from internal.require_promotion_actor();
+  -- Resolve an already-applied source decision before requiring the decision to
+  -- remain current. This is safe across tenants because the immutable source
+  -- decision is joined through its term and school, and it supports retries
+  -- after a lifecycle transition closes the source enrollment.
+  select source_progression.* into progression
+  from public.student_progressions source_progression
+  join public.promotion_decisions source_decision
+    on source_decision.id = source_progression.source_decision_id
+  join public.terms source_term on source_term.id = source_decision.term_id
+  join public.academic_years source_year_scope
+    on source_year_scope.id = source_term.academic_year_id
+  where source_progression.source_decision_id = target_decision_id
+    and source_progression.school_id = actor.school_id
+    and source_year_scope.school_id = actor.school_id;
+  if found then
+    supplied_conflict := progression.target_academic_year_id is distinct from target_academic_year_id
+      or progression.target_class_section_id is distinct from target_class_section_id;
+    if supplied_conflict then
+      raise exception 'PROMOTION_PROGRESSION_RETRY_CONFLICT' using errcode = 'PT409';
+    end if;
+    progression_id := progression.id; target_enrollment_id := progression.target_enrollment_id;
+    outcome := progression.outcome; target_grade_level_id := progression.target_grade_level_id;
+    idempotent := true; return next;
+  end if;
   select source_decision.* into decision
   from public.promotion_decisions source_decision
   join public.terms term on term.id = source_decision.term_id
@@ -1088,25 +1112,6 @@ begin
   end if;
   if decision.final_decision is null then
     raise exception 'PROMOTION_DECISION_CONFIRMATION_REQUIRED' using errcode = '23514';
-  end if;
-  -- Resolve the retry by its immutable source decision key before any live
-  -- source-enrollment validation. The decision was already school-scoped and
-  -- locked above, so this remains tenant-safe while allowing an exact retry
-  -- after the first application closed the source enrollment.
-  select source_progression.* into progression
-  from public.student_progressions source_progression
-  where source_progression.school_id = actor.school_id
-    and (source_progression.source_decision_id = decision.id
-      or source_progression.source_enrollment_id = decision.enrollment_id);
-  if found then
-    supplied_conflict := progression.target_academic_year_id is distinct from target_academic_year_id
-      or progression.target_class_section_id is distinct from target_class_section_id;
-    if supplied_conflict then
-      raise exception 'PROMOTION_PROGRESSION_RETRY_CONFLICT' using errcode = 'PT409';
-    end if;
-    progression_id := progression.id; target_enrollment_id := progression.target_enrollment_id;
-    outcome := progression.outcome; target_grade_level_id := progression.target_grade_level_id;
-    idempotent := true; return next;
   end if;
   if decision.final_decision = 'ACADEMIC_REVIEW' then
     raise exception 'PROMOTION_PROGRESSION_OUTCOME_INVALID' using errcode = '23514';
