@@ -91,7 +91,7 @@ async function setup() {
     [ids.year, ids.school, ids.nextYear],
   );
   await sql(
-    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status,is_promotion_term) values($1,$2,'Browser Promotion Term',1,'2049-01-01','2049-06-30','LOCKED',true)",
+    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status,is_promotion_term) values($1,$2,'Browser Promotion Term',1,'2049-01-01','2049-06-30','MARKS_ENTRY',true)",
     [ids.term, ids.year],
   );
   await sql(
@@ -209,6 +209,10 @@ async function setup() {
     "insert into public.promotion_rules(id,school_id,academic_year_id,grade_level_id,name,version,minimum_average,minimum_attendance_percentage,is_active,created_by) values($1,$2,$3,$4,'Browser Promotion Rule',1,50,80,true,$5)",
     [ids.rule, ids.school, ids.year, ids.grade, membership],
   );
+  await sql(
+    "select set_config('app.term_marks_workflow_transition','allowed',false)",
+  );
+  await sql("update public.terms set status='LOCKED' where id=$1", [ids.term]);
   const client = createClient(url, anonKey, {
     auth: {
       autoRefreshToken: false,
