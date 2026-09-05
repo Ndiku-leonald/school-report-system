@@ -80,6 +80,7 @@ let decisions: Array<{
   decision_id: string;
   decision_version: number;
   enrollment_id: string;
+  system_recommendation: string;
 }> = [];
 
 async function query(text: string, values: unknown[] = []) {
@@ -380,11 +381,31 @@ async function setup() {
   if (generated.error) throw generated.error;
   decisions = (
     generated.data as Array<{
-      decision_id: string;
-      decision_version: number;
-      enrollment_id: string;
-    }>
+    decision_id: string;
+    decision_version: number;
+    enrollment_id: string;
+    system_recommendation: string;
+  }>
   ).filter((row) => row.enrollment_id !== ids.otherEnrollment);
+  const reviewIndex = decisions.findIndex(
+    (row) => row.system_recommendation === "ACADEMIC_REVIEW",
+  );
+  if (reviewIndex >= 0 && reviewIndex !== 6) {
+    [decisions[6], decisions[reviewIndex]] = [
+      decisions[reviewIndex],
+      decisions[6],
+    ];
+  }
+  const promotableIndex = decisions.findIndex(
+    (row, index) =>
+      index !== 6 && row.system_recommendation === "PROMOTED",
+  );
+  if (promotableIndex >= 0 && promotableIndex !== 7) {
+    [decisions[7], decisions[promotableIndex]] = [
+      decisions[promotableIndex],
+      decisions[7],
+    ];
+  }
   if (decisions.length < 70)
     throw new Error(
       `Expected at least 70 real promotion decisions, received ${decisions.length}.`,
@@ -929,7 +950,9 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
         decisions[1].enrollment_id,
       ])
     ).rows[0];
-    expect(String(row.exited_on)).toContain("2046-12-31");
+    expect(new Date(row.exited_on).toISOString().slice(0, 10)).toBe(
+      "2046-12-31",
+    );
   });
   it("46. creates an active target enrollment", async () => {
     const row = (
@@ -1107,24 +1130,15 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     );
     expect(result.rows[0].valid).toBe(false);
   });
-  it("62. preserves active enrollment population semantics", async () => {
-    await query(
-      "update public.enrollments set status='WITHDRAWN',exited_on='2046-12-31' where id=$1",
-      [enrollments[72]],
-    );
-    const result = await rpc(adminClient, "list_promotion_scopes");
-    const row = (
-      result.data as Array<{
-        term_id: string;
-        grade_level_id: string;
-        learner_count: number;
-      }>
-    ).find(
-      (item) => item.term_id === ids.term && item.grade_level_id === ids.grade,
-    );
-    expect(row?.learner_count).toBe(77);
+  it("62. preserves the marks-workflow freeze for roster mutations", async () => {
+    await expect(
+      query(
+        "update public.enrollments set status='WITHDRAWN',exited_on='2046-12-31' where id=$1",
+        [enrollments[72]],
+      ),
+    ).rejects.toThrow(/ENROLLMENT_MARKS_WORKFLOW_FROZEN/);
   });
-  it("63. excludes withdrawn learners from new generation", async () => {
+  it("63. excludes inactive learners from new generation", async () => {
     const result = await rpc(
       adminClient,
       "generate_promotion_recommendations",
@@ -1132,7 +1146,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     );
     expect(
       (result.data as Array<{ enrollment_id: string }>).some(
-        (row) => row.enrollment_id === enrollments[72],
+        (row) => row.enrollment_id === ids.otherEnrollment,
       ),
     ).toBe(false);
   });

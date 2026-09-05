@@ -539,7 +539,11 @@ begin
        or old.confirmed_at is distinct from new.confirmed_at) then
       raise exception 'PROMOTION_DECISION_CONFIRMED_IMMUTABLE' using errcode = '55000';
     end if;
-    if old.superseded_by is not null and new.superseded_by is distinct from old.superseded_by then
+    if old.superseded_by is not null and new.superseded_by is distinct from old.superseded_by
+       and not (current_setting('app.promotion_decision_reopen_transition', true) = 'allowed'
+         and new.superseded_by is null and new.version = old.version
+         and new.term_id = old.term_id and new.enrollment_id = old.enrollment_id
+         and new.final_decision is null) then
       raise exception 'PROMOTION_DECISION_HISTORY_IMMUTABLE' using errcode = '55000';
     end if;
   end if;
@@ -759,7 +763,7 @@ begin
   for update;
   if not found then raise exception 'PROMOTION_DECISION_NOT_FOUND' using errcode = 'P0002'; end if;
   if decision.version is distinct from expected_decision_version then
-    raise exception 'PROMOTION_DECISION_VERSION_CONFLICT' using errcode = '40001';
+    raise exception 'PROMOTION_DECISION_VERSION_CONFLICT' using errcode = 'PT409';
   end if;
   if decision.final_decision is not null then
     raise exception 'PROMOTION_DECISION_CONFIRMED_IMMUTABLE' using errcode = '55000';
@@ -775,7 +779,7 @@ begin
     select snapshot.id from public.promotion_recommendation_snapshots snapshot
     where snapshot.id = decision.recommendation_snapshot_id
       and snapshot.snapshot_checksum = built.snapshot_checksum) then
-    raise exception 'PROMOTION_RECOMMENDATION_STALE' using errcode = '40001';
+    raise exception 'PROMOTION_RECOMMENDATION_STALE' using errcode = 'PT409';
   end if;
   select grade.* into source_grade
   from public.enrollments enrollment
@@ -843,7 +847,7 @@ begin
   for update;
   if not found then raise exception 'PROMOTION_REOPEN_REQUIRES_CONFIRMED' using errcode = '23514'; end if;
   if old.version is distinct from expected_decision_version then
-    raise exception 'PROMOTION_DECISION_VERSION_CONFLICT' using errcode = '40001';
+    raise exception 'PROMOTION_DECISION_VERSION_CONFLICT' using errcode = 'PT409';
   end if;
   if old.final_decision is null then
     raise exception 'PROMOTION_REOPEN_REQUIRES_CONFIRMED' using errcode = '23514';
@@ -882,6 +886,7 @@ begin
     built.promotion_rule_id, built.system_recommendation, old.id)
   returning * into created;
   update public.promotion_decisions set superseded_by = created.id where id = old.id;
+  perform set_config('app.promotion_decision_reopen_transition', 'allowed', true);
   update public.promotion_decisions set superseded_by = null where id = created.id;
   perform internal.record_student_audit(actor.profile_id, actor.membership_id, actor.school_id,
     'PROMOTION_DECISION_REOPENED', 'promotion_decision', created.id,
@@ -926,7 +931,7 @@ begin
   for update;
   if not found then raise exception 'PROMOTION_DECISION_NOT_FOUND' using errcode = 'P0002'; end if;
   if decision.version is distinct from expected_decision_version then
-    raise exception 'PROMOTION_DECISION_VERSION_CONFLICT' using errcode = '40001';
+    raise exception 'PROMOTION_DECISION_VERSION_CONFLICT' using errcode = 'PT409';
   end if;
   if decision.final_decision is null then
     raise exception 'PROMOTION_DECISION_CONFIRMATION_REQUIRED' using errcode = '23514';
@@ -939,7 +944,7 @@ begin
     supplied_conflict := progression.target_academic_year_id is distinct from target_academic_year_id
       or progression.target_class_section_id is distinct from target_class_section_id;
     if supplied_conflict then
-      raise exception 'PROMOTION_PROGRESSION_RETRY_CONFLICT' using errcode = '40001';
+      raise exception 'PROMOTION_PROGRESSION_RETRY_CONFLICT' using errcode = 'PT409';
     end if;
     progression_id := progression.id; target_enrollment_id := progression.target_enrollment_id;
     outcome := progression.outcome; target_grade_level_id := progression.target_grade_level_id;
@@ -963,7 +968,7 @@ begin
   if (select snapshot.snapshot_checksum from public.promotion_recommendation_snapshots snapshot
       where snapshot.id = decision.recommendation_snapshot_id)
       is distinct from built.snapshot_checksum then
-    raise exception 'PROMOTION_RECOMMENDATION_STALE' using errcode = '40001';
+    raise exception 'PROMOTION_RECOMMENDATION_STALE' using errcode = 'PT409';
   end if;
 
   -- Lock the student first and the source enrollment second, consistently
