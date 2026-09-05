@@ -1100,7 +1100,7 @@ begin
     end if;
     progression_id := progression.id; target_enrollment_id := progression.target_enrollment_id;
     outcome := progression.outcome; target_grade_level_id := progression.target_grade_level_id;
-    idempotent := true; return next;
+    idempotent := true; return;
   end if;
   select source_decision.* into decision
   from public.promotion_decisions source_decision
