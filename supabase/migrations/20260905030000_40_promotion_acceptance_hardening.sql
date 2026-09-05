@@ -652,12 +652,12 @@ declare actor record; decision public.promotion_decisions%rowtype; built record;
   source_grade public.grade_levels%rowtype; override boolean;
 begin
   select * into actor from internal.require_promotion_actor();
-  select decision.* into decision
-  from public.promotion_decisions decision
-  join public.terms term on term.id = decision.term_id
+  select source_decision.* into decision
+  from public.promotion_decisions source_decision
+  join public.terms term on term.id = source_decision.term_id
   join public.academic_years year on year.id = term.academic_year_id
-  where decision.id = target_decision_id and year.school_id = actor.school_id
-    and decision.superseded_by is null
+  where source_decision.id = target_decision_id and year.school_id = actor.school_id
+    and source_decision.superseded_by is null
   for update;
   if not found then raise exception 'PROMOTION_DECISION_NOT_FOUND' using errcode = 'P0002'; end if;
   if decision.version is distinct from expected_decision_version then
@@ -819,12 +819,12 @@ begin
   -- The decision is scoped and locked before the idempotency lookup. This is
   -- the cross-school leak prevention boundary.
   select * into actor from internal.require_promotion_actor();
-  select decision.* into decision
-  from public.promotion_decisions decision
-  join public.terms term on term.id = decision.term_id
+  select source_decision.* into decision
+  from public.promotion_decisions source_decision
+  join public.terms term on term.id = source_decision.term_id
   join public.academic_years year on year.id = term.academic_year_id
-  where decision.id = target_decision_id and year.school_id = actor.school_id
-    and decision.superseded_by is null
+  where source_decision.id = target_decision_id and year.school_id = actor.school_id
+    and source_decision.superseded_by is null
   for update;
   if not found then raise exception 'PROMOTION_DECISION_NOT_FOUND' using errcode = 'P0002'; end if;
   if decision.version is distinct from expected_decision_version then
@@ -1077,11 +1077,11 @@ declare actor record; decision public.promotion_decisions%rowtype;
   next_year public.academic_years%rowtype; target_grade public.grade_levels%rowtype; built record;
 begin
   select * into actor from internal.require_promotion_reader();
-  select decision.* into decision
-  from public.promotion_decisions decision
-  join public.terms term on term.id = decision.term_id
+  select source_decision.* into decision
+  from public.promotion_decisions source_decision
+  join public.terms term on term.id = source_decision.term_id
   join public.academic_years year on year.id = term.academic_year_id
-  where decision.id = target_decision_id and decision.superseded_by is null
+  where source_decision.id = target_decision_id and source_decision.superseded_by is null
     and year.school_id = actor.school_id;
   if not found or decision.final_decision not in (
     'PROMOTED', 'PROMOTED_WITH_SUPPORT', 'REPEAT_CONFIRMED') then return; end if;
