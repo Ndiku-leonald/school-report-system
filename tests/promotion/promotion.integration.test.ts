@@ -282,18 +282,20 @@ async function setup() {
       ids.assignment,
     ],
   );
-  for (const [index, enrollmentId] of enrollments.entries()) {
+  for (const enrollmentId of enrollments) {
     await query(
       "insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$2,$3,90,'PRESENT',$4,$4)",
       [ids.sheet, ids.component, enrollmentId, schoolAdmin.membershipId],
     );
-    if (index !== 6) {
-      await query(
-        "insert into public.term_attendance(term_id,enrollment_id,days_open,days_present,days_absent,recorded_by) values($1,$2,100,90,10,$3)",
-        [ids.term, enrollmentId, schoolAdmin.membershipId],
-      );
-    }
+    await query(
+      "insert into public.term_attendance(term_id,enrollment_id,days_open,days_present,days_absent,recorded_by) values($1,$2,100,90,10,$3)",
+      [ids.term, enrollmentId, schoolAdmin.membershipId],
+    );
   }
+  await query(
+    "delete from public.term_attendance where term_id=$1 and enrollment_id=(select id from public.enrollments where academic_year_id=$2 order by id offset 6 limit 1)",
+    [ids.term, ids.year],
+  );
   await query(
     "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,$3,$4,'Promotion Scale',1,false,'2046-01-02',$5)",
     [ids.scale, ids.school, ids.year, ids.grade, schoolAdmin.membershipId],
@@ -901,6 +903,12 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
   });
 
   it("41. applies a promoted learner", async () => {
+    const reconfirmed = await rpc(adminClient, "confirm_promotion_decision", {
+      target_decision_id: decisions[1].decision_id,
+      expected_decision_version: decisions[1].decision_version,
+      target_final_decision: "PROMOTED",
+    });
+    expect(reconfirmed.error).toBeNull();
     const result = await rpc(adminClient, "apply_student_progression", {
       target_decision_id: decisions[1].decision_id,
       expected_decision_version: decisions[1].decision_version,

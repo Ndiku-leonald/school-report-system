@@ -722,6 +722,7 @@ begin
       returning * into created;
       update public.promotion_decisions set superseded_by = created.id
       where id = old_decision_id;
+      perform set_config('app.promotion_decision_reopen_transition', 'allowed', true);
       update public.promotion_decisions set superseded_by = null where id = created.id;
     else
       insert into public.promotion_decisions(
