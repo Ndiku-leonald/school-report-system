@@ -35,6 +35,81 @@ alter table public.promotion_rules
 create index if not exists student_progressions_decision_school_idx
   on public.student_progressions (source_decision_id, school_id);
 
+-- Progression is the one authorized workflow that closes a locked source
+-- enrollment after its evidence has been consumed. Keep the Stage 10 guard for
+-- every ordinary roster writer, but allow only this exact status-only transition
+-- while the Stage 17 RPC holds the source locks.
+create or replace function internal.lock_enrollment_terms_for_marks_workflow()
+returns trigger
+language plpgsql
+security definer
+set search_path = pg_catalog, public
+as $$
+declare
+  old_year_id uuid;
+  new_year_id uuid;
+  old_class_section_id uuid;
+  new_class_section_id uuid;
+  roster_identity_changed boolean;
+  frozen_term_id uuid;
+begin
+  old_year_id := case when tg_op in ('UPDATE', 'DELETE') then old.academic_year_id end;
+  new_year_id := case when tg_op in ('INSERT', 'UPDATE') then new.academic_year_id end;
+  old_class_section_id := case when tg_op in ('UPDATE', 'DELETE') then old.class_section_id end;
+  new_class_section_id := case when tg_op in ('INSERT', 'UPDATE') then new.class_section_id end;
+
+  roster_identity_changed := case
+    when tg_op <> 'UPDATE' then true
+    else row(old.student_id, old.academic_year_id, old.class_section_id,
+      old.enrolled_on, old.exited_on) is distinct from row(new.student_id,
+      new.academic_year_id, new.class_section_id, new.enrolled_on, new.exited_on)
+  end;
+  if not roster_identity_changed then return new; end if;
+
+  if current_setting('app.promotion_progression_transition', true) = 'allowed'
+     and tg_op = 'UPDATE'
+     and old.student_id = new.student_id
+     and old.academic_year_id = new.academic_year_id
+     and old.class_section_id = new.class_section_id
+     and old.enrolled_on = new.enrolled_on
+     and old.status in ('ACTIVE', 'REPEATING')
+     and new.status = 'COMPLETED'
+     and new.exited_on is not null then
+    return new;
+  end if;
+
+  begin
+    perform term.id
+    from public.terms term
+    where term.academic_year_id in (old_year_id, new_year_id)
+    order by term.id
+    for update nowait;
+  exception when lock_not_available then
+    raise exception 'ENROLLMENT_MARKS_WORKFLOW_CONFLICT' using errcode = 'PT409';
+  end;
+
+  select term.id into frozen_term_id
+  from public.terms term
+  where term.academic_year_id in (old_year_id, new_year_id)
+    and ((tg_op in ('UPDATE', 'DELETE') and term.academic_year_id = old_year_id
+      and old.enrolled_on <= term.ends_on
+      and (old.exited_on is null or old.exited_on >= term.starts_on))
+      or (tg_op in ('INSERT', 'UPDATE') and term.academic_year_id = new_year_id
+      and new.enrolled_on <= term.ends_on
+      and (new.exited_on is null or new.exited_on >= term.starts_on)))
+    and (term.status in ('REVIEW', 'LOCKED') or exists (
+      select 1 from public.mark_sheets sheet
+      where sheet.term_id = term.id
+        and sheet.workflow_status in ('SUBMITTED', 'UNDER_REVIEW', 'APPROVED', 'LOCKED')
+        and sheet.class_section_id in (old_class_section_id, new_class_section_id)))
+  order by term.id limit 1;
+  if frozen_term_id is not null then
+    raise exception 'ENROLLMENT_MARKS_WORKFLOW_FROZEN' using errcode = '55000';
+  end if;
+  return case when tg_op = 'DELETE' then old else new end;
+end
+$$;
+
 -- Align the configuration write path with the same explicit schemas consumed by
 -- promotion generation. This replaces the pre-Stage-17 boolean-only contract.
 create or replace function internal.assert_promotion_configuration(
@@ -923,6 +998,7 @@ begin
     if not source_grade.is_final_grade then
       raise exception 'FINAL_GRADE_COMPLETION_REQUIRED' using errcode = '23514';
     end if;
+    perform set_config('app.promotion_progression_transition', 'allowed', true);
     update public.enrollments
     set status = 'COMPLETED', exited_on = source_year.ends_on
     where id = enrollment_row.id;
@@ -981,6 +1057,7 @@ begin
     if capacity is not null and occupied >= capacity then
       raise exception 'CLASS_CAPACITY_REACHED' using errcode = '23514';
     end if;
+    perform set_config('app.promotion_progression_transition', 'allowed', true);
     update public.enrollments
     set status = 'COMPLETED', exited_on = source_year.ends_on
     where id = enrollment_row.id;

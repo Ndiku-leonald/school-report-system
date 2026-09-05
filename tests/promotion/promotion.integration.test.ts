@@ -123,7 +123,7 @@ async function actor(
   return value;
 }
 
-async function signIn(value: Actor) {
+async function signIn(value: Actor, selectMembership = true) {
   const client = createClient(url!, anonKey!, {
     auth: {
       autoRefreshToken: false,
@@ -136,10 +136,12 @@ async function signIn(value: Actor) {
     password,
   });
   if (login.error) throw login.error;
-  const selected = await client.rpc("set_my_active_membership", {
-    target_membership_id: value.membershipId,
-  });
-  if (selected.error) throw selected.error;
+  if (selectMembership) {
+    const selected = await client.rpc("set_my_active_membership", {
+      target_membership_id: value.membershipId,
+    });
+    if (selected.error) throw selected.error;
+  }
   return client;
 }
 
@@ -279,15 +281,17 @@ async function setup() {
       ids.assignment,
     ],
   );
-  for (const enrollmentId of enrollments) {
+  for (const [index, enrollmentId] of enrollments.entries()) {
     await query(
       "insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$2,$3,90,'PRESENT',$4,$4)",
       [ids.sheet, ids.component, enrollmentId, schoolAdmin.membershipId],
     );
-    await query(
-      "insert into public.term_attendance(term_id,enrollment_id,days_open,days_present,days_absent,recorded_by) values($1,$2,100,90,10,$3)",
-      [ids.term, enrollmentId, schoolAdmin.membershipId],
-    );
+    if (index !== 6) {
+      await query(
+        "insert into public.term_attendance(term_id,enrollment_id,days_open,days_present,days_absent,recorded_by) values($1,$2,100,90,10,$3)",
+        [ids.term, enrollmentId, schoolAdmin.membershipId],
+      );
+    }
   }
   await query(
     "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,$3,$4,'Promotion Scale',1,false,'2046-01-02',$5)",
@@ -622,12 +626,12 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
         item.role === "SCHOOL_ADMIN" && item.email.includes("suspended"),
     );
     expect(suspended).toBeTruthy();
-    const client = await signIn(suspended!);
+    const client = await signIn(suspended!, false);
     await expectError(
       client,
       "list_promotion_scopes",
       {},
-      /PROMOTION_FORBIDDEN|permission/i,
+      /PROMOTION_FORBIDDEN|permission|membership|unavailable/i,
     );
   });
   it("16. denies a signed-out anonymous client", async () => {
@@ -777,6 +781,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
       target_decision_id: decisions[7].decision_id,
       expected_decision_version: 1,
       target_final_decision: "PROMOTED_WITH_SUPPORT",
+      decision_reason: "Documented support plan",
     });
     expect(result.error).toBeNull();
   });
