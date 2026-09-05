@@ -91,10 +91,6 @@ async function setup() {
     [ids.year, ids.school, ids.nextYear],
   );
   await sql(
-    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status,is_promotion_term) values($1,$2,'Browser Promotion Term',1,'2049-01-01','2049-06-30','MARKS_ENTRY',true)",
-    [ids.term, ids.year],
-  );
-  await sql(
     "insert into public.grade_levels(id,school_id,code,name,sort_order) values($1,$2,'BP1','Browser Source Grade',1),($3,$2,'BP2','Browser Target Grade',2)",
     [ids.grade, ids.school, ids.nextGrade],
   );
@@ -124,6 +120,10 @@ async function setup() {
   await sql(
     "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,status,enrolled_on) values($1,$2,$3,$4,'ACTIVE','2049-01-02')",
     [ids.enrollment, ids.student, ids.year, ids.sourceClass],
+  );
+  await sql(
+    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status,is_promotion_term) values($1,$2,'Browser Promotion Term',1,'2049-01-01','2049-06-30','MARKS_ENTRY',true)",
+    [ids.term, ids.year],
   );
   await sql(
     "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$2,$3,$4,$5,'2049-01-02')",
