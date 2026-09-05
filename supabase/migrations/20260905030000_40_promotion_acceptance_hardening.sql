@@ -1081,14 +1081,18 @@ begin
   -- after a lifecycle transition closes the source enrollment.
   select source_progression.* into progression
   from public.student_progressions source_progression
-  join public.promotion_decisions source_decision
-    on source_decision.id = source_progression.source_decision_id
-  join public.terms source_term on source_term.id = source_decision.term_id
-  join public.academic_years source_year_scope
-    on source_year_scope.id = source_term.academic_year_id
-  where source_progression.source_decision_id = target_decision_id
-    and source_year_scope.school_id = actor.school_id;
+  where source_progression.source_decision_id = target_decision_id;
   if found then
+    select source_decision.* into decision
+    from public.promotion_decisions source_decision
+    join public.terms source_term on source_term.id = source_decision.term_id
+    join public.academic_years source_year_scope
+      on source_year_scope.id = source_term.academic_year_id
+    where source_decision.id = target_decision_id
+      and source_year_scope.school_id = actor.school_id;
+    if not found then
+      raise exception 'PROMOTION_DECISION_NOT_FOUND' using errcode = 'P0002';
+    end if;
     supplied_conflict := progression.target_academic_year_id is distinct from target_academic_year_id
       or progression.target_class_section_id is distinct from target_class_section_id;
     if supplied_conflict then
