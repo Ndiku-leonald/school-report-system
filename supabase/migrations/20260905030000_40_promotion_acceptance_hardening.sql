@@ -1095,7 +1095,9 @@ begin
   -- after the first application closed the source enrollment.
   select source_progression.* into progression
   from public.student_progressions source_progression
-  where source_progression.source_decision_id = target_decision_id;
+  where source_progression.school_id = actor.school_id
+    and (source_progression.source_decision_id = decision.id
+      or source_progression.source_enrollment_id = decision.enrollment_id);
   if found then
     supplied_conflict := progression.target_academic_year_id is distinct from target_academic_year_id
       or progression.target_class_section_id is distinct from target_class_section_id;
