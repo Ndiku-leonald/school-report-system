@@ -8,7 +8,7 @@ The product must remain configurable for different schools. School identity, sub
 
 ## Current status
 
-**Stage 17 secure promotion and progression implemented for review.** Migration 37 remains unchanged and Migration 38 corrects term-year scope eligibility, repeated configured output-label aggregation, and deterministic tied ranking presentation. Stage 18 not started. The repository
+**Stage 17 secure promotion and progression acceptance hardening is implemented for review.** Migration 39 is frozen; Migration 40 adds fail-closed rule parsing, lifecycle-safe population and progression, versioned stale-aware decisions, application snapshots/checksums, and concurrency protections. Stage 18 not started. The repository
 contains the Stage 3 database foundation plus cookie-based Supabase Auth,
 server-authoritative staff membership checks, invitation and recovery flows,
 active-school selection, authentication audit events, and local-only Auth test
@@ -35,7 +35,8 @@ snapshot values, measured multipage layout, buffered `Page X of Y` footers,
 and traced local fonts. Stage 14 publication is private and review-gated; Stage
 15 adds one-time parent credentials, custom sessions, publication-aware
 filtering and checksum-verified private artifact delivery. Analytics and
-promotion processing remain later-stage work.
+promotion now have dedicated acceptance coverage; production hardening remains
+Stage 18.
 
 Stage 7 adds `/dashboard/students`, admission and profile workflows, guarded
 student and enrolment lifecycle changes, primary-guardian management, private

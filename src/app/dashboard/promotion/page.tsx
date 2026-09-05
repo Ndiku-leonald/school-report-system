@@ -168,6 +168,7 @@ export default async function PromotionPage({
           termId={selected.term_id}
           gradeId={selected.grade_level_id}
           canConfirm={canConfirm}
+          isFinalGrade={selected.grade_is_final}
           recommendations={recommendations}
           targetClasses={targetClasses}
         />

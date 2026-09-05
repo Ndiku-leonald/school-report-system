@@ -80,13 +80,15 @@ describe("academic configuration schemas", () => {
         requiredSubjectRules: [
           {
             subjectId: "00000000-0000-4000-8000-000000000001",
-            minimumScore: 50,
+            require: "PASS",
           },
         ],
         additionalRules: {
           schemaVersion: 1,
-          requireAllRequiredSubjects: true,
-          allowManualReview: true,
+          requireCompleteResult: true,
+          successOutcome: "PROMOTED",
+          failureOutcome: "ACADEMIC_REVIEW",
+          incompleteOutcome: "ACADEMIC_REVIEW",
         },
       }).success,
     ).toBe(true);
@@ -124,13 +126,15 @@ describe("academic configuration schemas", () => {
         minimumSubjectsPassed: 5,
         minimumAttendancePercentage: 80,
         requiredSubjectRules: [
-          { subjectId, minimumScore: 50 },
-          { subjectId, minimumScore: 60 },
+          { subjectId, require: "PASS" },
+          { subjectId, require: "COMPLETE" },
         ],
         additionalRules: {
           schemaVersion: 1,
-          requireAllRequiredSubjects: true,
-          allowManualReview: false,
+          requireCompleteResult: true,
+          successOutcome: "PROMOTED",
+          failureOutcome: "REPEAT_RECOMMENDED",
+          incompleteOutcome: "ACADEMIC_REVIEW",
         },
       }).success,
     ).toBe(false);

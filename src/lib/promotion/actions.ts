@@ -57,6 +57,7 @@ export async function generatePromotionRecommendations(
 
 export async function confirmPromotionDecision(
   decisionId: string,
+  expectedVersion: number,
   finalDecision: string,
   reason: string,
 ): Promise<Result> {
@@ -68,6 +69,7 @@ export async function confirmPromotionDecision(
     return { ok: false, message: "Reason must be 3–2000 characters." };
   return rpc("confirm_promotion_decision", {
     target_decision_id: decisionId,
+    expected_decision_version: expectedVersion,
     target_final_decision: outcome.data,
     decision_reason: reason || null,
   });
@@ -75,6 +77,7 @@ export async function confirmPromotionDecision(
 
 export async function reopenPromotionDecision(
   decisionId: string,
+  expectedVersion: number,
   reason: string,
 ): Promise<Result> {
   await requirePermission("PROMOTION_CONFIRM");
@@ -86,18 +89,21 @@ export async function reopenPromotionDecision(
     };
   return rpc("reopen_promotion_decision", {
     target_decision_id: decisionId,
+    expected_decision_version: expectedVersion,
     reopen_reason: parsed.data,
   });
 }
 
 export async function applyStudentProgression(
   decisionId: string,
+  expectedVersion: number,
   yearId: string | null,
   classId: string | null,
 ): Promise<Result> {
   await requirePermission("PROMOTION_CONFIRM");
   return rpc("apply_student_progression", {
     target_decision_id: decisionId,
+    expected_decision_version: expectedVersion,
     target_academic_year_id: yearId,
     target_class_section_id: classId,
   });

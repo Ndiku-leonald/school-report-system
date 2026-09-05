@@ -2953,6 +2953,7 @@ export type Database = {
       student_progressions: {
         Row: {
           application_checksum: string;
+          application_snapshot: Json | null;
           applied_at: string;
           applied_by: string;
           created_at: string;
@@ -2968,6 +2969,7 @@ export type Database = {
         };
         Insert: {
           application_checksum: string;
+          application_snapshot?: Json | null;
           applied_at?: string;
           applied_by: string;
           created_at?: string;
@@ -2983,6 +2985,7 @@ export type Database = {
         };
         Update: {
           application_checksum?: string;
+          application_snapshot?: Json | null;
           applied_at?: string;
           applied_by?: string;
           created_at?: string;
@@ -3502,6 +3505,7 @@ export type Database = {
       };
       apply_student_progression: {
         Args: {
+          expected_decision_version: number;
           target_academic_year_id?: string;
           target_class_section_id?: string;
           target_decision_id: string;
@@ -3601,6 +3605,7 @@ export type Database = {
       confirm_promotion_decision: {
         Args: {
           decision_reason?: string;
+          expected_decision_version: number;
           target_decision_id: string;
           target_final_decision: Database["public"]["Enums"]["promotion_outcome"];
         };
@@ -4943,6 +4948,7 @@ export type Database = {
           enrollment_id: string;
           final_decision: Database["public"]["Enums"]["promotion_outcome"];
           progression_id: string;
+          progression_application_checksum: string;
           reason: string;
           snapshot_checksum: string;
           snapshot_data: Json;
@@ -5247,7 +5253,11 @@ export type Database = {
         }[];
       };
       reopen_promotion_decision: {
-        Args: { reopen_reason: string; target_decision_id: string };
+        Args: {
+          expected_decision_version: number;
+          reopen_reason: string;
+          target_decision_id: string;
+        };
         Returns: {
           decision_id: string;
           decision_version: number;

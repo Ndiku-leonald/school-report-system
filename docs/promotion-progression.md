@@ -27,7 +27,7 @@ school + academic year, school + grade, then school-wide. Within a scope the
 highest version and then UUID is used. Active, retired rules are excluded from
 new recommendations. The exact rule ID and version are copied into evidence.
 
-Required subjects support only `{"schema_version":1,"subjects":[{"subject_id":"<uuid>","require":"PASS"}]}`. `PASS` requires `COMPLETE` and `is_pass = true`; `COMPLETE` requires only `COMPLETE`. Empty `{}` means no required-subject criteria. Subjects must be unique, belong to the school, and be in the selected grade curriculum. Additional rules support schema version 1 with the existing `require_all_required_subjects` and `allow_manual_review` booleans. Unknown schemas are unsupported and never silently interpreted.
+Required subjects support only `{"schema_version":1,"subjects":[{"subject_id":"<uuid>","require":"PASS"}]}`. `PASS` requires `COMPLETE` and `is_pass = true`; `COMPLETE` requires only `COMPLETE`. Empty `{}` means no required-subject criteria. Subjects must be unique, belong to the school, and be in the selected grade curriculum. Additional rules accept either `{}` or the exact schema `{"schema_version":"1","require_complete_result":true,"success_outcome":"PROMOTED|PROMOTED_WITH_SUPPORT","failure_outcome":"ACADEMIC_REVIEW|REPEAT_RECOMMENDED","incomplete_outcome":"ACADEMIC_REVIEW|REPEAT_RECOMMENDED"}`. Empty `{}` safely defaults to complete results, promotion on success, and academic review on failure or incompleteness. Unknown keys, schemas, and JSON types fail closed.
 
 ## Evidence and recommendations
 
@@ -38,10 +38,14 @@ evaluations, and the system outcome. A SHA-256 checksum over canonical
 PostgreSQL `jsonb` text (with deterministic array ordering and no generation
 timestamp) proves reproducibility.
 
-Complete results meeting all configured criteria recommend `PROMOTED`, or
-`COMPLETED` for a final grade. Incomplete evidence recommends
-`ACADEMIC_REVIEW`; complete results failing a criterion recommend
-`REPEAT_RECOMMENDED`. The system never recommends `REPEAT_CONFIRMED`.
+The population is active students with `ACTIVE` or `REPEATING` enrolments in
+the selected source year and grade. Attendance is available only when
+`days_open > 0`; missing or zero-day attendance is unavailable evidence and
+therefore forces conservative `ACADEMIC_REVIEW`, even when other criteria
+pass. Complete results use the configured success/failure outcomes; incomplete
+results use the configured incomplete outcome. A final grade always uses
+`COMPLETED` for a successful complete result and never recommends promotion.
+The system never recommends `REPEAT_CONFIRMED`.
 
 ## Decisions and progression
 
@@ -57,15 +61,21 @@ Human final outcomes are `PROMOTED`, `PROMOTED_WITH_SUPPORT`,
 `REPEAT_RECOMMENDED` → `REPEAT_CONFIRMED` confirmation is not an override;
 every other semantic change requires a trimmed 3–2000 character reason.
 
-Progression is explicit and idempotent. The target year is the first later
-eligible year in the selected school. Promoted learners move to the next
+Progression is explicit and idempotent, and every application stores an
+immutable `application_snapshot` plus SHA-256 `application_checksum`. The
+target year is the first later year whose status is `ACTIVE` or `DRAFT` and
+whose start follows the source year end. Promoted learners move to the next
 active grade; repeaters remain in the same grade and receive `REPEATING`.
-Final-grade completion closes the source enrolment and student as `COMPLETED`
-without a target enrolment. The target class is verified and locked before
-counting current enrolments, preventing last-seat races. Audit events contain
-academic evidence only and never guardian, parent credential/session, or
-private storage data.
+The source enrolment exits on the source academic year's `ends_on`; final-grade
+completion closes the source enrolment and student as `COMPLETED` without a
+target enrolment. The final-grade and current-snapshot checks are repeated at
+application time. Exact retries return the existing application; conflicting
+retries fail. `ACADEMIC_REVIEW` and unsupported outcomes cannot progress. The
+target class is verified and locked before counting current enrolments,
+preventing last-seat races. Audit events contain academic evidence only and
+never guardian, parent credential/session, or private storage data.
 
-Migration 39 is additive; migrations 37 and 38 remain unchanged. Production
+Migration 39 is frozen and Migration 40 is the single additive acceptance
+hardening migration; Migration 41 does not exist. Migrations 37 and 38 remain unchanged. Production
 deployment, remote rollout, monitoring, backups, incident response, and the
 final production security review remain Stage 18.

@@ -822,8 +822,8 @@ from public.save_promotion_rule(
   30,
   1,
   80,
-  '[{"subject_id":"e4300000-0000-4000-8000-000000000001","minimum_score":50}]'::jsonb,
-  '{"schema_version":1,"require_all_required_subjects":true,"allow_manual_review":true}'::jsonb
+  '{"schema_version":1,"subjects":[{"subject_id":"e4300000-0000-4000-8000-000000000001","require":"PASS"}]}'::jsonb,
+  '{"schema_version":1,"require_complete_result":true,"success_outcome":"PROMOTED","failure_outcome":"ACADEMIC_REVIEW","incomplete_outcome":"ACADEMIC_REVIEW"}'::jsonb
 );
 select * from public.activate_promotion_rule(
   (select entity_id from promotion_draft),
@@ -839,8 +839,8 @@ from public.create_promotion_rule_version(
   28,
   1,
   82,
-  '[{"subject_id":"e4300000-0000-4000-8000-000000000001","minimum_score":55}]'::jsonb,
-  '{"schema_version":1,"require_all_required_subjects":true,"allow_manual_review":true}'::jsonb
+  '{"schema_version":1,"subjects":[{"subject_id":"e4300000-0000-4000-8000-000000000001","require":"PASS"}]}'::jsonb,
+  '{"schema_version":1,"require_complete_result":true,"success_outcome":"PROMOTED","failure_outcome":"ACADEMIC_REVIEW","incomplete_outcome":"ACADEMIC_REVIEW"}'::jsonb
 );
 select extensions.ok(
   (select entity_id from promotion_version) <> (select entity_id from promotion_draft),

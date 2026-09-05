@@ -204,3 +204,11 @@ membership, switching the selected school, or signing out takes effect on the
 next request. `ANALYTICS_VIEW`, `REPORTS_VIEW_ALL`, `REPORTS_GENERATE`, and
 `MARKS_VIEW_ALL` do not substitute for `PROMOTION_VIEW`; `PROMOTION_VIEW` does
 not substitute for `PROMOTION_CONFIRM`.
+
+Promotion mutations carry an expected decision version. Confirmation, reopen,
+and progression reject stale versions; reopen creates a new version and keeps
+history. A confirmed source whose live evidence checksum changes is exposed as
+`CONFIRMED_STALE` and is never silently superseded. Progression rechecks the
+selected school's live student, enrolment, source-year, target-year, grade, and
+class state while holding the relevant locks, so a prior read cannot resurrect
+or cross-link another school's learner.

@@ -36,8 +36,9 @@ export type PromotionRecommendation = {
   was_overridden: boolean;
   snapshot_checksum: string | null;
   snapshot_data: Record<string, unknown> | null;
-  state: "RECOMMENDED" | "CONFIRMED" | "PROGRESSED";
+  state: "RECOMMENDED" | "CONFIRMED" | "CONFIRMED_STALE" | "PROGRESSED";
   progression_id: string | null;
+  progression_application_checksum: string | null;
 };
 
 export type PromotionTargetClass = {

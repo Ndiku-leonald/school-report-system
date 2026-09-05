@@ -36,12 +36,14 @@ export function PromotionWorkspace({
   termId,
   gradeId,
   canConfirm,
+  isFinalGrade,
   recommendations,
   targetClasses,
 }: {
   termId: string;
   gradeId: string;
   canConfirm: boolean;
+  isFinalGrade: boolean;
   recommendations: PromotionRecommendation[];
   targetClasses: Record<string, PromotionTargetClass[]>;
 }) {
@@ -78,6 +80,9 @@ export function PromotionWorkspace({
           recommendation.system_recommendation === "REPEAT_RECOMMENDED"
             ? "REPEAT_CONFIRMED"
             : recommendation.system_recommendation;
+        const isStale = recommendation.state === "CONFIRMED_STALE";
+        const isAcademicReview =
+          recommendation.final_decision === "ACADEMIC_REVIEW";
         return (
           <Card key={recommendation.decision_id}>
             <CardContent className="space-y-5 pt-5">
@@ -106,6 +111,9 @@ export function PromotionWorkspace({
                       ? `Final: ${promotionOutcomeLabel(recommendation.final_decision)}`
                       : "Not confirmed"}
                   </Badge>
+                  {isStale ? (
+                    <Badge variant="warning">Confirmed stale</Badge>
+                  ) : null}
                 </div>
               </div>
               <div className="grid gap-3 sm:grid-cols-4">
@@ -169,6 +177,14 @@ export function PromotionWorkspace({
                 · rule v{String(rule.version ?? "?")} · snapshot{" "}
                 {checksumPrefix(recommendation.snapshot_checksum)}
               </p>
+              {recommendation.progression_application_checksum ? (
+                <p className="text-muted-foreground text-xs">
+                  Application fingerprint{" "}
+                  {checksumPrefix(
+                    recommendation.progression_application_checksum,
+                  )}
+                </p>
+              ) : null}
               {canConfirm && !recommendation.final_decision ? (
                 <div className="bg-surface-muted grid gap-3 rounded-lg p-3 md:grid-cols-[1fr_1fr_auto] md:items-end">
                   <label
@@ -181,10 +197,14 @@ export function PromotionWorkspace({
                       defaultValue={defaultFinal}
                       className="border-border bg-surface mt-1 min-h-10 w-full rounded-lg border px-2 text-sm"
                     >
-                      <option value="PROMOTED">Promoted</option>
-                      <option value="PROMOTED_WITH_SUPPORT">
-                        Promoted with support
-                      </option>
+                      {!isFinalGrade ? (
+                        <>
+                          <option value="PROMOTED">Promoted</option>
+                          <option value="PROMOTED_WITH_SUPPORT">
+                            Promoted with support
+                          </option>
+                        </>
+                      ) : null}
                       <option value="ACADEMIC_REVIEW">Academic review</option>
                       <option value="REPEAT_CONFIRMED">Repeat confirmed</option>
                       <option value="COMPLETED">Completed</option>
@@ -213,6 +233,7 @@ export function PromotionWorkspace({
                       run(() =>
                         confirmPromotionDecision(
                           recommendation.decision_id,
+                          recommendation.decision_version,
                           outcome.value,
                           reason.value,
                         ),
@@ -225,12 +246,15 @@ export function PromotionWorkspace({
               ) : null}
               {canConfirm &&
               recommendation.final_decision &&
-              recommendation.state !== "PROGRESSED" ? (
+              recommendation.state !== "PROGRESSED" &&
+              !isStale &&
+              !isAcademicReview ? (
                 <div className="border-border space-y-3 rounded-lg border p-3">
                   <p className="text-sm font-semibold">Explicit progression</p>
                   {classes.length ? (
                     <ProgressionControls
                       decisionId={recommendation.decision_id}
+                      decisionVersion={recommendation.decision_version}
                       classes={classes}
                       pending={pending}
                       run={run}
@@ -242,6 +266,7 @@ export function PromotionWorkspace({
                         run(() =>
                           applyStudentProgression(
                             recommendation.decision_id,
+                            recommendation.decision_version,
                             null,
                             null,
                           ),
@@ -259,7 +284,8 @@ export function PromotionWorkspace({
               ) : null}
               {canConfirm &&
               recommendation.final_decision &&
-              recommendation.state !== "PROGRESSED" ? (
+              recommendation.state !== "PROGRESSED" &&
+              !isStale ? (
                 <Button
                   variant="secondary"
                   disabled={pending}
@@ -271,6 +297,7 @@ export function PromotionWorkspace({
                     run(() =>
                       reopenPromotionDecision(
                         recommendation.decision_id,
+                        recommendation.decision_version,
                         reason,
                       ),
                     );
@@ -299,11 +326,13 @@ export function PromotionWorkspace({
 
 function ProgressionControls({
   decisionId,
+  decisionVersion,
   classes,
   pending,
   run,
 }: {
   decisionId: string;
+  decisionVersion: number;
   classes: PromotionTargetClass[];
   pending: boolean;
   run: (action: () => Promise<{ ok: boolean; message: string }>) => void;
@@ -337,6 +366,7 @@ function ProgressionControls({
           run(() =>
             applyStudentProgression(
               decisionId,
+              decisionVersion,
               target?.academic_year_id ?? null,
               selected,
             ),

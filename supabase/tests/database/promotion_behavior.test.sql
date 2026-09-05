@@ -1,5 +1,5 @@
 ﻿begin;
-select plan(30);
+select plan(46);
 select extensions.ok(to_regclass('public.promotion_recommendation_snapshots') is not null, 'fixture schema is available');
 select extensions.ok(to_regclass('public.student_progressions') is not null, 'progression fixture schema is available');
 select extensions.ok(exists(select 1 from pg_indexes where indexname='promotion_decision_one_current_idx'), 'current-row invariant is installed');
@@ -30,5 +30,21 @@ select extensions.ok(exists(select 1 from pg_class where relname='promotion_deci
 select extensions.ok((select count(*) from pg_proc where proname='list_promotion_decision_history')=1, 'history is a single deterministic reader');
 select extensions.ok((select count(*) from pg_proc where proname='list_promotion_scopes')=1, 'scope is a single deterministic reader');
 select extensions.ok(exists(select 1 from pg_constraint where conname='promotion_decision_snapshot_fk'), 'decision evidence is required for new workflow rows');
+select extensions.ok(exists(select 1 from pg_constraint where conname='student_progression_application_snapshot_object'), 'application snapshot is object-shaped');
+select extensions.ok(exists(select 1 from pg_trigger where tgname='student_progressions_validate_application'), 'application snapshot checksum trigger exists');
+select extensions.ok(to_regprocedure('public.confirm_promotion_decision(uuid,integer,public.promotion_outcome,text)') is not null, 'confirmation has expected version');
+select extensions.ok(to_regprocedure('public.reopen_promotion_decision(uuid,integer,text)') is not null, 'reopen has expected version');
+select extensions.ok(to_regprocedure('public.apply_student_progression(uuid,integer,uuid,uuid)') is not null, 'progression has expected version');
+select extensions.ok(to_regprocedure('public.confirm_promotion_decision(uuid,public.promotion_outcome,text)') is null, 'old confirmation cannot bypass version');
+select extensions.ok(to_regprocedure('public.reopen_promotion_decision(uuid,text)') is null, 'old reopen cannot bypass version');
+select extensions.ok(to_regprocedure('public.apply_student_progression(uuid,uuid,uuid)') is null, 'old progression cannot bypass version');
+select extensions.ok(pg_get_functiondef('internal.validate_promotion_additional_rules(public.promotion_rules)'::regprocedure) ~* 'require_complete_result', 'explicit completeness rule is recognized');
+select extensions.ok(pg_get_functiondef('internal.validate_promotion_additional_rules(public.promotion_rules)'::regprocedure) ~* 'PROMOTED_WITH_SUPPORT', 'supported success outcome is recognized');
+select extensions.ok(pg_get_functiondef('internal.validate_promotion_additional_rules(public.promotion_rules)'::regprocedure) ~* 'REPEAT_RECOMMENDED', 'explicit repeat outcome is recognized');
+select extensions.ok(pg_get_functiondef('internal.promotion_snapshot_for(uuid,uuid,uuid)'::regprocedure) ~* 'attendance_percentage := null', 'zero-day attendance is unavailable');
+select extensions.ok(pg_get_functiondef('public.list_promotion_scopes()'::regprocedure) ~* 'student.status = .ACTIVE.', 'scope counts use active students');
+select extensions.ok(pg_get_functiondef('public.generate_promotion_recommendations(uuid,uuid)'::regprocedure) ~* 'student.status = .ACTIVE.', 'generation filters active students');
+select extensions.ok(pg_get_functiondef('public.apply_student_progression(uuid,integer,uuid,uuid)'::regprocedure) ~* 'student_row.status <> .ACTIVE.', 'progression revalidates student lifecycle');
+select extensions.ok(pg_get_functiondef('public.apply_student_progression(uuid,integer,uuid,uuid)'::regprocedure) ~* 'enrollment_row.status not in', 'progression revalidates enrollment lifecycle');
 select * from extensions.finish();
 rollback;
