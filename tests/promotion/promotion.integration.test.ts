@@ -1125,7 +1125,12 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     ).toBe(false);
   });
   it("64. keeps a confirmed source visible as stale after evidence change", async () => {
-    await confirm(22);
+    const confirmation = await rpc(adminClient, "confirm_promotion_decision", {
+      target_decision_id: decisions[22].decision_id,
+      expected_decision_version: decisions[22].decision_version,
+      target_final_decision: "PROMOTED",
+    });
+    expect(confirmation.error).toBeNull();
     await query(
       "update public.term_attendance set days_present=80,days_absent=20 where term_id=$1 and enrollment_id=$2",
       [ids.term, enrollments[22]],
