@@ -841,7 +841,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
       adminClient,
       "reopen_promotion_decision",
       {
-        target_decision_id: decisions[1].decision_id,
+        target_decision_id: decisions[2].decision_id,
         expected_decision_version: 1,
         reopen_reason: "",
       },
@@ -849,7 +849,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     ));
   it("36. reopens into a new version", async () => {
     const result = await rpc(adminClient, "reopen_promotion_decision", {
-      target_decision_id: decisions[1].decision_id,
+      target_decision_id: decisions[2].decision_id,
       expected_decision_version: 1,
       reopen_reason: "Correction requested",
     });
@@ -857,8 +857,8 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     expect(
       (result.data as Array<{ decision_version: number }>)[0].decision_version,
     ).toBe(2);
-    decisions[1] = {
-      ...decisions[1],
+    decisions[2] = {
+      ...decisions[2],
       decision_id: (result.data as Array<{ decision_id: string }>)[0]
         .decision_id,
       decision_version: 2,
@@ -869,7 +869,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
       adminClient,
       "reopen_promotion_decision",
       {
-        target_decision_id: decisions[1].decision_id,
+        target_decision_id: decisions[2].decision_id,
         expected_decision_version: 1,
         reopen_reason: "Second correction",
       },
@@ -903,12 +903,6 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
   });
 
   it("41. applies a promoted learner", async () => {
-    const reconfirmed = await rpc(adminClient, "confirm_promotion_decision", {
-      target_decision_id: decisions[1].decision_id,
-      expected_decision_version: decisions[1].decision_version,
-      target_final_decision: "PROMOTED",
-    });
-    expect(reconfirmed.error).toBeNull();
     const result = await rpc(adminClient, "apply_student_progression", {
       target_decision_id: decisions[1].decision_id,
       expected_decision_version: decisions[1].decision_version,
@@ -1073,7 +1067,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     ).toBe(true);
   });
   it("57. fails closed when attendance is zero-day", async () => {
-    const enrollment = enrollments[70];
+    const enrollment = decisions[70].enrollment_id;
     await query(
       "update public.term_attendance set days_open=0,days_present=0,days_absent=0 where term_id=$1 and enrollment_id=$2",
       [ids.term, enrollment],
@@ -1097,14 +1091,14 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
       (
         await query(
           "select snapshot_data->'attendance'->>'attendance_percentage' as pct from public.promotion_recommendation_snapshots where enrollment_id=$1 order by created_at desc limit 1",
-          [enrollments[70]],
+          [decisions[70].enrollment_id],
         )
       ).rows[0].pct,
     ).toBeNull());
   it("59. fails closed when attendance is missing", async () => {
     await query(
       "delete from public.term_attendance where term_id=$1 and enrollment_id=$2",
-      [ids.term, enrollments[71]],
+      [ids.term, decisions[71].enrollment_id],
     );
     const result = await rpc(
       adminClient,
@@ -1117,7 +1111,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
         enrollment_id: string;
         system_recommendation: string;
       }>
-    ).find((item) => item.enrollment_id === enrollments[71]);
+    ).find((item) => item.enrollment_id === decisions[71].enrollment_id);
     expect(row?.system_recommendation).toBe("ACADEMIC_REVIEW");
   });
   it("60. retains explicit rule defaults for an empty object", async () => {
@@ -1188,7 +1182,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     ).toBe("1"));
   it("66. keeps decision history ordered by version", async () => {
     const result = await rpc(adminClient, "list_promotion_decision_history", {
-      target_enrollment_id_arg: decisions[1].enrollment_id,
+      target_enrollment_id_arg: decisions[2].enrollment_id,
     });
     const versions = (result.data as Array<{ version: number }>).map(
       (row) => row.version,
@@ -1200,7 +1194,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
       (
         await query(
           "select superseded_by from public.promotion_decisions where enrollment_id=$1 and version=1",
-          [decisions[1].enrollment_id],
+          [decisions[2].enrollment_id],
         )
       ).rows[0].superseded_by,
     ).toBeTruthy());
