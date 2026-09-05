@@ -234,16 +234,13 @@ async function setup() {
     );
   }
   await query(
-    "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date,status) values($1,$2,'PROMO-INACTIVE','Inactive','Learner','2046-01-02','ACTIVE')",
+    "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date,status) values($1,$2,'PROMO-INACTIVE','Inactive','Learner','2046-01-02','INACTIVE')",
     [ids.otherStudent, ids.school],
   );
   await query(
-    "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,status,enrolled_on) values($1,$2,$3,$4,'ACTIVE','2046-01-02')",
+    "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,status,enrolled_on,exited_on) values($1,$2,$3,$4,'COMPLETED','2046-01-02','2046-12-31')",
     [ids.otherEnrollment, ids.otherStudent, ids.year, ids.sourceClass],
   );
-  await query("update public.students set status='INACTIVE' where id=$1", [
-    ids.otherStudent,
-  ]);
   await query(
     "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status,is_promotion_term) values($1,$2,'Promotion Term',1,'2046-01-01','2046-06-30','MARKS_ENTRY',true),($3,$2,'Non Promotion Term',2,'2046-07-01','2046-12-31','MARKS_ENTRY',false)",
     [ids.term, ids.year, ids.otherTerm],
