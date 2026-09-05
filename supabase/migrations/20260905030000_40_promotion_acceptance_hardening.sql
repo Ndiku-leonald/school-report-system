@@ -937,9 +937,13 @@ begin
   if decision.final_decision is null then
     raise exception 'PROMOTION_DECISION_CONFIRMATION_REQUIRED' using errcode = '23514';
   end if;
+  -- Resolve the retry by its immutable source decision key before any live
+  -- source-enrollment validation. The decision was already school-scoped and
+  -- locked above, so this remains tenant-safe while allowing an exact retry
+  -- after the first application closed the source enrollment.
   select source_progression.* into progression
   from public.student_progressions source_progression
-  where source_progression.source_decision_id = decision.id;
+  where source_progression.source_decision_id = target_decision_id;
   if found then
     supplied_conflict := progression.target_academic_year_id is distinct from target_academic_year_id
       or progression.target_class_section_id is distinct from target_class_section_id;

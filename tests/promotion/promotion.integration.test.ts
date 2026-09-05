@@ -1072,6 +1072,11 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
       "update public.term_attendance set days_open=0,days_present=0,days_absent=0 where term_id=$1 and enrollment_id=$2",
       [ids.term, enrollment],
     );
+    const diagnostics = await query(
+      "select internal.analytics_run_is_current($1,$2) as current, (select count(*) from public.enrollments e join public.class_sections s on s.id=e.class_section_id join public.students st on st.id=e.student_id where e.academic_year_id=$3 and s.grade_level_id=$4 and e.status in ('ACTIVE','REPEATING') and st.status='ACTIVE') as active_population, (select count(*) from public.calculated_student_results where calculation_run_id=$1) as result_population, (select count(*) from public.enrollments e join public.class_sections s on s.id=e.class_section_id join public.students st on st.id=e.student_id where e.academic_year_id=$3 and s.grade_level_id=$4 and e.status in ('ACTIVE','REPEATING') and st.status='ACTIVE' and not exists (select 1 from public.calculated_student_results r where r.calculation_run_id=$1 and r.enrollment_id=e.id)) as missing_results",
+      [runId, ids.school, ids.year, ids.grade],
+    );
+    console.log("promotion regeneration diagnostics", diagnostics.rows[0]);
     const result = await rpc(
       adminClient,
       "generate_promotion_recommendations",
@@ -1160,7 +1165,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     expect(confirmation.error).toBeNull();
     await query(
       "update public.term_attendance set days_present=80,days_absent=20 where term_id=$1 and enrollment_id=$2",
-      [ids.term, enrollments[22]],
+      [ids.term, decisions[22].enrollment_id],
     );
     const result = await rpc(adminClient, "list_promotion_recommendations", {
       target_term_id: ids.term,
