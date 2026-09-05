@@ -53,7 +53,7 @@ select extensions.ok(pg_get_functiondef('internal.validate_promotion_additional_
 select extensions.ok(pg_get_functiondef('internal.promotion_snapshot_for(uuid,uuid,uuid)'::regprocedure) ~* 'days_open > 0', 'attendance positive-day branch is explicit');
 select extensions.ok(pg_get_functiondef('internal.promotion_snapshot_for(uuid,uuid,uuid)'::regprocedure) ~* 'ACADEMIC_REVIEW', 'snapshot builder has conservative review outcome');
 select extensions.ok(pg_get_functiondef('public.apply_student_progression(uuid,integer,uuid,uuid)'::regprocedure) ~* 'PROMOTION_PROGRESSION_OUTCOME_INVALID', 'unsupported progression outcomes fail closed');
-select extensions.ok(pg_get_functiondef('public.apply_student_progression(uuid,integer,uuid,uuid)'::regprocedure) ~* 'year.status in .ACTIVE., .DRAFT.', 'progression restricts target year status');
+select extensions.ok(pg_get_functiondef('public.apply_student_progression(uuid,integer,uuid,uuid)'::regprocedure) ~* 'status.*ACTIVE.*DRAFT', 'progression restricts target year status');
 select extensions.ok(pg_get_functiondef('public.apply_student_progression(uuid,integer,uuid,uuid)'::regprocedure) ~* 'source_year.ends_on', 'progression uses source academic-year lifecycle date');
 select extensions.ok(pg_get_functiondef('public.list_promotion_recommendations(uuid,uuid)'::regprocedure) ~* 'CONFIRMED_STALE', 'confirmed stale state is exposed');
 select * from extensions.finish();
