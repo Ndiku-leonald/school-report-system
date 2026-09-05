@@ -919,6 +919,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     console.log("promotion retry diagnostics", {
       decision: decisions[1],
       progression: retryDiagnostics.rows[0],
+      requested: { targetYear: ids.nextYear, targetClass: ids.targetClass },
     });
     const result = await rpc(adminClient, "apply_student_progression", {
       target_decision_id: decisions[1].decision_id,
@@ -1506,8 +1507,17 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     it("C09. two last-seat applications cannot exceed capacity", async () => {
       await confirm(17);
       await confirm(18);
-      await query("update public.class_sections set capacity=1 where id=$1", [
+      const existingTargetPopulation = Number(
+        (
+          await query(
+            "select count(*) from public.enrollments where class_section_id=$1 and status in ('ACTIVE','REPEATING')",
+            [ids.targetClass],
+          )
+        ).rows[0].count,
+      );
+      await query("update public.class_sections set capacity=$2 where id=$1", [
         ids.targetClass,
+        existingTargetPopulation + 1,
       ]);
       const [left, right] = await clients();
       await race(
@@ -1533,7 +1543,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
             )
           ).rows[0].count,
         ),
-      ).toBeLessThanOrEqual(1);
+      ).toBeLessThanOrEqual(existingTargetPopulation + 1);
       await query("update public.class_sections set capacity=200 where id=$1", [
         ids.targetClass,
       ]);
