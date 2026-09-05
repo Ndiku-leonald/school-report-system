@@ -393,7 +393,7 @@ begin
     raise exception 'SYSTEM_RECOMMENDATION_OUTCOME_INVALID' using errcode = '22023';
   end if;
   if new.was_overridden and (new.reason is null or length(btrim(new.reason)) < 3 or length(btrim(new.reason)) > 2000) then
-    raise exception 'PROMOTION_OVERRIDE_REASON_REQUIRED' using errcode = '22023';
+    raise exception 'PROMOTION_OVERRIDE_REASON_REQUIRED' using errcode = '23514';
   end if;
   return new;
 end; $$;
