@@ -105,3 +105,44 @@ Remote feature branch SHA:
 The handoff documentation update is committed separately. The final commit
 and remote synchronization are recorded by the commit that contains this
 section.
+
+## Stage 17 final handoff verification
+
+Verification time immediately before this final documentation append:
+
+- Local: 2026-09-05T04:38:45.1319458+03:00
+- UTC: 2026-09-05T01:38:45.1329456Z
+
+Branch:
+
+- `feature/stage-17-promotion-progression`
+
+Local HEAD before this append:
+
+- `085cb33e28c4f342d2624b85c5fa7cae5d3a45ac`
+
+HEAD tree before this append:
+
+- `f137394d8a64d6ce0de739d6b539e4f820062587`
+
+Remote feature branch SHA before this append:
+
+- `085cb33e28c4f342d2624b85c5fa7cae5d3a45ac`
+
+`git status --porcelain=v1` before this append:
+
+```text
+<empty>
+```
+
+`git status --short --branch` before this append:
+
+```text
+## feature/stage-17-promotion-progression...origin/feature/stage-17-promotion-progression
+```
+
+Hosted GitHub Actions run `33935032861` passed both `validate` and `database`
+for the implementation HEAD, including database rebuild/lint/tests, promotion
+behavioral pgTAP, integration, concurrency, generated database types, and
+browser acceptance. The final documentation commit and its hosted checks are
+the remaining handoff record.
