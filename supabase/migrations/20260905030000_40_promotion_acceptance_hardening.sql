@@ -9,6 +9,29 @@ alter table public.student_progressions
   add constraint student_progression_application_snapshot_object
   check (application_snapshot is null or jsonb_typeof(application_snapshot) = 'object');
 
+-- Migration 13 temporarily required an array-shaped value. Preserve any
+-- existing array entries while moving them to the explicit Stage 17 object
+-- envelope before tightening the table contract.
+update public.promotion_rules
+set required_subject_rules = jsonb_build_object(
+  'schema_version', 1, 'subjects', required_subject_rules)
+where jsonb_typeof(required_subject_rules) = 'array';
+
+alter table public.promotion_rules
+  drop constraint promotion_rules_required_subject_rules_check,
+  add constraint promotion_rules_required_subject_rules_check
+  check (
+    required_subject_rules = '{}'::jsonb
+    or (
+      jsonb_typeof(required_subject_rules) = 'object'
+      and required_subject_rules ?& array['schema_version', 'subjects']
+      and required_subject_rules - array['schema_version', 'subjects'] = '{}'::jsonb
+      and jsonb_typeof(required_subject_rules->'schema_version') = 'number'
+      and required_subject_rules->>'schema_version' = '1'
+      and jsonb_typeof(required_subject_rules->'subjects') = 'array'
+    )
+  );
+
 create index if not exists student_progressions_decision_school_idx
   on public.student_progressions (source_decision_id, school_id);
 
