@@ -152,6 +152,7 @@ async function setup() {
       ids.assignment,
     ],
   );
+  await sql("begin");
   await sql(
     "select set_config('app.marks_workflow_transition','allowed',true)",
   );
@@ -159,6 +160,7 @@ async function setup() {
     "update public.mark_sheets set workflow_status='LOCKED',locked_by=$2,locked_at=now() where id=$1",
     [ids.sheet, membership],
   );
+  await sql("commit");
   await sql(
     "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,$3,$4,'Browser Scale',1,false,'2049-01-02',$5)",
     [ids.scale, ids.school, ids.year, ids.grade, membership],
