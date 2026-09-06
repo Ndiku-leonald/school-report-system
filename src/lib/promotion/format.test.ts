@@ -9,9 +9,9 @@ import {
 describe("promotion presentation helpers", () => {
   it("keeps recommended and confirmed repetition distinct", () => {
     expect(promotionOutcomeLabel("REPEAT_RECOMMENDED")).toBe(
-      "REPEAT RECOMMENDED",
+      "Repeat recommended",
     );
-    expect(promotionOutcomeLabel("REPEAT_CONFIRMED")).toBe("REPEAT CONFIRMED");
+    expect(promotionOutcomeLabel("REPEAT_CONFIRMED")).toBe("Repeat confirmed");
   });
 
   it("uses explicit non-color evidence labels", () => {

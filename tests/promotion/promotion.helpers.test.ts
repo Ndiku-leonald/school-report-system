@@ -53,10 +53,10 @@ describe("promotion rule and evidence helpers", () => {
 
   it("formats recommendations and evidence states safely", () => {
     expect(promotionOutcomeLabel("REPEAT_RECOMMENDED")).toBe(
-      "REPEAT RECOMMENDED",
+      "Repeat recommended",
     );
     expect(promotionOutcomeLabel("REPEAT_CONFIRMED")).not.toBe(
-      "REPEAT RECOMMENDED",
+      "Repeat recommended",
     );
     expect(criterionStateLabel("MET")).toBe("Met");
     expect(criterionStateLabel("NOT_MET")).toBe("Not met");

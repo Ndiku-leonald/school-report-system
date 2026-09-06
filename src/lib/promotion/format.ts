@@ -2,7 +2,15 @@ import type { PromotionOutcome } from "./types";
 
 export function promotionOutcomeLabel(outcome: PromotionOutcome | null) {
   if (!outcome) return "Not confirmed";
-  return outcome.replaceAll("_", " ");
+  const labels: Record<PromotionOutcome, string> = {
+    PROMOTED: "Promoted",
+    PROMOTED_WITH_SUPPORT: "Promoted with support",
+    ACADEMIC_REVIEW: "Academic review",
+    REPEAT_RECOMMENDED: "Repeat recommended",
+    REPEAT_CONFIRMED: "Repeat confirmed",
+    COMPLETED: "Completed",
+  };
+  return labels[outcome];
 }
 
 export function criterionStateLabel(state: unknown) {
