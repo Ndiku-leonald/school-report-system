@@ -209,7 +209,7 @@ async function setup() {
     ],
   );
   await sql(
-    "insert into public.result_calculation_sources(calculation_run_id,mark_sheet_id,class_section_id,subject_id,grade_level_subject_id,mark_sheet_version,assessment_scheme_id) values($1,$2,$3,$4,$5,1,$6)",
+    "insert into public.result_calculation_sources(calculation_run_id,mark_sheet_id,class_section_id,subject_id,grade_level_subject_id,mark_sheet_version,assessment_scheme_id,curriculum_is_required,curriculum_contributes_to_aggregate,curriculum_sort_order) values($1,$2,$3,$4,$5,1,$6,true,true,1)",
     [runId, ids.sheet, ids.sourceClass, ids.subject, ids.mapping, ids.scheme],
   );
   await sql(
