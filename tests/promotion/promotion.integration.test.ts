@@ -1141,10 +1141,17 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     expect(result.rows[0].valid).toBe(false);
   });
   it("62. preserves the marks-workflow freeze for roster mutations", async () => {
+    const frozenEnrollment = (
+      await query(
+        "select enrollment.id from public.enrollments enrollment where enrollment.academic_year_id=$1 and enrollment.class_section_id=$2 and enrollment.status='ACTIVE' order by enrollment.id limit 1",
+        [ids.year, ids.sourceClass],
+      )
+    ).rows[0];
+    expect(frozenEnrollment?.id).toBeTruthy();
     await expect(
       query(
         "update public.enrollments set status='WITHDRAWN',exited_on='2046-12-31' where id=$1",
-        [enrollments[72]],
+        [frozenEnrollment.id],
       ),
     ).rejects.toThrow(/ENROLLMENT_MARKS_WORKFLOW_FROZEN/);
   });
