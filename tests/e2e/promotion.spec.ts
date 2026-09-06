@@ -357,7 +357,10 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
   const scenarios: Array<[string, (page: Page) => Promise<void>]> = [
     [
       "02. authorized user opens promotion",
-      async (page) => expect(page).toHaveURL(/dashboard\/promotion/),
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page).toHaveURL(/dashboard\/promotion/);
+      },
     ],
     [
       "03. promotion heading is visible",
