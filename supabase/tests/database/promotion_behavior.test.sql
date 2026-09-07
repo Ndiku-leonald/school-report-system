@@ -70,8 +70,8 @@ insert into public.promotion_rules(id,school_id,academic_year_id,grade_level_id,
 set local role authenticated;
 select set_config('request.jwt.claims','{"sub":"e1100000-0000-4000-8000-000000000001","role":"authenticated","session_id":"e2800000-0000-4000-8000-000000000001"}',true);
 select extensions.lives_ok($$select public.set_my_active_membership('e1200000-0000-4000-8000-000000000001')$$,'B01. admin selects membership');
-select extensions.is((select count(*) from public.list_promotion_scopes()),1::bigint,'B02. scope is readable');
-select extensions.is((select learner_count from public.list_promotion_scopes()),1::bigint,'B03. inactive learner is excluded');
+select extensions.is((select count(*) from public.list_promotion_scopes() where term_id='e1500000-0000-4000-8000-000000000001' and grade_level_id='e1600000-0000-4000-8000-000000000001'),1::bigint,'B02. scope is readable');
+select extensions.is((select learner_count from public.list_promotion_scopes() where term_id='e1500000-0000-4000-8000-000000000001' and grade_level_id='e1600000-0000-4000-8000-000000000001'),1::bigint,'B03. inactive learner is excluded');
 select extensions.lives_ok($$select * from public.generate_promotion_recommendations('e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001')$$,'B04. generation executes');
 select extensions.is((select count(*) from public.promotion_recommendation_snapshots),1::bigint,'B05. snapshot is persisted');
 select extensions.is((select count(*) from public.promotion_decisions),1::bigint,'B06. decision is persisted');
@@ -108,7 +108,7 @@ select extensions.lives_ok($$select * from public.apply_student_progression((sel
 select extensions.is((select count(*) from public.student_progressions),1::bigint,'B37. exact retry is idempotent');
 select extensions.throws_ok($$select * from public.apply_student_progression((select id from public.promotion_decisions where superseded_by is null),2,'e1400000-0000-4000-8000-000000000002','e1700000-0000-4000-8000-000000000003')$$,'PT409','PROMOTION_PROGRESSION_RETRY_CONFLICT','B38. conflicting retry is rejected');
 select extensions.is((select count(*) from public.list_promotion_decision_history('e1d00000-0000-4000-8000-000000000001')),2::bigint,'B39. history includes both versions');
-select extensions.is((select learner_count from public.list_promotion_scopes()),0::bigint,'B40. completed source leaves scope');
+select extensions.is((select learner_count from public.list_promotion_scopes() where term_id='e1500000-0000-4000-8000-000000000001' and grade_level_id='e1600000-0000-4000-8000-000000000001'),0::bigint,'B40. completed source leaves scope');
 
 select set_config('request.jwt.claims','{"sub":"e1100000-0000-4000-8000-000000000002","role":"authenticated","session_id":"e2800000-0000-4000-8000-000000000002"}',true);
 select extensions.lives_ok($$select public.set_my_active_membership('e1200000-0000-4000-8000-000000000002')$$,'B41. registrar selects membership');
