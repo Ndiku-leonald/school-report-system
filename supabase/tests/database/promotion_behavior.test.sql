@@ -41,8 +41,9 @@ insert into public.class_sections(id,academic_year_id,grade_level_id,name,class_
  ('e1700000-0000-4000-8000-000000000003','e1400000-0000-4000-8000-000000000002','e1600000-0000-4000-8000-000000000003','Behaviour Final','PBT7-A',10);
 insert into public.subjects(id,school_id,code,name,sort_order,is_core) values ('e1800000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001','PBT-SUB','Behaviour Subject',1,true);
 insert into public.grade_level_subjects(id,grade_level_id,subject_id,is_required,contributes_to_aggregate,sort_order) values ('e1900000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001','e1800000-0000-4000-8000-000000000001',true,true,1);
-insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values ('e1a00000-0000-4000-8000-000000000001','e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001','e1800000-0000-4000-8000-000000000001','Behaviour Scheme','ACTIVE','2046-01-01','e1200000-0000-4000-8000-000000000001');
+insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values ('e1a00000-0000-4000-8000-000000000001','e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001','e1800000-0000-4000-8000-000000000001','Behaviour Scheme','DRAFT','2046-01-01','e1200000-0000-4000-8000-000000000001');
 insert into public.assessment_components(id,assessment_scheme_id,name,component_code,maximum_score,weight_percentage,sort_order) values ('e1b00000-0000-4000-8000-000000000001','e1a00000-0000-4000-8000-000000000001','Exam','PBT-EXAM',100,100,1);
+update public.assessment_schemes set status='ACTIVE' where id='e1a00000-0000-4000-8000-000000000001';
 insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date,status) values
  ('e1c00000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001','PBT-001','Behaviour','Learner','2046-01-02','ACTIVE'),
  ('e1c00000-0000-4000-8000-000000000002','e1000000-0000-4000-8000-000000000001','PBT-002','Inactive','Learner','2046-01-02','INACTIVE');
