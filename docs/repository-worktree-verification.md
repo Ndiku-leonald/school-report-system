@@ -243,3 +243,52 @@ The correction is restricted to fixture-backed database assertions,
 independent lock-observation race support, role/browser acceptance coverage,
 test configuration, and this verification record. Stage 17 production SQL and
 application behavior remain frozen.
+
+## Stage 17 final acceptance closure follow-up
+
+Point-in-time verification immediately before this final documentation commit:
+
+- Local: 2026-09-08T02:14:01.6525526+03:00
+- UTC: 2026-09-07T23:14:01.6530677Z
+
+Branch:
+
+- `feature/stage-17-promotion-progression`
+
+Implementation HEAD before this append:
+
+- `f15f6e8df8093062d38dda21df6e0416b0dd8011`
+
+Implementation tree before this append:
+
+- `117d9fcb49aa16ef7c20e7c57e1195505fdcdfa2`
+
+Remote feature branch SHA before this append:
+
+- `f15f6e8df8093062d38dda21df6e0416b0dd8011`
+
+`git status --porcelain=v1` before this append:
+
+```text
+<empty>
+```
+
+`git status --short --branch` before this append:
+
+```text
+## feature/stage-17-promotion-progression...origin/feature/stage-17-promotion-progression
+```
+
+Hosted GitHub Actions Quality run `34167402960` passed for implementation HEAD
+`f15f6e8df8093062d38dda21df6e0416b0dd8011`, including validation, the complete
+database rebuild/lint/pgTAP/integration/concurrency/generated-type matrix, and
+all hosted browser acceptance. The final documentation commit is followed by
+one fresh hosted Quality run.
+
+Acceptance counts recorded in PR #15 are: 56 structural promotion pgTAP
+assertions, 50 fixture-backed behavioral pgTAP assertions, 83 normal promotion
+database integration scenarios, 12 dedicated deterministic concurrency cases,
+and 71 promotion browser scenarios. Migration 39 and Migration 40 remain
+byte-for-byte frozen at their recorded SHA-256 values; Migration 41 is absent.
+No production Stage 17 SQL or application paths were changed by this closure,
+and Stage 18 remains out of scope.
