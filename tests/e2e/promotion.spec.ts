@@ -837,6 +837,7 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
       "56. confirmation selector has a visible label",
       async (page) => {
         await page.goto("/dashboard/promotion");
+        await expect(page.getByText(/Recommendation v1/)).toBeVisible();
         await expect(
           page.getByText("Final decision", { exact: true }),
         ).toBeVisible();
