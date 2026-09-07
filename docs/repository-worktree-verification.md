@@ -203,3 +203,43 @@ Hosted GitHub Actions Quality run `34101589290` passed for the documentation
 HEAD, including the complete validation, database, pgTAP, integration,
 concurrency, generated-type, and browser acceptance matrix. This final proof
 is committed separately so the branch ends with an auditable, clean handoff.
+
+## Stage 17 final acceptance closure
+
+Point-in-time verification immediately before this documentation append:
+
+- Local: 2026-09-07T22:33:09.9745580+03:00
+- UTC: 2026-09-07T19:33:09.9775677Z
+
+Branch:
+
+- `feature/stage-17-promotion-progression`
+
+Implementation HEAD before this append:
+
+- `23940c39561ba71e7429240d7f834308b135b59b`
+
+Implementation tree before this append:
+
+- `06772aae2c9cc6b0ad7fd14bd8a2c041e4495fb8`
+
+Remote feature branch SHA before this append:
+
+- `57fa057836c9c40183a39d1bc15d1ceea6025610`
+
+`git status --porcelain=v1` before this append:
+
+```text
+<empty>
+```
+
+`git status --short --branch` before this append:
+
+```text
+## feature/stage-17-promotion-progression...origin/feature/stage-17-promotion-progression [ahead 1]
+```
+
+The correction is restricted to fixture-backed database assertions,
+independent lock-observation race support, role/browser acceptance coverage,
+test configuration, and this verification record. Stage 17 production SQL and
+application behavior remain frozen.
