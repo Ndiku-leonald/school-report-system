@@ -47,9 +47,44 @@ const database = new Client({ connectionString: databaseUrl });
 let email = "";
 let schoolName = "";
 let fixtureUserId = "";
+const fixtureUserIds: string[] = [];
+const browserActors: Record<string, { email: string; membershipId: string }> =
+  {};
 
 async function sql(statement: string, values: unknown[] = []) {
   return database.query(statement, values);
+}
+
+async function provisionActor(
+  label: string,
+  role: string,
+  schoolId = ids.school,
+) {
+  const actorEmail = `promotion.browser.${label}.${nonce}@example.invalid`;
+  const created = await admin!.auth.admin.createUser({
+    email: actorEmail,
+    password,
+    email_confirm: true,
+  });
+  if (created.error) throw created.error;
+  const actorMembershipId = randomUUID();
+  fixtureUserIds.push(created.data.user.id);
+  await sql(
+    "insert into public.profiles(id,first_name,last_name) values($1,$2,'Browser')",
+    [created.data.user.id, label],
+  );
+  await sql(
+    "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,$4,'ACTIVE')",
+    [actorMembershipId, schoolId, created.data.user.id, `PB-${randomUUID()}`],
+  );
+  await sql(
+    "insert into public.staff_role_assignments(membership_id,role,granted_at) values($1,$2,now()-interval '1 day')",
+    [actorMembershipId, role],
+  );
+  browserActors[label] = {
+    email: actorEmail,
+    membershipId: actorMembershipId,
+  };
 }
 
 async function setup() {
@@ -65,6 +100,8 @@ async function setup() {
   if (created.error) throw created.error;
   fixtureUserId = created.data.user.id;
   const membership = randomUUID();
+  fixtureUserIds.push(fixtureUserId);
+  browserActors.admin = { email, membershipId: membership };
   await sql(
     "insert into public.schools(id,name,slug,school_code) values($1,$2,$3,$4)",
     [
@@ -86,6 +123,10 @@ async function setup() {
     "insert into public.staff_role_assignments(membership_id,role,granted_at) values($1,'SCHOOL_ADMIN',now()-interval '1 day')",
     [membership],
   );
+  await provisionActor("head-teacher", "HEAD_TEACHER");
+  await provisionActor("registrar", "ACADEMIC_REGISTRAR");
+  await provisionActor("class-teacher", "CLASS_TEACHER");
+  await provisionActor("subject-teacher", "SUBJECT_TEACHER");
   await sql(
     "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,'Browser Source','2049-01-01','2049-12-31','ACTIVE'),($3,$2,'Browser Next','2050-01-01','2050-12-31','DRAFT')",
     [ids.year, ids.school, ids.nextYear],
@@ -256,9 +297,9 @@ async function setup() {
   if (generated.error) throw generated.error;
 }
 
-async function login(page: Page) {
+async function login(page: Page, actor = browserActors.admin) {
   await page.goto("/staff-login");
-  await page.getByLabel("Email address").fill(email);
+  await page.getByLabel("Email address").fill(actor.email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
   await page.waitForURL((location) => location.pathname !== "/staff-login");
@@ -343,7 +384,8 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
       ids.school,
     ]);
     await sql("delete from public.schools where id=$1", [ids.school]);
-    if (fixtureUserId) await admin!.auth.admin.deleteUser(fixtureUserId);
+    for (const userId of fixtureUserIds)
+      await admin!.auth.admin.deleteUser(userId);
     await database.end();
   });
   test.beforeEach(async ({ page }, info) => {
@@ -928,5 +970,68 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
     ).toBeVisible();
     await page.getByRole("button", { name: "Apply progression" }).click();
     await expect(page.getByText(/Application fingerprint/)).toBeVisible();
+  });
+  test("67. head teacher has promotion read and mutation access", async ({
+    page,
+  }) => {
+    await login(page, browserActors["head-teacher"]);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByRole("heading", { name: "Promotion and progression" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Generate recommendations" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Confirm decision" }),
+    ).toBeVisible();
+  });
+  test("68. academic registrar can read but has no mutation controls", async ({
+    page,
+  }) => {
+    await login(page, browserActors.registrar);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByRole("heading", { name: "Promotion and progression" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Generate recommendations" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Confirm decision" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Reopen decision" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Apply progression" }),
+    ).toHaveCount(0);
+  });
+  for (const [label, title] of [
+    ["class-teacher", "class teacher"],
+    ["subject-teacher", "subject teacher"],
+  ] as const) {
+    test(`69.${label === "class-teacher" ? "1" : "2"}. ${title} cannot open promotion`, async ({
+      page,
+    }) => {
+      await login(page, browserActors[label]);
+      await page.goto("/dashboard/promotion");
+      await expect(page).toHaveURL(/forbidden|staff-login/);
+      await expect(page.getByText(/Promotion and progression/)).toHaveCount(0);
+    });
+  }
+  test("70. role switching does not reuse the admin browser session", async ({
+    page,
+  }) => {
+    await login(page, browserActors.registrar);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByRole("button", { name: "Generate recommendations" }),
+    ).toHaveCount(0);
+    await login(page, browserActors["head-teacher"]);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByRole("button", { name: "Generate recommendations" }),
+    ).toBeVisible();
   });
 });

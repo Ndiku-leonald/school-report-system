@@ -55,6 +55,9 @@ const ids = Object.fromEntries(
     "otherDecision",
     "otherStudent",
     "otherEnrollment",
+    "ordinaryTerm",
+    "otherYear",
+    "otherGrade",
   ].map((key) => [key, randomUUID()]),
 ) as Record<string, string>;
 
@@ -71,10 +74,17 @@ let schoolAdmin: Actor;
 let headTeacher: Actor;
 let registrar: Actor;
 let classTeacher: Actor;
+let superAdmin: Actor;
+let subjectTeacher: Actor;
+let multiSchool: Actor;
+let multiSchoolSecondMembershipId = "";
 let adminClient: SupabaseClient;
 let headClient: SupabaseClient;
 let registrarClient: SupabaseClient;
 let classClient: SupabaseClient;
+let superAdminClient: SupabaseClient;
+let subjectClient: SupabaseClient;
+let multiSchoolClient: SupabaseClient;
 let runId = "";
 let decisions: Array<{
   decision_id: string;
@@ -168,6 +178,33 @@ async function expectError(
   expect(result.error?.message ?? "", `${name} must reject`).toMatch(pattern);
 }
 
+async function withRolePermissions<T>(
+  role: string,
+  permissions: string[],
+  callback: () => Promise<T>,
+) {
+  const original = await query(
+    "select permission::text from public.role_permissions where role=$1 order by permission",
+    [role],
+  );
+  try {
+    await query("delete from public.role_permissions where role=$1", [role]);
+    for (const permission of permissions)
+      await query(
+        "insert into public.role_permissions(role,permission) values($1,$2)",
+        [role, permission],
+      );
+    return await callback();
+  } finally {
+    await query("delete from public.role_permissions where role=$1", [role]);
+    for (const row of original.rows)
+      await query(
+        "insert into public.role_permissions(role,permission) values($1,$2)",
+        [role, row.permission],
+      );
+  }
+}
+
 async function setup() {
   await db.connect();
   const fixtureCode = `PROMO-${Date.now()}`;
@@ -186,12 +223,41 @@ async function setup() {
   headTeacher = await actor("head-teacher", "HEAD_TEACHER");
   registrar = await actor("registrar", "ACADEMIC_REGISTRAR");
   classTeacher = await actor("class-teacher", "CLASS_TEACHER");
+  superAdmin = await actor("super-admin", "SUPER_ADMIN");
+  subjectTeacher = await actor("subject-teacher", "SUBJECT_TEACHER");
+  multiSchool = await actor("multi-school", "HEAD_TEACHER");
+  multiSchoolSecondMembershipId = randomUUID();
+  await query(
+    "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,$4,'ACTIVE')",
+    [
+      multiSchoolSecondMembershipId,
+      ids.otherSchool,
+      multiSchool.userId,
+      `PR-${randomUUID()}`,
+    ],
+  );
+  await query(
+    "insert into public.staff_role_assignments(id,membership_id,role,granted_at) values($1,$2,'HEAD_TEACHER',now()-interval '1 day')",
+    [randomUUID(), multiSchoolSecondMembershipId],
+  );
   await actor("suspended", "SCHOOL_ADMIN", ids.school, "SUSPENDED");
   await actor("other-school-admin", "SCHOOL_ADMIN", ids.otherSchool);
 
   await query(
     "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,'Promotion Source','2046-01-01','2046-12-31','ACTIVE'),($3,$2,'Promotion Next','2047-01-01','2047-12-31','DRAFT'),($4,$2,'Promotion Closed','2048-01-01','2048-12-31','CLOSED')",
     [ids.year, ids.school, ids.nextYear, ids.closedYear],
+  );
+  await query(
+    "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,'Other School Year','2046-01-01','2046-12-31','ACTIVE')",
+    [ids.otherYear, ids.otherSchool],
+  );
+  await query(
+    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status,is_promotion_term) values($1,$2,'Other School Promotion Term',1,'2046-01-01','2046-06-30','LOCKED',true)",
+    [ids.otherTerm, ids.otherYear],
+  );
+  await query(
+    "insert into public.grade_levels(id,school_id,code,name,sort_order,is_final_grade) values($1,$2,'OS1','Other School Grade',1,false)",
+    [ids.otherGrade, ids.otherSchool],
   );
   await query(
     "insert into public.grade_levels(id,school_id,code,name,sort_order,is_final_grade) values($1,$2,'P1','Promotion Source Grade',1,false),($3,$2,'P2','Promotion Target Grade',2,false),($4,$2,'P7','Promotion Final Grade',7,true)",
@@ -249,7 +315,7 @@ async function setup() {
   );
   await query(
     "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status,is_promotion_term) values($1,$2,'Promotion Term',1,'2046-01-01','2046-06-30','MARKS_ENTRY',true),($3,$2,'Non Promotion Term',2,'2046-07-01','2046-12-31','MARKS_ENTRY',false)",
-    [ids.term, ids.year, ids.otherTerm],
+    [ids.term, ids.year, ids.ordinaryTerm],
   );
 
   await query(
@@ -365,6 +431,9 @@ async function setup() {
   headClient = await signIn(headTeacher);
   registrarClient = await signIn(registrar);
   classClient = await signIn(classTeacher);
+  superAdminClient = await signIn(superAdmin);
+  subjectClient = await signIn(subjectTeacher);
+  multiSchoolClient = await signIn(multiSchool);
   const calculated = await adminClient.rpc("calculate_grade_results", {
     target_term_id: ids.term,
     target_grade_level_id: ids.grade,
@@ -700,6 +769,116 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     const result = await adminClient.from("student_progressions").select("id");
     expect(result.error).toBeTruthy();
   });
+  it("20a. permits a real SUPER_ADMIN to read and generate", async () => {
+    const read = await rpc(superAdminClient, "list_promotion_recommendations", {
+      target_term_id: ids.term,
+      target_grade_level_id: ids.grade,
+    });
+    const generated = await rpc(
+      superAdminClient,
+      "generate_promotion_recommendations",
+      { target_term_id: ids.term, target_grade_level_id: ids.grade },
+    );
+    expect(read.error).toBeNull();
+    expect(generated.error).toBeNull();
+  });
+  it("20b. permits SUPER_ADMIN confirmation through its selected membership", async () => {
+    const result = await rpc(superAdminClient, "confirm_promotion_decision", {
+      target_decision_id: decisions[23].decision_id,
+      expected_decision_version: decisions[23].decision_version,
+      target_final_decision: "PROMOTED",
+    });
+    expect(result.error).toBeNull();
+  });
+  it("20c. denies a real SUBJECT_TEACHER every promotion boundary", async () => {
+    await expectError(
+      subjectClient,
+      "list_promotion_recommendations",
+      { target_term_id: ids.term, target_grade_level_id: ids.grade },
+      /PROMOTION_FORBIDDEN|permission/i,
+    );
+    await expectError(
+      subjectClient,
+      "generate_promotion_recommendations",
+      { target_term_id: ids.term, target_grade_level_id: ids.grade },
+      /PROMOTION_CONFIRM_FORBIDDEN|permission/i,
+    );
+    await expectError(
+      subjectClient,
+      "confirm_promotion_decision",
+      {
+        target_decision_id: decisions[24].decision_id,
+        expected_decision_version: 1,
+        target_final_decision: "PROMOTED",
+      },
+      /PROMOTION_CONFIRM_FORBIDDEN|permission/i,
+    );
+    await expectError(
+      subjectClient,
+      "apply_student_progression",
+      {
+        target_decision_id: decisions[24].decision_id,
+        expected_decision_version: 1,
+        target_academic_year_id: ids.nextYear,
+        target_class_section_id: ids.targetClass,
+      },
+      /PROMOTION_CONFIRM_FORBIDDEN|permission/i,
+    );
+  });
+  it("20d. multi-school actor sees only the selected membership school", async () => {
+    const schoolA = await rpc(
+      multiSchoolClient,
+      "list_promotion_recommendations",
+      { target_term_id: ids.term, target_grade_level_id: ids.grade },
+    );
+    expect(schoolA.error).toBeNull();
+    expect((schoolA.data as unknown[]).length).toBeGreaterThan(0);
+    const selected = await rpc(multiSchoolClient, "set_my_active_membership", {
+      target_membership_id: multiSchoolSecondMembershipId,
+    });
+    expect(selected.error).toBeNull();
+    const schoolB = await rpc(
+      multiSchoolClient,
+      "list_promotion_recommendations",
+      { target_term_id: ids.otherTerm, target_grade_level_id: ids.otherGrade },
+    );
+    const leakedA = await rpc(
+      multiSchoolClient,
+      "list_promotion_recommendations",
+      { target_term_id: ids.term, target_grade_level_id: ids.grade },
+    );
+    expect(schoolB.error).toBeNull();
+    expect((schoolB.data as unknown[]).length).toBe(0);
+    expect(leakedA.error).toBeNull();
+    expect((leakedA.data as unknown[]).length).toBe(0);
+  });
+  it("20e. ANALYTICS_VIEW cannot substitute for PROMOTION_VIEW", async () =>
+    withRolePermissions("HEAD_TEACHER", ["ANALYTICS_VIEW"], async () =>
+      expectError(
+        await signIn(headTeacher),
+        "list_promotion_scopes",
+        {},
+        /PROMOTION_FORBIDDEN|permission/i,
+      ),
+    ));
+  it("20f. REPORTS_VIEW_ALL cannot substitute for PROMOTION_VIEW", async () =>
+    withRolePermissions("HEAD_TEACHER", ["REPORTS_VIEW_ALL"], async () =>
+      expectError(
+        await signIn(headTeacher),
+        "list_promotion_scopes",
+        {},
+        /PROMOTION_FORBIDDEN|permission/i,
+      ),
+    ));
+  it("20g. MARKS_VIEW_ALL cannot substitute for PROMOTION_VIEW", async () =>
+    withRolePermissions("HEAD_TEACHER", ["MARKS_VIEW_ALL"], async () =>
+      expectError(
+        await signIn(headTeacher),
+        "list_promotion_scopes",
+        {},
+        /PROMOTION_FORBIDDEN|permission/i,
+      ),
+    ));
 
   it("21. rejects an incorrect confirmation version", async () =>
     expectError(
@@ -781,6 +960,29 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
       },
       /FORBIDDEN|permission/i,
     ));
+  it("28a. registrar cannot reopen or progress", async () => {
+    await expectError(
+      registrarClient,
+      "reopen_promotion_decision",
+      {
+        target_decision_id: decisions[1].decision_id,
+        expected_decision_version: 1,
+        reopen_reason: "Registrar attempt",
+      },
+      /FORBIDDEN|permission/i,
+    );
+    await expectError(
+      registrarClient,
+      "apply_student_progression",
+      {
+        target_decision_id: decisions[1].decision_id,
+        expected_decision_version: 1,
+        target_academic_year_id: ids.nextYear,
+        target_class_section_id: ids.targetClass,
+      },
+      /FORBIDDEN|permission/i,
+    );
+  });
   it("29. confirms academic review as a terminal human outcome", async () => {
     const result = await rpc(adminClient, "confirm_promotion_decision", {
       target_decision_id: decisions[6].decision_id,

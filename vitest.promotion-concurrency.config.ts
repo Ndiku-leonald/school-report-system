@@ -8,7 +8,6 @@ export default defineConfig({
     ...baseConfig.test,
     environment: "node",
     include: ["tests/promotion/promotion.concurrency.integration.test.ts"],
-    testNamePattern: /C\d{2}\./,
     fileParallelism: false,
     maxConcurrency: 1,
   },

@@ -8,6 +8,7 @@ export default defineConfig({
     ...baseConfig.test,
     environment: "node",
     include: ["tests/promotion/promotion.integration.test.ts"],
+    testNamePattern: /^(?!.*C\d{2}\.)/,
     fileParallelism: false,
   },
 });
