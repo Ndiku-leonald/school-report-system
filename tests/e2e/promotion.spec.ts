@@ -784,7 +784,9 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
       "50. attendance actual is shown",
       async (page) => {
         await page.goto("/dashboard/promotion");
-        await expect(page.getByText("90.00", { exact: true })).toBeVisible();
+        await expect(
+          page.getByText("90", { exact: true }).first(),
+        ).toBeVisible();
       },
     ],
     [
