@@ -175,3 +175,31 @@ HEAD, including validation, database rebuild/lint/tests, promotion behavioral
 pgTAP, promotion integration and concurrency coverage, generated database
 types, and all hosted browser acceptance. The documentation commit containing
 this proof is followed by one final hosted Quality verification.
+
+## Stage 17 final hosted verification
+
+Verification time immediately before this final documentation append:
+
+- Local: 2026-09-07T12:08:36.0522438+03:00
+- UTC: 2026-09-07T09:08:36.0522438Z
+
+Branch:
+
+- `feature/stage-17-promotion-progression`
+
+Final documentation HEAD before this append:
+
+- `9d41d513e5d6992b5d680059bd6e12551e274524`
+
+HEAD tree before this append:
+
+- `5a1ef5c7feda3ebcc1b0cc6a9b8bf0b4c5e3f640`
+
+Remote feature branch SHA before this append:
+
+- `9d41d513e5d6992b5d680059bd6e12551e274524`
+
+Hosted GitHub Actions Quality run `34101589290` passed for the documentation
+HEAD, including the complete validation, database, pgTAP, integration,
+concurrency, generated-type, and browser acceptance matrix. This final proof
+is committed separately so the branch ends with an auditable, clean handoff.
