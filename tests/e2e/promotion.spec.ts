@@ -298,12 +298,11 @@ async function setup() {
 }
 
 async function login(page: Page, actor = browserActors.admin) {
-  await page.goto("/staff-login");
   const signOut = page.getByRole("button", { name: "Sign out" });
   if (await signOut.count()) {
     await signOut.click();
     await page.waitForURL(/\/staff-login/);
-  }
+  } else await page.goto("/staff-login");
   await page.getByLabel("Email address").fill(actor.email);
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
