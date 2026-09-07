@@ -35,6 +35,7 @@ insert into public.grade_levels(id,school_id,code,name,sort_order,is_final_grade
  ('e1600000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001','PBT1','Behaviour Source Grade',1,false),
  ('e1600000-0000-4000-8000-000000000002','e1000000-0000-4000-8000-000000000001','PBT2','Behaviour Target Grade',2,false),
  ('e1600000-0000-4000-8000-000000000003','e1000000-0000-4000-8000-000000000001','PBT7','Behaviour Final Grade',7,true);
+update public.grade_levels set is_active=true where school_id='e1000000-0000-4000-8000-000000000001';
 insert into public.class_sections(id,academic_year_id,grade_level_id,name,class_code,capacity) values
  ('e1700000-0000-4000-8000-000000000001','e1400000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001','Behaviour Source','PBT1-A',10),
  ('e1700000-0000-4000-8000-000000000002','e1400000-0000-4000-8000-000000000002','e1600000-0000-4000-8000-000000000002','Behaviour Target','PBT2-A',10),
@@ -118,7 +119,7 @@ select set_config('request.jwt.claims','{"sub":"e1100000-0000-4000-8000-00000000
 select extensions.lives_ok($$select public.set_my_active_membership('e1200000-0000-4000-8000-000000000002')$$,'B41. registrar selects membership');
 select extensions.throws_ok($$select * from public.generate_promotion_recommendations('e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001')$$,'42501','PROMOTION_CONFIRM_FORBIDDEN','B42. registrar cannot generate');
 select extensions.throws_ok($$select * from public.confirm_promotion_decision('00000000-0000-0000-0000-000000000001',1,'PROMOTED')$$,'42501','PROMOTION_CONFIRM_FORBIDDEN','B43. registrar cannot confirm');
-select extensions.lives_ok($$select public.set_my_active_membership(null)$$,'B44. clearing membership does not leak authority');
+select extensions.lives_ok($$select public.clear_my_active_membership()$$,'B44. clearing membership does not leak authority');
 select extensions.throws_ok($$select * from public.list_promotion_scopes()$$,'42501','PROMOTION_FORBIDDEN','B45. no selected membership cannot read');
 
 select set_config('request.jwt.claims','{"sub":"e1100000-0000-4000-8000-000000000003","role":"authenticated","session_id":"e2800000-0000-4000-8000-000000000003"}',true);
