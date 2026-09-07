@@ -1092,7 +1092,7 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
     expectError(
       adminClient,
       "generate_promotion_recommendations",
-      { target_term_id: ids.otherTerm, target_grade_level_id: ids.grade },
+      { target_term_id: ids.ordinaryTerm, target_grade_level_id: ids.grade },
       /TERM_REQUIRED/i,
     ));
   it("40. keeps generation independent from calculation", async () => {
