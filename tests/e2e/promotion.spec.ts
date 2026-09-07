@@ -496,8 +496,10 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
       "19. criterion table is keyboard reachable",
       async (page) => {
         await page.goto("/dashboard/promotion");
-        await page.getByLabel("Academic term").focus();
-        await expect(page.getByLabel("Academic term")).toBeFocused();
+        await expect(page.getByText(/Recommendation v1/)).toBeVisible();
+        const term = page.getByLabel("Academic term");
+        await term.focus();
+        await expect(term).toBeFocused();
       },
     ],
     [
