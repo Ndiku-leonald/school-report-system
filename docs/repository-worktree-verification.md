@@ -146,3 +146,32 @@ for the implementation HEAD, including database rebuild/lint/tests, promotion
 behavioral pgTAP, integration, concurrency, generated database types, and
 browser acceptance. The final documentation commit and its hosted checks are
 the remaining handoff record.
+
+## Stage 17 acceptance-hardening verification
+
+Verification time immediately before this documentation append:
+
+- Local: 2026-09-07T11:37:04.8891119+03:00
+- UTC: 2026-09-07T08:37:04.8891119Z
+
+Branch:
+
+- `feature/stage-17-promotion-progression`
+
+Implementation HEAD:
+
+- `8010f0bb22613ac47715d968b0ef8d51affc5b50`
+
+Implementation tree:
+
+- `462dbbaf8bedb32132551f3da5d25404bfaa4fcb`
+
+Remote feature branch SHA before this append:
+
+- `8010f0bb22613ac47715d968b0ef8d51affc5b50`
+
+Hosted GitHub Actions Quality run `34078715891` passed for the implementation
+HEAD, including validation, database rebuild/lint/tests, promotion behavioral
+pgTAP, promotion integration and concurrency coverage, generated database
+types, and all hosted browser acceptance. The documentation commit containing
+this proof is followed by one final hosted Quality verification.
