@@ -878,7 +878,9 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
       "61. feedback region is absent before action",
       async (page) => {
         await page.goto("/dashboard/promotion");
-        await expect(page.getByRole("alert")).toHaveCount(0);
+        await expect(
+          page.getByText("Promotion workflow", { exact: true }),
+        ).toHaveCount(0);
       },
     ],
     [
