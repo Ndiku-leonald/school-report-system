@@ -39,7 +39,8 @@ update public.grade_levels set is_active=true where school_id='e1000000-0000-400
 insert into public.class_sections(id,academic_year_id,grade_level_id,name,class_code,capacity) values
  ('e1700000-0000-4000-8000-000000000001','e1400000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001','Behaviour Source','PBT1-A',10),
  ('e1700000-0000-4000-8000-000000000002','e1400000-0000-4000-8000-000000000002','e1600000-0000-4000-8000-000000000002','Behaviour Target','PBT2-A',10),
- ('e1700000-0000-4000-8000-000000000003','e1400000-0000-4000-8000-000000000002','e1600000-0000-4000-8000-000000000003','Behaviour Final','PBT7-A',10);
+ ('e1700000-0000-4000-8000-000000000003','e1400000-0000-4000-8000-000000000002','e1600000-0000-4000-8000-000000000003','Behaviour Final','PBT7-A',10),
+ ('e1700000-0000-4000-8000-000000000004','e1400000-0000-4000-8000-000000000002','e1600000-0000-4000-8000-000000000001','Behaviour Repeat','PBT1-R',10);
 update public.class_sections set is_active=true where academic_year_id='e1400000-0000-4000-8000-000000000002';
 insert into public.subjects(id,school_id,code,name,sort_order,is_core) values ('e1800000-0000-4000-8000-000000000001','e1000000-0000-4000-8000-000000000001','PBT-SUB','Behaviour Subject',1,true);
 insert into public.grade_level_subjects(id,grade_level_id,subject_id,is_required,contributes_to_aggregate,sort_order) values ('e1900000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001','e1800000-0000-4000-8000-000000000001',true,true,1);
@@ -99,7 +100,7 @@ select extensions.throws_ok($$select * from public.reopen_promotion_decision((se
 select extensions.lives_ok($$select * from public.confirm_promotion_decision((select decision_id from public.list_promotion_recommendations('e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001')),2,'REPEAT_CONFIRMED','Repeat requested after review')$$,'B24. repeat confirmation executes');
 select extensions.is((select final_decision::text from public.list_promotion_recommendations('e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001')),'REPEAT_CONFIRMED','B25. repeat confirmation is human state');
 select extensions.throws_ok($$select * from public.apply_student_progression((select decision_id from public.list_promotion_recommendations('e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001')),1,'e1400000-0000-4000-8000-000000000002','e1700000-0000-4000-8000-000000000002')$$,'PT409','PROMOTION_DECISION_VERSION_CONFLICT','B26. progression version is checked');
-select extensions.lives_ok($$select * from public.apply_student_progression((select decision_id from public.list_promotion_recommendations('e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001')),2,'e1400000-0000-4000-8000-000000000002','e1700000-0000-4000-8000-000000000002')$$,'B27. progression executes');
+select extensions.lives_ok($$select * from public.apply_student_progression((select decision_id from public.list_promotion_recommendations('e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001')),2,'e1400000-0000-4000-8000-000000000002','e1700000-0000-4000-8000-000000000004')$$,'B27. progression executes');
 reset role;
 select extensions.is((select count(*) from public.student_progressions),1::bigint,'B28. one progression is persisted');
 select extensions.is((select status::text from public.enrollments where id='e1d00000-0000-4000-8000-000000000001'),'COMPLETED','B29. source enrollment closes');
@@ -110,7 +111,7 @@ select extensions.ok((select application_snapshot ? 'source_enrollment_id' from 
 select extensions.is((select length(application_checksum)::integer from public.student_progressions),64,'B34. application checksum has SHA-256 length');
 select extensions.is((select sp.application_checksum from public.student_progressions sp limit 1),encode(extensions.digest((select sp.application_snapshot::text from public.student_progressions sp limit 1),'sha256'),'hex'),'B35. application checksum matches snapshot');
 set local role authenticated;
-select extensions.lives_ok($$select * from public.apply_student_progression((select decision_id from public.list_promotion_recommendations('e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001')),2,'e1400000-0000-4000-8000-000000000002','e1700000-0000-4000-8000-000000000002')$$,'B36. exact retry succeeds');
+select extensions.lives_ok($$select * from public.apply_student_progression((select decision_id from public.list_promotion_recommendations('e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001')),2,'e1400000-0000-4000-8000-000000000002','e1700000-0000-4000-8000-000000000004')$$,'B36. exact retry succeeds');
 select extensions.is((select count(*) from public.list_promotion_recommendations('e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001') where progression_id is not null),1::bigint,'B37. exact retry is idempotent');
 select extensions.throws_ok($$select * from public.apply_student_progression((select decision_id from public.list_promotion_recommendations('e1500000-0000-4000-8000-000000000001','e1600000-0000-4000-8000-000000000001')),2,'e1400000-0000-4000-8000-000000000002','e1700000-0000-4000-8000-000000000003')$$,'PT409','PROMOTION_PROGRESSION_RETRY_CONFLICT','B38. conflicting retry is rejected');
 select extensions.is((select count(*) from public.list_promotion_decision_history('e1d00000-0000-4000-8000-000000000001')),2::bigint,'B39. history includes both versions');
