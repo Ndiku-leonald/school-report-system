@@ -204,7 +204,7 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
     expect(run.evidence.blocked).toBe(true);
   });
 
-  it("C09. double progression is idempotent after one real apply", async () => {
+  it("C09. double progression preserves one real apply", async () => {
     expect((await fixture.confirm(fixture.admin, 6)).error).toBeNull();
     const run = await fixture.holdScope(
       "c09-double-progress",
@@ -225,7 +225,13 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
         return results(left, right);
       },
     );
-    expect(run.value.filter((result) => result.error === null)).toHaveLength(2);
+    const successful = run.value.filter((result) => result.error === null);
+    const failed = run.value.filter((result) => result.error !== null);
+    expect(successful).toHaveLength(1);
+    expect(failed).toHaveLength(1);
+    expect(failed[0].error).toMatch(
+      /PROMOTION_ENROLLMENT_LIFECYCLE_INVALID|PROMOTION_ALREADY_PROGRESSED|PROMOTION_PROGRESSION_RETRY_CONFLICT/,
+    );
     const progressionCount = await fixture.db.query(
       "select count(*)::int as count from public.student_progressions where source_enrollment_id=$1",
       [fixture.ids.enrollments[6]],
@@ -258,29 +264,71 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
 
   it("C11. progression contends with a student lifecycle transition", async () => {
     expect((await fixture.confirm(fixture.admin, 9)).error).toBeNull();
-    const run = await fixture.holdScope(
-      "c11-lifecycle",
-      async (release, observe) => {
-        const progression = fixture.progress(fixture.admin, 9);
-        await observe();
-        const student = await fixture.db.query(
-          "select updated_at::text as updated_at from public.students where id=$1",
-          [fixture.ids.students[9]],
-        );
-        const withdrawal = await fixture.admin.rpc("change_student_status", {
-          target_student_id: fixture.ids.students[9],
-          expected_updated_at: student.rows[0].updated_at,
-          target_status: "WITHDRAWN",
-          effective_date: "2050-06-01",
-          reason: "Stage 17 concurrency acceptance lifecycle transition",
-        });
-        if (withdrawal.error) throw withdrawal.error;
-        await release();
-        return progression;
-      },
-    );
-    expect(run.value.error ?? "").toMatch(/LIFECYCLE|WITHDRAWN|ACTIVE/i);
-    expect(run.evidence.blocked).toBe(true);
+    // The base fixture is intentionally frozen so generation has immutable
+    // evidence. Open this one source authority window so the real lifecycle
+    // RPC can commit before the progression consumes the source row.
+    await fixture.db.query("begin");
+    try {
+      await fixture.db.query(
+        "select set_config('app.marks_workflow_transition','allowed',true)",
+      );
+      await fixture.db.query(
+        "update public.mark_sheets set workflow_status='DRAFT', locked_by=null, locked_at=null where id=$1",
+        [fixture.ids.sheet],
+      );
+      await fixture.db.query(
+        "select set_config('app.term_marks_workflow_transition','allowed',true)",
+      );
+      await fixture.db.query(
+        "update public.terms set status='MARKS_ENTRY' where id=$1",
+        [fixture.ids.term],
+      );
+      await fixture.db.query("commit");
+    } catch (error) {
+      await fixture.db.query("rollback");
+      throw error;
+    }
+
+    try {
+      const run = await fixture.holdScope(
+        "c11-lifecycle",
+        async (release, observe) => {
+          const progression = fixture.progress(fixture.admin, 9);
+          await observe();
+          const student = await fixture.db.query(
+            "select updated_at::text as updated_at from public.students where id=$1",
+            [fixture.ids.students[9]],
+          );
+          const withdrawal = await fixture.admin.rpc("change_student_status", {
+            target_student_id: fixture.ids.students[9],
+            expected_updated_at: student.rows[0].updated_at,
+            target_status: "WITHDRAWN",
+            effective_date: "2050-06-01",
+            reason: "Stage 17 concurrency acceptance lifecycle transition",
+          });
+          if (withdrawal.error) throw withdrawal.error;
+          await release();
+          return progression;
+        },
+      );
+      expect(run.value.error ?? "").toMatch(/LIFECYCLE|WITHDRAWN|ACTIVE/i);
+      expect(run.evidence.blocked).toBe(true);
+      const state = await fixture.db.query(
+        "select student.status as student_status, enrollment.status as enrollment_status from public.students student join public.enrollments enrollment on enrollment.id=$1",
+        [fixture.ids.enrollments[9]],
+      );
+      expect(state.rows[0]).toMatchObject({
+        student_status: "WITHDRAWN",
+        enrollment_status: "WITHDRAWN",
+      });
+      const progression = await fixture.db.query(
+        "select count(*)::int as count from public.student_progressions where source_enrollment_id=$1",
+        [fixture.ids.enrollments[9]],
+      );
+      expect(progression.rows[0].count).toBe(0);
+    } finally {
+      await restoreSourceAuthority(fixture);
+    }
   });
 
   it("C12. progression observes an in-flight PROMOTION_CONFIRM revocation", async () => {
