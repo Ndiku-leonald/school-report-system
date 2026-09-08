@@ -11,7 +11,7 @@ import {
 
 let fixture: RaceFixture;
 
-async function results<T>(left: Promise<T>, right: Promise<T>) {
+async function results<T>(left: PromiseLike<T>, right: PromiseLike<T>) {
   // Every caller starts both authenticated RPCs before releasing the exact
   // Stage 17 advisory/row-lock barrier and has already observed a blocked
   // PostgreSQL session. This is not a raw Promise.all-only acceptance race.
