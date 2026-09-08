@@ -293,6 +293,21 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
       const run = await fixture.holdScope(
         "c11-lifecycle",
         async (release, observe) => {
+          const enrollment = await fixture.db.query(
+            "select updated_at::text as updated_at from public.enrollments where id=$1",
+            [fixture.ids.enrollments[9]],
+          );
+          const enrollmentTransition = await fixture.admin.rpc(
+            "change_enrollment_status",
+            {
+              target_enrollment_id: fixture.ids.enrollments[9],
+              expected_updated_at: enrollment.rows[0].updated_at,
+              target_status: "WITHDRAWN",
+              exited_on: "2050-06-01",
+              reason: "Stage 17 concurrency acceptance lifecycle transition",
+            },
+          );
+          if (enrollmentTransition.error) throw enrollmentTransition.error;
           const student = await fixture.db.query(
             "select updated_at::text as updated_at from public.students where id=$1",
             [fixture.ids.students[9]],
@@ -308,7 +323,10 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
             },
           );
           const withdrawal = {
-            data: withdrawalResponse.data,
+            data: {
+              enrollment: enrollmentTransition.data,
+              student: withdrawalResponse.data,
+            },
             error: withdrawalResponse.error?.message ?? null,
           };
           const progression = fixture.progress(fixture.admin, 9);
