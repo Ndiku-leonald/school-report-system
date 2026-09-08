@@ -72,16 +72,20 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
       async (release, observe) => {
         const generation = fixture.generate(fixture.admin);
         await observe();
-        const calculated = await fixture.admin.rpc("calculate_grade_results", {
+        const calculated = fixture.admin.rpc("calculate_grade_results", {
           target_term_id: fixture.ids.term,
           target_grade_level_id: fixture.ids.grade,
           target_grading_scale_id: fixture.ids.scale,
           target_ranking_rule_id: fixture.ids.ranking,
           target_aggregate_classification_scale_id: fixture.ids.classification,
         });
-        expect(calculated.error).toBeNull();
         await release();
-        return generation;
+        const [generationResult, calculatedResult] = await Promise.all([
+          generation,
+          calculated,
+        ]);
+        expect(calculatedResult.error).toBeNull();
+        return generationResult;
       },
     );
     expect(run.value.error).toBeNull();

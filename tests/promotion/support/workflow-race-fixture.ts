@@ -514,8 +514,8 @@ export async function reopenSourceAuthority(fixture: RaceFixture, index = 0) {
       "select set_config('app.marks_workflow_transition','allowed',true)",
     );
     await fixture.db.query(
-      "update public.mark_sheets set workflow_status='RETURNED' where id=$1",
-      [fixture.ids.sheet],
+      "update public.mark_sheets set workflow_status='RETURNED', returned_by=$2, returned_at=now(), return_reason='Stage 17 source authority correction' where id=$1",
+      [fixture.ids.sheet, fixture.actors.admin.membershipId],
     );
     await fixture.db.query(
       "update public.marks set score=89 where mark_sheet_id=$1 and enrollment_id=$2",
@@ -559,7 +559,7 @@ export async function createNewRuleVersion(fixture: RaceFixture) {
   );
   const created = await fixture.admin.rpc("create_promotion_rule_version", {
     source_rule_id: fixture.ids.rule,
-    expected_updated_at: source.rows[0].updated_at,
+    expected_updated_at: new Date(source.rows[0].updated_at).toISOString(),
     rule_name: "Race Rule v2",
     rule_minimum_average: 60,
     rule_maximum_aggregate: null,
