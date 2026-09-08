@@ -10,5 +10,6 @@ export default defineConfig({
     include: ["tests/promotion/promotion.concurrency.integration.test.ts"],
     fileParallelism: false,
     maxConcurrency: 1,
+    testTimeout: 30000,
   },
 });

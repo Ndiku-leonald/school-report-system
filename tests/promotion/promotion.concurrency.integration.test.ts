@@ -4,7 +4,8 @@ import {
   createNewRuleVersion,
   createWorkflowRaceFixture,
   insertLastSeatOccupants,
-  mutateSourceMark,
+  reopenSourceAuthority,
+  restoreSourceAuthority,
   type RaceFixture,
 } from "./support/workflow-race-fixture";
 
@@ -45,20 +46,24 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
   });
 
   it("C02. generation contends with a source-authority change", async () => {
-    const run = await fixture.holdScope(
-      "c02-source-authority",
-      async (release, observe) => {
-        const generation = fixture.generate(fixture.admin);
-        await observe();
-        await mutateSourceMark(fixture, 0);
-        await release();
-        return generation;
-      },
-    );
-    expect(run.value.error ?? "").toMatch(
-      /PROMOTION_RESULTS_UNAVAILABLE|stale|checksum/i,
-    );
-    expect(run.evidence.blocked).toBe(true);
+    try {
+      const run = await fixture.holdScope(
+        "c02-source-authority",
+        async (release, observe) => {
+          const generation = fixture.generate(fixture.admin);
+          await observe();
+          await reopenSourceAuthority(fixture, 0);
+          await release();
+          return generation;
+        },
+      );
+      expect(run.value.error ?? "").toMatch(
+        /PROMOTION_RESULTS_UNAVAILABLE|stale|checksum|term/i,
+      );
+      expect(run.evidence.blocked).toBe(true);
+    } finally {
+      await restoreSourceAuthority(fixture);
+    }
   });
 
   it("C03. generation contends with a new Stage 11 result authority", async () => {

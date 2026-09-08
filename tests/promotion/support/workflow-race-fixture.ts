@@ -500,11 +500,56 @@ export async function createWorkflowRaceFixture(): Promise<RaceFixture> {
   return fixture;
 }
 
-export async function mutateSourceMark(fixture: RaceFixture, index = 0) {
-  await fixture.db.query(
-    "update public.marks set score=89 where mark_sheet_id=$1 and enrollment_id=$2",
-    [fixture.ids.sheet, fixture.ids.enrollments[index]],
-  );
+export async function reopenSourceAuthority(fixture: RaceFixture, index = 0) {
+  await fixture.db.query("begin");
+  try {
+    await fixture.db.query(
+      "select set_config('app.term_marks_workflow_transition','allowed',true)",
+    );
+    await fixture.db.query(
+      "update public.terms set status='REVIEW' where id=$1",
+      [fixture.ids.term],
+    );
+    await fixture.db.query(
+      "select set_config('app.marks_workflow_transition','allowed',true)",
+    );
+    await fixture.db.query(
+      "update public.mark_sheets set workflow_status='RETURNED' where id=$1",
+      [fixture.ids.sheet],
+    );
+    await fixture.db.query(
+      "update public.marks set score=89 where mark_sheet_id=$1 and enrollment_id=$2",
+      [fixture.ids.sheet, fixture.ids.enrollments[index]],
+    );
+    await fixture.db.query("commit");
+  } catch (error) {
+    await fixture.db.query("rollback");
+    throw error;
+  }
+}
+
+export async function restoreSourceAuthority(fixture: RaceFixture) {
+  await fixture.db.query("begin");
+  try {
+    await fixture.db.query(
+      "select set_config('app.marks_workflow_transition','allowed',true)",
+    );
+    await fixture.db.query(
+      "update public.mark_sheets set workflow_status='LOCKED' where id=$1",
+      [fixture.ids.sheet],
+    );
+    await fixture.db.query(
+      "select set_config('app.term_marks_workflow_transition','allowed',true)",
+    );
+    await fixture.db.query(
+      "update public.terms set status='LOCKED' where id=$1",
+      [fixture.ids.term],
+    );
+    await fixture.db.query("commit");
+  } catch (error) {
+    await fixture.db.query("rollback");
+    throw error;
+  }
 }
 
 export async function createNewRuleVersion(fixture: RaceFixture) {
