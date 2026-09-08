@@ -434,7 +434,7 @@ export async function createWorkflowRaceFixture(): Promise<RaceFixture> {
       return call(client, "reopen_promotion_decision", {
         target_decision_id: decision.decision_id,
         expected_decision_version: decision.decision_version,
-        reason: "Stage 17 concurrency acceptance reopen",
+        reopen_reason: "Stage 17 concurrency acceptance reopen",
       });
     },
     progress: async (client, index) => {

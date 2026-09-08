@@ -189,7 +189,7 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
   });
 
   it("C08. reopen contends with progression on the same confirmed decision", async () => {
-    await fixture.confirm(fixture.admin, 5);
+    expect((await fixture.confirm(fixture.admin, 5)).error).toBeNull();
     const run = await fixture.holdScope(
       "c08-reopen-progress",
       async (release, observe) => {
@@ -205,7 +205,7 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
   });
 
   it("C09. double progression is idempotent after one real apply", async () => {
-    await fixture.confirm(fixture.admin, 6);
+    expect((await fixture.confirm(fixture.admin, 6)).error).toBeNull();
     const run = await fixture.holdScope(
       "c09-double-progress",
       async (release, observe) => {
@@ -226,8 +226,8 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
   });
 
   it("C10. two real progressions cannot both take the last destination seat", async () => {
-    await fixture.confirm(fixture.admin, 7);
-    await fixture.confirm(fixture.admin, 8);
+    expect((await fixture.confirm(fixture.admin, 7)).error).toBeNull();
+    expect((await fixture.confirm(fixture.admin, 8)).error).toBeNull();
     await insertLastSeatOccupants(fixture);
     const run = await fixture.holdScope(
       "c10-last-seat",
@@ -248,7 +248,7 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
   });
 
   it("C11. progression contends with a student lifecycle transition", async () => {
-    await fixture.confirm(fixture.admin, 9);
+    expect((await fixture.confirm(fixture.admin, 9)).error).toBeNull();
     const run = await fixture.holdScope(
       "c11-lifecycle",
       async (release, observe) => {
@@ -267,7 +267,7 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
   });
 
   it("C12. progression observes an in-flight PROMOTION_CONFIRM revocation", async () => {
-    await fixture.confirm(fixture.admin, 10);
+    expect((await fixture.confirm(fixture.admin, 10)).error).toBeNull();
     try {
       const run = await fixture.holdScope(
         "c12-progress-revoke",
