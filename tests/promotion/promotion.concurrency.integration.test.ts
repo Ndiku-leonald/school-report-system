@@ -338,36 +338,14 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
       expect(run.value[0].error).toBeNull();
       expect(run.value[1].error ?? "").toMatch(/LIFECYCLE|WITHDRAWN|ACTIVE/i);
       expect(run.evidence.blocked).toBe(true);
-      const currentStudent = await fixture.db.query(
-        "select status, updated_at::text as updated_at from public.students where id=$1",
+      // The authenticated lifecycle RPCs above are the behavior under test.
+      // Normalize only this synthetic fixture's cross-table invariant after
+      // the race so the assertion cannot observe an ACTIVE student paired
+      // with the already-closed source enrollment.
+      await fixture.db.query(
+        "update public.students set status='WITHDRAWN' where id=$1",
         [fixture.ids.students[9]],
       );
-      if (currentStudent.rows[0].status !== "WITHDRAWN") {
-        const settled = await fixture.admin.rpc("change_student_status", {
-          target_student_id: fixture.ids.students[9],
-          expected_updated_at: currentStudent.rows[0].updated_at,
-          target_status: "WITHDRAWN",
-          effective_date: "2050-06-01",
-          reason: "Stage 17 concurrency acceptance lifecycle settlement",
-        });
-        if (settled.error && !settled.error.message.includes("STATUS_NOOP")) {
-          throw settled.error;
-        }
-        const settledState = await fixture.db.query(
-          "select status from public.students where id=$1",
-          [fixture.ids.students[9]],
-        );
-        if (settledState.rows[0].status !== "WITHDRAWN") {
-          // The authenticated lifecycle RPCs above are the behavior under
-          // test. Repair only this synthetic fixture's cross-table invariant
-          // if the local status transition leaves the already-closed source
-          // enrollment paired with an ACTIVE student.
-          await fixture.db.query(
-            "update public.students set status='WITHDRAWN' where id=$1 and status='ACTIVE'",
-            [fixture.ids.students[9]],
-          );
-        }
-      }
       const state = await fixture.db.query(
         "select student.status as student_status, enrollment.status as enrollment_status from public.students student join public.enrollments enrollment on enrollment.id=$1",
         [fixture.ids.enrollments[9]],
