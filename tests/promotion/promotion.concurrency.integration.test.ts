@@ -338,14 +338,6 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
       expect(run.value[0].error).toBeNull();
       expect(run.value[1].error ?? "").toMatch(/LIFECYCLE|WITHDRAWN|ACTIVE/i);
       expect(run.evidence.blocked).toBe(true);
-      // The authenticated lifecycle RPCs above are the behavior under test.
-      // Normalize only this synthetic fixture's cross-table invariant after
-      // the race so the assertion cannot observe an ACTIVE student paired
-      // with the already-closed source enrollment.
-      await fixture.db.query(
-        "update public.students set status='WITHDRAWN' where id=$1",
-        [fixture.ids.students[9]],
-      );
       const state = await fixture.db.query(
         "select student.status as student_status, enrollment.status as enrollment_status from public.students student join public.enrollments enrollment on enrollment.id=$1",
         [fixture.ids.enrollments[9]],
