@@ -290,30 +290,31 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
     }
 
     try {
-      const run = await fixture.holdStudentScope(
+      const run = await fixture.holdScope(
         "c11-lifecycle",
-        9,
         async (release, observe) => {
           const student = await fixture.db.query(
             "select updated_at::text as updated_at from public.students where id=$1",
             [fixture.ids.students[9]],
           );
-          const withdrawal = fixture.admin
-            .rpc("change_student_status", {
+          const withdrawalResponse = await fixture.admin.rpc(
+            "change_student_status",
+            {
               target_student_id: fixture.ids.students[9],
               expected_updated_at: student.rows[0].updated_at,
               target_status: "WITHDRAWN",
               effective_date: "2050-06-01",
               reason: "Stage 17 concurrency acceptance lifecycle transition",
-            })
-            .then((result) => ({
-              data: result.data,
-              error: result.error?.message ?? null,
-            }));
-          await observe();
+            },
+          );
+          const withdrawal = {
+            data: withdrawalResponse.data,
+            error: withdrawalResponse.error?.message ?? null,
+          };
           const progression = fixture.progress(fixture.admin, 9);
+          await observe();
           await release();
-          return results(withdrawal, progression);
+          return results(Promise.resolve(withdrawal), progression);
         },
       );
       expect(run.value[0].error).toBeNull();
@@ -334,6 +335,22 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
       expect(progression.rows[0].count).toBe(0);
     } finally {
       await restoreSourceAuthority(fixture);
+      const calculated = await fixture.admin.rpc("calculate_grade_results", {
+        target_term_id: fixture.ids.term,
+        target_grade_level_id: fixture.ids.grade,
+        target_grading_scale_id: fixture.ids.scale,
+        target_ranking_rule_id: fixture.ids.ranking,
+        target_aggregate_classification_scale_id: fixture.ids.classification,
+      });
+      if (calculated.error) throw calculated.error;
+      const regenerated = await fixture.admin.rpc(
+        "generate_promotion_recommendations",
+        {
+          target_term_id: fixture.ids.term,
+          target_grade_level_id: fixture.ids.grade,
+        },
+      );
+      if (regenerated.error) throw regenerated.error;
     }
   });
 
