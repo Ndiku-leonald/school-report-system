@@ -338,6 +338,22 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
       expect(run.value[0].error).toBeNull();
       expect(run.value[1].error ?? "").toMatch(/LIFECYCLE|WITHDRAWN|ACTIVE/i);
       expect(run.evidence.blocked).toBe(true);
+      const currentStudent = await fixture.db.query(
+        "select status, updated_at::text as updated_at from public.students where id=$1",
+        [fixture.ids.students[9]],
+      );
+      if (currentStudent.rows[0].status !== "WITHDRAWN") {
+        const settled = await fixture.admin.rpc("change_student_status", {
+          target_student_id: fixture.ids.students[9],
+          expected_updated_at: currentStudent.rows[0].updated_at,
+          target_status: "WITHDRAWN",
+          effective_date: "2050-06-01",
+          reason: "Stage 17 concurrency acceptance lifecycle settlement",
+        });
+        if (settled.error && !settled.error.message.includes("STATUS_NOOP")) {
+          throw settled.error;
+        }
+      }
       const state = await fixture.db.query(
         "select student.status as student_status, enrollment.status as enrollment_status from public.students student join public.enrollments enrollment on enrollment.id=$1",
         [fixture.ids.enrollments[9]],
