@@ -263,10 +263,18 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
       async (release, observe) => {
         const progression = fixture.progress(fixture.admin, 9);
         await observe();
-        await fixture.db.query(
-          "update public.students set status='WITHDRAWN' where id=$1",
+        const student = await fixture.db.query(
+          "select updated_at::text as updated_at from public.students where id=$1",
           [fixture.ids.students[9]],
         );
+        const withdrawal = await fixture.admin.rpc("change_student_status", {
+          target_student_id: fixture.ids.students[9],
+          expected_updated_at: student.rows[0].updated_at,
+          target_status: "WITHDRAWN",
+          effective_date: "2050-06-01",
+          reason: "Stage 17 concurrency acceptance lifecycle transition",
+        });
+        if (withdrawal.error) throw withdrawal.error;
         await release();
         return progression;
       },
