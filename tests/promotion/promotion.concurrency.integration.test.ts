@@ -23,6 +23,7 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
   });
 
   afterAll(async () => {
+    if (!fixture) return;
     await fixture.restoreConfirm().catch(() => undefined);
     await fixture.close();
   });
