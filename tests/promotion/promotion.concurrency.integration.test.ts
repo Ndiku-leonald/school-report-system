@@ -230,7 +230,7 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
     expect(successful).toHaveLength(1);
     expect(failed).toHaveLength(1);
     expect(failed[0].error).toMatch(
-      /PROMOTION_ENROLLMENT_LIFECYCLE_INVALID|PROMOTION_ALREADY_PROGRESSED|PROMOTION_PROGRESSION_RETRY_CONFLICT/,
+      /PROMOTION_LIFECYCLE_INVALID|PROMOTION_ENROLLMENT_LIFECYCLE_INVALID|PROMOTION_ALREADY_PROGRESSED|PROMOTION_PROGRESSION_RETRY_CONFLICT/,
     );
     const progressionCount = await fixture.db.query(
       "select count(*)::int as count from public.student_progressions where source_enrollment_id=$1",
@@ -290,11 +290,10 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
     }
 
     try {
-      const run = await fixture.holdScope(
+      const run = await fixture.holdStudentScope(
         "c11-lifecycle",
+        9,
         async (release, observe) => {
-          const progression = fixture.progress(fixture.admin, 9);
-          await observe();
           const student = await fixture.db.query(
             "select updated_at::text as updated_at from public.students where id=$1",
             [fixture.ids.students[9]],
@@ -306,12 +305,14 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
             effective_date: "2050-06-01",
             reason: "Stage 17 concurrency acceptance lifecycle transition",
           });
-          if (withdrawal.error) throw withdrawal.error;
+          await observe();
+          const progression = fixture.progress(fixture.admin, 9);
           await release();
-          return progression;
+          return results(withdrawal, progression);
         },
       );
-      expect(run.value.error ?? "").toMatch(/LIFECYCLE|WITHDRAWN|ACTIVE/i);
+      expect(run.value[0].error).toBeNull();
+      expect(run.value[1].error ?? "").toMatch(/LIFECYCLE|WITHDRAWN|ACTIVE/i);
       expect(run.evidence.blocked).toBe(true);
       const state = await fixture.db.query(
         "select student.status as student_status, enrollment.status as enrollment_status from public.students student join public.enrollments enrollment on enrollment.id=$1",

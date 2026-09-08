@@ -59,6 +59,14 @@ export type RaceFixture = {
       observe: () => Promise<Omit<LockEvidence, "released">>,
     ) => Promise<T>,
   ) => Promise<{ value: T; evidence: LockEvidence }>;
+  holdStudentScope: <T>(
+    label: string,
+    index: number,
+    callback: (
+      release: () => Promise<void>,
+      observe: () => Promise<Omit<LockEvidence, "released">>,
+    ) => Promise<T>,
+  ) => Promise<{ value: T; evidence: LockEvidence }>;
   revokeConfirm: () => Promise<void>;
   restoreConfirm: () => Promise<void>;
 };
@@ -461,6 +469,45 @@ export async function createWorkflowRaceFixture(): Promise<RaceFixture> {
       await holder.query(
         "select pg_advisory_xact_lock(hashtextextended($1,11011))",
         [`${ids.term}:${ids.grade}`],
+      );
+      let released = false;
+      const release = async () => {
+        if (!released) {
+          released = true;
+          await holder.query("commit");
+        }
+      };
+      let observation: Omit<LockEvidence, "released"> | undefined;
+      const observe = async () => {
+        observation ??= await waitForLockWait(observer);
+        return observation;
+      };
+      try {
+        const value = await callback(release, observe);
+        observation ??= await waitForLockWait(observer);
+        if (!released) await release();
+        return { value, evidence: { ...observation, released: true as const } };
+      } finally {
+        await holder.query("rollback").catch(() => undefined);
+        await holder.end();
+        await observer.end();
+      }
+    },
+    holdStudentScope: async (label, index, callback) => {
+      const holder = new Client({
+        connectionString: databaseUrl!,
+        options: `-c application_name=stage17-${label}-holder`,
+      });
+      const observer = new Client({
+        connectionString: databaseUrl!,
+        options: `-c application_name=stage17-${label}-observer`,
+      });
+      await holder.connect();
+      await observer.connect();
+      await holder.query("begin");
+      await holder.query(
+        "select id from public.students where id=$1 for update",
+        [ids.students[index]],
       );
       let released = false;
       const release = async () => {
