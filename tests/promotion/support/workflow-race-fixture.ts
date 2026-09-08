@@ -572,11 +572,19 @@ export async function createNewRuleVersion(fixture: RaceFixture) {
   });
   if (created.error) throw created.error;
   const newId = (created.data as Array<{ entity_id: string }>)[0]?.entity_id;
+  const newUpdatedAt = (created.data as Array<{ updated_at: string }>)[0]
+    ?.updated_at;
   if (!newId) throw new Error("Rule version creation returned no id");
+  if (!newUpdatedAt)
+    throw new Error("Rule version creation returned no timestamp");
+  const retired = await fixture.admin.rpc("deactivate_promotion_rule", {
+    target_rule_id: fixture.ids.rule,
+    expected_updated_at: source.rows[0].updated_at,
+  });
+  if (retired.error) throw retired.error;
   const activated = await fixture.admin.rpc("activate_promotion_rule", {
     target_rule_id: newId,
-    expected_updated_at: (created.data as Array<{ updated_at: string }>)[0]
-      .updated_at,
+    expected_updated_at: newUpdatedAt,
   });
   if (activated.error) throw activated.error;
 }

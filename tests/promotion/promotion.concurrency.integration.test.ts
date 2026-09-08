@@ -102,7 +102,7 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
     expect(run.evidence.blocked).toBe(true);
     const authority = await fixture.db.query(
       `select count(distinct snapshot.calculation_run_id)::int as run_count,
-              min(snapshot.calculation_run_id)::text as calculation_run_id,
+              (array_agg(distinct snapshot.calculation_run_id))[1]::text as calculation_run_id,
               min(run.version)::int as calculation_version,
               min(run.input_checksum) as input_checksum
        from public.promotion_decisions decision
