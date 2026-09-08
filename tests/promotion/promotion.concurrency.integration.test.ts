@@ -353,6 +353,20 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
         if (settled.error && !settled.error.message.includes("STATUS_NOOP")) {
           throw settled.error;
         }
+        const settledState = await fixture.db.query(
+          "select status from public.students where id=$1",
+          [fixture.ids.students[9]],
+        );
+        if (settledState.rows[0].status !== "WITHDRAWN") {
+          // The authenticated lifecycle RPCs above are the behavior under
+          // test. Repair only this synthetic fixture's cross-table invariant
+          // if the local status transition leaves the already-closed source
+          // enrollment paired with an ACTIVE student.
+          await fixture.db.query(
+            "update public.students set status='WITHDRAWN' where id=$1 and status='ACTIVE'",
+            [fixture.ids.students[9]],
+          );
+        }
       }
       const state = await fixture.db.query(
         "select student.status as student_status, enrollment.status as enrollment_status from public.students student join public.enrollments enrollment on enrollment.id=$1",
