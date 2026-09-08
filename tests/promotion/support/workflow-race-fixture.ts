@@ -443,7 +443,6 @@ export async function createWorkflowRaceFixture(): Promise<RaceFixture> {
         target_decision_id: decision.decision_id,
         expected_decision_version: decision.decision_version,
         target_academic_year_id: ids.nextYear,
-        target_grade_level_id: ids.nextGrade,
         target_class_section_id: ids.targetClass,
       });
     },
