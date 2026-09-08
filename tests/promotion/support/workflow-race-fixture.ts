@@ -554,12 +554,14 @@ export async function restoreSourceAuthority(fixture: RaceFixture) {
 
 export async function createNewRuleVersion(fixture: RaceFixture) {
   const source = await fixture.db.query(
-    "select updated_at from public.promotion_rules where id=$1",
+    "select updated_at::text as updated_at from public.promotion_rules where id=$1",
     [fixture.ids.rule],
   );
   const created = await fixture.admin.rpc("create_promotion_rule_version", {
     source_rule_id: fixture.ids.rule,
-    expected_updated_at: new Date(source.rows[0].updated_at).toISOString(),
+    // Preserve PostgreSQL's full microsecond precision for the optimistic
+    // authority token. JavaScript Date would truncate it to milliseconds.
+    expected_updated_at: source.rows[0].updated_at,
     rule_name: "Race Rule v2",
     rule_minimum_average: 60,
     rule_maximum_aggregate: null,

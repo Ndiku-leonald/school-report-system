@@ -85,11 +85,38 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
           calculated,
         ]);
         expect(calculatedResult.error).toBeNull();
+        // If generation acquired the shared authority first, it must fail
+        // closed against the stale Stage 11 run. If calculation won first,
+        // generation may succeed directly. In either ordering, verify the
+        // winning retry is built from one authoritative calculation run.
+        if (generationResult.error) {
+          expect(generationResult.error).toMatch(
+            /PROMOTION_RESULTS_UNAVAILABLE/i,
+          );
+          return fixture.generate(fixture.admin);
+        }
         return generationResult;
       },
     );
     expect(run.value.error).toBeNull();
     expect(run.evidence.blocked).toBe(true);
+    const authority = await fixture.db.query(
+      `select count(distinct snapshot.calculation_run_id)::int as run_count,
+              min(snapshot.calculation_run_id)::text as calculation_run_id,
+              min(run.version)::int as calculation_version,
+              min(run.input_checksum) as input_checksum
+       from public.promotion_decisions decision
+       join public.promotion_recommendation_snapshots snapshot
+         on snapshot.id = decision.recommendation_snapshot_id
+       join public.result_calculation_runs run
+         on run.id = snapshot.calculation_run_id
+       where decision.term_id=$1 and decision.superseded_by is null`,
+      [fixture.ids.term],
+    );
+    expect(authority.rows[0].run_count).toBe(1);
+    expect(authority.rows[0].calculation_run_id).toBeTruthy();
+    expect(authority.rows[0].calculation_version).toBeGreaterThan(0);
+    expect(authority.rows[0].input_checksum).toMatch(/^[0-9a-f]{64}$/i);
   });
 
   it("C04. generation contends with a promotion-rule authority change", async () => {
