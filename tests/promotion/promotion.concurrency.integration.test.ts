@@ -211,7 +211,16 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
       async (release, observe) => {
         const left = fixture.progress(fixture.admin, 6);
         const right = fixture.progress(fixture.head, 6);
-        await observe();
+        try {
+          await observe();
+        } catch (error) {
+          await release();
+          const diagnostics = await results(left, right);
+          throw new Error(
+            `${error instanceof Error ? error.message : String(error)} ` +
+              `left=${diagnostics[0].error ?? "ok"} right=${diagnostics[1].error ?? "ok"}`,
+          );
+        }
         await release();
         return results(left, right);
       },
