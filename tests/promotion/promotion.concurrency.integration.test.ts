@@ -339,7 +339,7 @@ describe.sequential("Stage 17 real workflow concurrency acceptance", () => {
       expect(run.value[1].error ?? "").toMatch(/LIFECYCLE|WITHDRAWN|ACTIVE/i);
       expect(run.evidence.blocked).toBe(true);
       const state = await fixture.db.query(
-        "select student.status as student_status, enrollment.status as enrollment_status from public.students student join public.enrollments enrollment on enrollment.id=$1",
+        "select student.status as student_status, enrollment.status as enrollment_status from public.students student join public.enrollments enrollment on enrollment.id=$1 and student.id=enrollment.student_id",
         [fixture.ids.enrollments[9]],
       );
       expect(state.rows[0]).toMatchObject({
