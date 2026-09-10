@@ -398,6 +398,58 @@ async function login(
   }
 }
 
+async function browserAccessToken(page: Page) {
+  const authCookies = (await page.context().cookies())
+    .filter(({ name }) => name.includes("-auth-token"))
+    .sort(({ name: left }, { name: right }) => left.localeCompare(right));
+  const encoded = authCookies.map(({ value }) => value).join("");
+  if (!encoded) throw new Error("The authenticated browser cookie is missing.");
+
+  const value = decodeURIComponent(encoded);
+  const json = value.startsWith("base64-")
+    ? Buffer.from(value.slice("base64-".length), "base64url").toString("utf8")
+    : value;
+  const session = JSON.parse(json) as
+    | { access_token?: string }
+    | [string, string | null, string | null, string | null];
+  const accessToken = Array.isArray(session)
+    ? session[0]
+    : session.access_token;
+  if (!accessToken)
+    throw new Error("The authenticated browser access token is unavailable.");
+
+  return accessToken;
+}
+
+async function browserRpc(
+  page: Page,
+  accessToken: string,
+  functionName: string,
+  args: Record<string, unknown>,
+) {
+  return page.evaluate(
+    async ({ anonKey, args, functionName, token, url }) => {
+      const response = await fetch(`${url}/rest/v1/rpc/${functionName}`, {
+        method: "POST",
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(args),
+      });
+      return { body: await response.text(), status: response.status };
+    },
+    {
+      anonKey,
+      args,
+      functionName,
+      token: accessToken,
+      url,
+    },
+  );
+}
+
 async function staffClient(actor: { email: string; membershipId: string }) {
   const client = createClient(url, anonKey, {
     auth: {
@@ -586,7 +638,12 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
     await database.end();
   });
   test.beforeEach(async ({ page }, info) => {
-    if (!info.title.startsWith("01.")) await login(page);
+    if (
+      !info.title.startsWith("01.") &&
+      !info.title.startsWith("73.") &&
+      !info.title.startsWith("75.")
+    )
+      await login(page);
   });
 
   test("01. signed-out users cannot open promotion", async ({ page }) => {
@@ -1274,18 +1331,53 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
   test("73. live PROMOTION_CONFIRM revocation removes mutation controls but preserves read", async ({
     page,
   }) => {
+    await sql(
+      "insert into public.role_permissions(role,permission) values('SCHOOL_ADMIN','PROMOTION_CONFIRM') on conflict do nothing",
+    );
+    await addScenarioLearner({
+      label: "LiveRevoke",
+      score: 90,
+    });
+    await login(page);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByRole("heading", { name: "Promotion and progression" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Confirm decision", exact: true }),
+    ).toHaveCount(1);
+    const accessToken = await browserAccessToken(page);
+
     try {
       await sql(
         "delete from public.role_permissions where role='SCHOOL_ADMIN' and permission='PROMOTION_CONFIRM'",
       );
-      await login(page);
-      await page.goto("/dashboard/promotion");
+      await page.reload({ waitUntil: "domcontentloaded" });
       await expect(
         page.getByRole("heading", { name: "Promotion and progression" }),
       ).toBeVisible();
       await expect(
         page.getByRole("button", { name: "Generate recommendations" }),
       ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: "Confirm decision", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", {
+          name: /Reopen decision|Apply progression|Complete learner/,
+        }),
+      ).toHaveCount(0);
+      const mutation = await browserRpc(
+        page,
+        accessToken,
+        "generate_promotion_recommendations",
+        {
+          target_term_id: ids.term,
+          target_grade_level_id: ids.grade,
+        },
+      );
+      expect(mutation.status).not.toBe(200);
+      expect(mutation.body).toMatch(/FORBIDDEN|permission|PROMOTION_CONFIRM/i);
     } finally {
       await sql(
         "insert into public.role_permissions(role,permission) values('SCHOOL_ADMIN','PROMOTION_CONFIRM') on conflict do nothing",
@@ -1313,7 +1405,18 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
     await page.getByLabel("PIN").fill(parentPin);
     await page.getByRole("button", { name: "Sign in securely" }).click();
     await expect(page).toHaveURL(/\/parent$/);
-    await expect(page.getByText(/Promotion and progression/)).toHaveCount(0);
+    await expect(
+      page.getByRole("heading", { name: "Published report cards" }),
+    ).toBeVisible();
+    await page.goto("/dashboard/promotion");
+    await expect(page).toHaveURL(/\/(?:forbidden|staff-login)(?:\?|$)/);
+    await expect(
+      page.getByRole("heading", { name: "Promotion and progression" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText(/PROMOTION_VIEW|promotion decision/i),
+    ).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Promotion/ })).toHaveCount(0);
   });
   test("76. a confirmed stale decision has a dedicated visible state", async ({
     page,
