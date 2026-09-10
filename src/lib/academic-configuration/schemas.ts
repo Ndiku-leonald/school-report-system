@@ -333,15 +333,17 @@ export const rankingRuleVersionSchema = rankingRuleFieldsSchema
 export const requiredSubjectRuleSchema = z
   .object({
     subjectId: id,
-    minimumScore: percentage,
+    require: z.enum(["PASS", "COMPLETE"]),
   })
   .strict();
 
 const promotionAdditionalRulesSchema = z
   .object({
     schemaVersion: z.literal(1),
-    requireAllRequiredSubjects: z.boolean(),
-    allowManualReview: z.boolean(),
+    requireCompleteResult: z.boolean(),
+    successOutcome: z.enum(["PROMOTED", "PROMOTED_WITH_SUPPORT"]),
+    failureOutcome: z.enum(["ACADEMIC_REVIEW", "REPEAT_RECOMMENDED"]),
+    incompleteOutcome: z.enum(["ACADEMIC_REVIEW", "REPEAT_RECOMMENDED"]),
   })
   .strict();
 

@@ -190,8 +190,10 @@ test.describe.serial("academic configuration", () => {
     );
     const promotionConfiguration = JSON.stringify({
       schema_version: 1,
-      require_all_required_subjects: true,
-      allow_manual_review: true,
+      require_complete_result: true,
+      success_outcome: "PROMOTED",
+      failure_outcome: "ACADEMIC_REVIEW",
+      incomplete_outcome: "ACADEMIC_REVIEW",
     });
     await database.query(
       `insert into public.promotion_rules
@@ -200,9 +202,9 @@ test.describe.serial("academic configuration", () => {
        values
          ($1, $3, '20000000-0000-4000-8000-000000000001',
           '30000000-0000-4000-8000-000000000001',
-          'Editable E2E promotion', 1, false, 50, '[]'::jsonb, $4::jsonb),
+          'Editable E2E promotion', 1, false, 50, '{}'::jsonb, $4::jsonb),
          ($2, $3, null, null, 'Active E2E promotion', 1, true, 50,
-          '[]'::jsonb, $4::jsonb)`,
+          '{}'::jsonb, $4::jsonb)`,
       [draftPromotionId, activePromotionId, schoolId, promotionConfiguration],
     );
   });

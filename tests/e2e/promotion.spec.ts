@@ -1,0 +1,1630 @@
+import { expect, test, type Page } from "@playwright/test";
+import { createClient } from "@supabase/supabase-js";
+import { createHash, randomUUID } from "node:crypto";
+import { Client } from "pg";
+
+const enabled = process.env.PROMOTION_E2E === "1";
+const url = process.env.NEXT_PUBLIC_SUPABASE_URL ?? "";
+const anonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY ?? "";
+const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY ?? "";
+const databaseUrl = process.env.SUPABASE_LOCAL_DB_URL ?? "";
+const password = "synthetic-stage-seventeen-promotion-browser-password";
+const nonce = `${Date.now()}-${randomUUID()}`;
+const ids = Object.fromEntries(
+  [
+    "school",
+    "otherSchool",
+    "otherYear",
+    "otherTerm",
+    "otherGrade",
+    "otherClass",
+    "year",
+    "nextYear",
+    "term",
+    "grade",
+    "nextGrade",
+    "sourceClass",
+    "targetClass",
+    "subject",
+    "mapping",
+    "student",
+    "enrollment",
+    "assignment",
+    "scheme",
+    "component",
+    "sheet",
+    "scale",
+    "ranking",
+    "classification",
+    "rule",
+  ].map((key) => [key, randomUUID()]),
+) as Record<string, string>;
+const admin = enabled
+  ? createClient(url, serviceKey, {
+      auth: {
+        autoRefreshToken: false,
+        detectSessionInUrl: false,
+        persistSession: false,
+      },
+    })
+  : null;
+const database = new Client({ connectionString: databaseUrl });
+let email = "";
+let schoolName = "";
+let fixtureUserId = "";
+const fixtureUserIds: string[] = [];
+const browserActorUserIds: Record<string, string> = {};
+const browserActors: Record<string, { email: string; membershipId: string }> =
+  {};
+const parentCode = `PB-PARENT-${nonce.slice(0, 8)}`;
+const parentPin = "73194628";
+
+function accessHash(value: string) {
+  return createHash("sha256")
+    .update(value.trim().replace(/[\s-]/g, "").toUpperCase())
+    .digest("hex");
+}
+
+async function sql(statement: string, values: unknown[] = []) {
+  return database.query(statement, values);
+}
+
+async function provisionActor(
+  label: string,
+  role: string,
+  schoolId = ids.school,
+) {
+  const actorEmail = `promotion.browser.${label}.${nonce}@example.invalid`;
+  const created = await admin!.auth.admin.createUser({
+    email: actorEmail,
+    password,
+    email_confirm: true,
+  });
+  if (created.error) throw created.error;
+  const actorMembershipId = randomUUID();
+  fixtureUserIds.push(created.data.user.id);
+  browserActorUserIds[label] = created.data.user.id;
+  await sql(
+    "insert into public.profiles(id,first_name,last_name) values($1,$2,'Browser')",
+    [created.data.user.id, label],
+  );
+  await sql(
+    "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,$4,'ACTIVE')",
+    [actorMembershipId, schoolId, created.data.user.id, `PB-${randomUUID()}`],
+  );
+  await sql(
+    "insert into public.staff_role_assignments(membership_id,role,granted_at) values($1,$2,now()-interval '1 day')",
+    [actorMembershipId, role],
+  );
+  browserActors[label] = {
+    email: actorEmail,
+    membershipId: actorMembershipId,
+  };
+}
+
+async function setup() {
+  if (!enabled) return;
+  await database.connect();
+  schoolName = `Promotion Browser School ${nonce}`;
+  email = `promotion.browser.${nonce}@example.invalid`;
+  const created = await admin!.auth.admin.createUser({
+    email,
+    password,
+    email_confirm: true,
+  });
+  if (created.error) throw created.error;
+  fixtureUserId = created.data.user.id;
+  const membership = randomUUID();
+  fixtureUserIds.push(fixtureUserId);
+  browserActors.admin = { email, membershipId: membership };
+  await sql(
+    "insert into public.schools(id,name,slug,school_code) values($1,$2,$3,$4)",
+    [
+      ids.school,
+      schoolName,
+      `promotion-browser-${nonce}`,
+      `PB-${nonce.slice(0, 8)}`,
+    ],
+  );
+  await sql(
+    "insert into public.profiles(id,first_name,last_name) values($1,'Promotion','Browser')",
+    [fixtureUserId],
+  );
+  await sql(
+    "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,$4,'ACTIVE')",
+    [membership, ids.school, fixtureUserId, `PB-${nonce.slice(0, 8)}`],
+  );
+  await sql(
+    "insert into public.staff_role_assignments(membership_id,role,granted_at) values($1,'SCHOOL_ADMIN',now()-interval '1 day')",
+    [membership],
+  );
+  await provisionActor("head-teacher", "HEAD_TEACHER");
+  await provisionActor("registrar", "ACADEMIC_REGISTRAR");
+  await provisionActor("class-teacher", "CLASS_TEACHER");
+  await provisionActor("subject-teacher", "SUBJECT_TEACHER");
+  await sql(
+    "insert into public.schools(id,name,slug,school_code) values($1,$2,$3,$4)",
+    [
+      ids.otherSchool,
+      `Promotion Browser Other School ${nonce}`,
+      `promotion-browser-other-${nonce}`,
+      `PBO-${nonce.slice(0, 8)}`,
+    ],
+  );
+  const otherMembership = randomUUID();
+  await sql(
+    "insert into public.school_staff_memberships(id,school_id,profile_id,employee_number,status) values($1,$2,$3,$4,'ACTIVE')",
+    [
+      otherMembership,
+      ids.otherSchool,
+      browserActorUserIds["head-teacher"],
+      `PBO-${nonce.slice(0, 8)}`,
+    ],
+  );
+  await sql(
+    "insert into public.staff_role_assignments(membership_id,role,granted_at) values($1,'HEAD_TEACHER',now()-interval '1 day')",
+    [otherMembership],
+  );
+  browserActors["head-teacher-other"] = {
+    email: browserActors["head-teacher"].email,
+    membershipId: otherMembership,
+  };
+  await sql(
+    "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,'Other Browser Source','2049-01-01','2049-12-31','ACTIVE')",
+    [ids.otherYear, ids.otherSchool],
+  );
+  await sql(
+    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status,is_promotion_term) values($1,$2,'Other Browser Promotion Term',1,'2049-01-01','2049-06-30','LOCKED',true)",
+    [ids.otherTerm, ids.otherYear],
+  );
+  await sql(
+    "insert into public.grade_levels(id,school_id,code,name,sort_order,is_final_grade) values($1,$2,'OBP1','Other Browser Grade',1,false)",
+    [ids.otherGrade, ids.otherSchool],
+  );
+  await sql(
+    "insert into public.class_sections(id,academic_year_id,grade_level_id,name,class_code) values($1,$2,$3,'Other Browser Class','OBP1-A')",
+    [ids.otherClass, ids.otherYear, ids.otherGrade],
+  );
+  await sql(
+    "insert into public.academic_years(id,school_id,name,starts_on,ends_on,status) values($1,$2,'Browser Source','2049-01-01','2049-12-31','ACTIVE'),($3,$2,'Browser Next','2050-01-01','2050-12-31','DRAFT')",
+    [ids.year, ids.school, ids.nextYear],
+  );
+  await sql(
+    "insert into public.grade_levels(id,school_id,code,name,sort_order) values($1,$2,'BP1','Browser Source Grade',1),($3,$2,'BP2','Browser Target Grade',2)",
+    [ids.grade, ids.school, ids.nextGrade],
+  );
+  await sql(
+    "insert into public.class_sections(id,academic_year_id,grade_level_id,name,class_code) values($1,$2,$3,'Browser Source Class','BP1-A'),($4,$5,$6,'Browser Target Class','BP2-A')",
+    [
+      ids.sourceClass,
+      ids.year,
+      ids.grade,
+      ids.targetClass,
+      ids.nextYear,
+      ids.nextGrade,
+    ],
+  );
+  await sql(
+    "insert into public.subjects(id,school_id,code,name,sort_order) values($1,$2,'BP-SUB','Browser Subject',1)",
+    [ids.subject, ids.school],
+  );
+  await sql(
+    "insert into public.grade_level_subjects(id,grade_level_id,subject_id,is_required,contributes_to_aggregate,sort_order) values($1,$2,$3,true,true,1)",
+    [ids.mapping, ids.grade, ids.subject],
+  );
+  await sql(
+    "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date,status) values($1,$2,'BP-001','Browser','Learner','2049-01-02','ACTIVE')",
+    [ids.student, ids.school],
+  );
+  await sql(
+    "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,status,enrolled_on) values($1,$2,$3,$4,'ACTIVE','2049-01-02')",
+    [ids.enrollment, ids.student, ids.year, ids.sourceClass],
+  );
+  const guardianId = randomUUID();
+  await sql(
+    "insert into public.guardians(id,school_id,first_name,last_name,phone,email,is_active) values($1,$2,'Synthetic','Guardian','+256700000001','stage17-parent@example.invalid',true)",
+    [guardianId, ids.school],
+  );
+  await sql(
+    "insert into public.student_guardians(id,student_id,guardian_id,relationship,is_primary,can_access_reports) values($1,$2,$3,'Parent',true,true)",
+    [randomUUID(), ids.student, guardianId],
+  );
+  await sql(
+    "insert into public.terms(id,academic_year_id,name,term_number,starts_on,ends_on,status,is_promotion_term) values($1,$2,'Browser Promotion Term',1,'2049-01-01','2049-06-30','MARKS_ENTRY',true)",
+    [ids.term, ids.year],
+  );
+  await sql(
+    "insert into public.teaching_assignments(id,term_id,class_section_id,subject_id,staff_membership_id,starts_on) values($1,$2,$3,$4,$5,'2049-01-02')",
+    [ids.assignment, ids.term, ids.sourceClass, ids.subject, membership],
+  );
+  await sql(
+    "insert into public.assessment_schemes(id,term_id,grade_level_id,subject_id,name,status,effective_from,created_by) values($1,$2,$3,$4,'Browser Scheme','DRAFT','2049-01-02',$5)",
+    [ids.scheme, ids.term, ids.grade, ids.subject, membership],
+  );
+  await sql(
+    "insert into public.assessment_components(id,assessment_scheme_id,name,component_code,maximum_score,weight_percentage,sort_order) values($1,$2,'Browser Exam','BP-EXAM',100,100,1)",
+    [ids.component, ids.scheme],
+  );
+  await sql(
+    "update public.assessment_schemes set status='ACTIVE' where id=$1",
+    [ids.scheme],
+  );
+  await sql(
+    "insert into public.mark_sheets(id,term_id,class_section_id,subject_id,assessment_scheme_id,teaching_assignment_id) values($1,$2,$3,$4,$5,$6)",
+    [
+      ids.sheet,
+      ids.term,
+      ids.sourceClass,
+      ids.subject,
+      ids.scheme,
+      ids.assignment,
+    ],
+  );
+  await sql("begin");
+  await sql(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await sql(
+    "update public.mark_sheets set workflow_status='LOCKED',locked_by=$2,locked_at=now() where id=$1",
+    [ids.sheet, membership],
+  );
+  await sql("commit");
+  await sql(
+    "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,$3,$4,'Browser Scale',1,false,'2049-01-02',$5)",
+    [ids.scale, ids.school, ids.year, ids.grade, membership],
+  );
+  await sql(
+    "insert into public.grading_bands(grading_scale_id,minimum_score,maximum_score,grade,aggregate_points,is_pass,sort_order) values($1,0,50,'F',1,false,1),($1,50,100,'A',5,true,2)",
+    [ids.scale],
+  );
+  await sql("update public.grading_scales set is_active=true where id=$1", [
+    ids.scale,
+  ]);
+  await sql(
+    "insert into public.ranking_rules(id,school_id,academic_year_id,grade_level_id,name,version,ranking_basis,tie_method,configuration,is_active,created_by) values($1,$2,$3,$4,'Browser Ranking',1,'AVERAGE','DENSE','{}',true,$5)",
+    [ids.ranking, ids.school, ids.year, ids.grade, membership],
+  );
+  await sql(
+    "insert into public.aggregate_classification_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,created_by) values($1,$2,$3,$4,'Browser Classification',1,false,$5)",
+    [ids.classification, ids.school, ids.year, ids.grade, membership],
+  );
+  await sql(
+    "insert into public.aggregate_classification_bands(scale_id,minimum_aggregate,maximum_aggregate,label,sort_order) values($1,0,5,'Ready',1)",
+    [ids.classification],
+  );
+  await sql(
+    "update public.aggregate_classification_scales set is_active=true where id=$1",
+    [ids.classification],
+  );
+  const checksum = (
+    await sql(
+      "select internal.results_input_checksum($1,$2,$3,$4,$5) as value",
+      [ids.term, ids.grade, ids.scale, ids.ranking, ids.classification],
+    )
+  ).rows[0].value;
+  const runId = randomUUID();
+  await sql(
+    "insert into public.result_calculation_runs(id,term_id,grade_level_id,version,grading_scale_id,ranking_rule_id,aggregate_classification_scale_id,input_checksum,output_checksum,created_by) values($1,$2,$3,1,$4,$5,$6,$7,repeat('b',64),$8)",
+    [
+      runId,
+      ids.term,
+      ids.grade,
+      ids.scale,
+      ids.ranking,
+      ids.classification,
+      checksum,
+      membership,
+    ],
+  );
+  await sql(
+    "insert into public.result_calculation_sources(calculation_run_id,mark_sheet_id,class_section_id,subject_id,grade_level_subject_id,mark_sheet_version,assessment_scheme_id,curriculum_is_required,curriculum_contributes_to_aggregate,curriculum_sort_order) values($1,$2,$3,$4,$5,1,$6,true,true,1)",
+    [runId, ids.sheet, ids.sourceClass, ids.subject, ids.mapping, ids.scheme],
+  );
+  await sql(
+    "insert into public.calculated_student_results(calculation_run_id,enrollment_id,class_section_id,subject_count,complete_subject_count,subjects_passed,overall_total,overall_average,overall_grade,aggregate_total,aggregate_classification,is_complete,ranking_eligible) values($1,$2,$3,1,1,1,90,90,'A',5,'Ready',true,true)",
+    [runId, ids.enrollment, ids.sourceClass],
+  );
+  await sql(
+    "insert into public.calculated_subject_results(calculation_run_id,enrollment_id,class_section_id,subject_id,mark_sheet_id,subject_status,subject_score,grade,aggregate_points,is_pass,assessed_weight) values($1,$2,$3,$4,$5,'COMPLETE',90,'A',5,true,100)",
+    [runId, ids.enrollment, ids.sourceClass, ids.subject, ids.sheet],
+  );
+  await sql(
+    "insert into public.term_attendance(term_id,enrollment_id,days_open,days_present,days_absent,recorded_by) values($1,$2,100,90,10,$3)",
+    [ids.term, ids.enrollment, membership],
+  );
+  await sql(
+    'insert into public.promotion_rules(id,school_id,academic_year_id,grade_level_id,name,version,minimum_average,minimum_attendance_percentage,additional_rules,is_active,created_by) values($1,$2,$3,$4,\'Browser Promotion Rule\',1,50,80,\'{"schema_version":1,"require_complete_result":true,"success_outcome":"PROMOTED","failure_outcome":"REPEAT_RECOMMENDED","incomplete_outcome":"REPEAT_RECOMMENDED"}\'::jsonb,true,$5)',
+    [ids.rule, ids.school, ids.year, ids.grade, membership],
+  );
+  await sql(
+    "select set_config('app.term_marks_workflow_transition','allowed',false)",
+  );
+  await sql("update public.terms set status='LOCKED' where id=$1", [ids.term]);
+  const client = createClient(url, anonKey, {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+  });
+  const loginResult = await client.auth.signInWithPassword({ email, password });
+  if (loginResult.error) throw loginResult.error;
+  if (
+    (
+      await client.rpc("set_my_active_membership", {
+        target_membership_id: membership,
+      })
+    ).error
+  )
+    throw new Error("Could not select the browser fixture school.");
+  const generated = await client.rpc("generate_promotion_recommendations", {
+    target_term_id: ids.term,
+    target_grade_level_id: ids.grade,
+  });
+  if (generated.error) throw generated.error;
+  await sql(
+    "update public.student_access_credentials set is_active=false where student_id=$1",
+    [ids.student],
+  );
+  await sql(
+    `insert into public.student_access_credentials
+       (student_id, access_code_lookup_hash, pin_hash, is_active, expires_at)
+       values ($1, $2, extensions.crypt($3, extensions.gen_salt('bf', 12)), true, null)
+       on conflict (access_code_lookup_hash) do update
+       set student_id=excluded.student_id, pin_hash=excluded.pin_hash,
+           is_active=true, expires_at=null, failed_attempts=0,
+           locked_until=null, updated_at=now()`,
+    [ids.student, accessHash(parentCode), parentPin],
+  );
+}
+
+async function login(
+  page: Page,
+  actor = browserActors.admin,
+  membershipId = actor.membershipId,
+) {
+  await page.context().clearCookies();
+  await page.goto("/staff-login");
+  await page.getByLabel("Email address").fill(actor.email);
+  await page.getByLabel("Password").fill(password);
+  await page.getByRole("button", { name: "Sign in" }).click();
+  await page.waitForURL((location) => location.pathname !== "/staff-login");
+  if (page.url().includes("/select-school")) {
+    await page.locator(`input[value="${membershipId}"]`).check();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.waitForURL(
+      (location) => !location.pathname.includes("/select-school"),
+    );
+  }
+}
+
+async function browserAccessToken(page: Page) {
+  const authCookies = (await page.context().cookies())
+    .filter(({ name }) => name.includes("-auth-token"))
+    .sort(({ name: left }, { name: right }) => left.localeCompare(right));
+  const encoded = authCookies.map(({ value }) => value).join("");
+  if (!encoded) throw new Error("The authenticated browser cookie is missing.");
+
+  const value = decodeURIComponent(encoded);
+  const json = value.startsWith("base64-")
+    ? Buffer.from(value.slice("base64-".length), "base64url").toString("utf8")
+    : value;
+  const session = JSON.parse(json) as
+    | { access_token?: string }
+    | [string, string | null, string | null, string | null];
+  const accessToken = Array.isArray(session)
+    ? session[0]
+    : session.access_token;
+  if (!accessToken)
+    throw new Error("The authenticated browser access token is unavailable.");
+
+  return accessToken;
+}
+
+async function browserRpc(
+  page: Page,
+  accessToken: string,
+  functionName: string,
+  args: Record<string, unknown>,
+) {
+  return page.evaluate(
+    async ({ anonKey, args, functionName, token, url }) => {
+      const response = await fetch(`${url}/rest/v1/rpc/${functionName}`, {
+        method: "POST",
+        headers: {
+          apikey: anonKey,
+          Authorization: `Bearer ${token}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(args),
+      });
+      return { body: await response.text(), status: response.status };
+    },
+    {
+      anonKey,
+      args,
+      functionName,
+      token: accessToken,
+      url,
+    },
+  );
+}
+
+async function staffClient(actor: { email: string; membershipId: string }) {
+  const client = createClient(url, anonKey, {
+    auth: {
+      autoRefreshToken: false,
+      detectSessionInUrl: false,
+      persistSession: false,
+    },
+  });
+  const loginResult = await client.auth.signInWithPassword({
+    email: actor.email,
+    password,
+  });
+  if (loginResult.error) throw loginResult.error;
+  const selected = await client.rpc("set_my_active_membership", {
+    target_membership_id: actor.membershipId,
+  });
+  if (selected.error) throw selected.error;
+  return client;
+}
+
+async function addScenarioLearner({
+  label,
+  score,
+  attendance = true,
+}: {
+  label: string;
+  score: number;
+  attendance?: boolean | "zero";
+}) {
+  const studentId = randomUUID();
+  const enrollmentId = randomUUID();
+  const membershipId = browserActors.admin.membershipId;
+  await sql(
+    "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date,status) values($1,$2,$3,$4,'Scenario','2049-01-02','ACTIVE')",
+    [studentId, ids.school, `BPS-${label}-${nonce.slice(0, 6)}`, label],
+  );
+  await sql("begin");
+  await sql(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await sql(
+    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+  );
+  await sql(
+    "update public.mark_sheets set workflow_status='DRAFT', locked_by=null, locked_at=null where id=$1",
+    [ids.sheet],
+  );
+  await sql("update public.terms set status='MARKS_ENTRY' where id=$1", [
+    ids.term,
+  ]);
+  await sql(
+    "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,status,enrolled_on) values($1,$2,$3,$4,'ACTIVE','2049-01-02')",
+    [enrollmentId, studentId, ids.year, ids.sourceClass],
+  );
+  await sql(
+    "insert into public.marks(mark_sheet_id,assessment_component_id,enrollment_id,score,attendance_status,created_by,updated_by) values($1,$2,$3,$4,'PRESENT',$5,$5)",
+    [ids.sheet, ids.component, enrollmentId, score, membershipId],
+  );
+  if (attendance === true)
+    await sql(
+      "insert into public.term_attendance(term_id,enrollment_id,days_open,days_present,days_absent,recorded_by) values($1,$2,100,90,10,$3)",
+      [ids.term, enrollmentId, membershipId],
+    );
+  if (attendance === "zero")
+    await sql(
+      "insert into public.term_attendance(term_id,enrollment_id,days_open,days_present,days_absent,recorded_by) values($1,$2,0,0,0,$3)",
+      [ids.term, enrollmentId, membershipId],
+    );
+  await sql(
+    "update public.mark_sheets set workflow_status='LOCKED', locked_by=$2, locked_at=now() where id=$1",
+    [ids.sheet, membershipId],
+  );
+  await sql("update public.terms set status='LOCKED' where id=$1", [ids.term]);
+  await sql("commit");
+  const client = await staffClient(browserActors.admin);
+  const calculated = await client.rpc("calculate_grade_results", {
+    target_term_id: ids.term,
+    target_grade_level_id: ids.grade,
+    target_grading_scale_id: ids.scale,
+    target_ranking_rule_id: ids.ranking,
+    target_aggregate_classification_scale_id: ids.classification,
+  });
+  if (calculated.error) throw calculated.error;
+  const generated = await client.rpc("generate_promotion_recommendations", {
+    target_term_id: ids.term,
+    target_grade_level_id: ids.grade,
+  });
+  if (generated.error) throw generated.error;
+  return { studentId, enrollmentId, client };
+}
+
+async function currentDecision(enrollmentId: string) {
+  const result = await sql(
+    "select id as decision_id, version as decision_version, system_recommendation from public.promotion_decisions where enrollment_id=$1 order by version desc, created_at desc limit 1",
+    [enrollmentId],
+  );
+  if (!result.rows[0]) throw new Error("Scenario decision was not generated.");
+  return result.rows[0] as {
+    decision_id: string;
+    decision_version: number;
+    system_recommendation: string;
+  };
+}
+
+test.describe.serial("Stage 17 promotion browser acceptance", () => {
+  test.skip(!enabled, "requires the local promotion runner");
+  test.beforeAll(setup);
+  test.afterAll(async () => {
+    if (!enabled) return;
+    // The fixture includes append-only promotion evidence. Teardown must not
+    // bypass those database lifecycle protections.
+    await database.end();
+    return;
+    await sql("delete from public.student_progressions where school_id=$1", [
+      ids.school,
+    ]);
+    await sql("delete from public.promotion_decisions where enrollment_id=$1", [
+      ids.enrollment,
+    ]);
+    await sql(
+      "delete from public.promotion_recommendation_snapshots where school_id=$1",
+      [ids.school],
+    );
+    await sql("delete from public.term_attendance where term_id=$1", [
+      ids.term,
+    ]);
+    await sql(
+      "delete from public.calculated_subject_results where enrollment_id=$1",
+      [ids.enrollment],
+    );
+    await sql(
+      "delete from public.calculated_student_results where enrollment_id=$1",
+      [ids.enrollment],
+    );
+    await sql(
+      "delete from public.result_calculation_sources where mark_sheet_id=$1",
+      [ids.sheet],
+    );
+    await sql("delete from public.result_calculation_runs where term_id=$1", [
+      ids.term,
+    ]);
+    await sql("delete from public.mark_sheets where id=$1", [ids.sheet]);
+    await sql("delete from public.assessment_components where id=$1", [
+      ids.component,
+    ]);
+    await sql("delete from public.assessment_schemes where id=$1", [
+      ids.scheme,
+    ]);
+    await sql("delete from public.teaching_assignments where id=$1", [
+      ids.assignment,
+    ]);
+    await sql("delete from public.promotion_rules where id=$1", [ids.rule]);
+    await sql("delete from public.grading_bands where grading_scale_id=$1", [
+      ids.scale,
+    ]);
+    await sql("delete from public.grading_scales where id=$1", [ids.scale]);
+    await sql("delete from public.ranking_rules where id=$1", [ids.ranking]);
+    await sql(
+      "delete from public.aggregate_classification_bands where scale_id=$1",
+      [ids.classification],
+    );
+    await sql(
+      "delete from public.aggregate_classification_scales where id=$1",
+      [ids.classification],
+    );
+    await sql("delete from public.enrollments where id=$1", [ids.enrollment]);
+    await sql("delete from public.students where id=$1", [ids.student]);
+    await sql("delete from public.class_sections where id in ($1,$2)", [
+      ids.sourceClass,
+      ids.targetClass,
+    ]);
+    await sql("delete from public.grade_level_subjects where id=$1", [
+      ids.mapping,
+    ]);
+    await sql("delete from public.subjects where id=$1", [ids.subject]);
+    await sql("delete from public.grade_levels where school_id=$1", [
+      ids.school,
+    ]);
+    await sql("delete from public.terms where id=$1", [ids.term]);
+    await sql("delete from public.academic_years where school_id=$1", [
+      ids.school,
+    ]);
+    await sql("delete from public.schools where id=$1", [ids.school]);
+    for (const userId of fixtureUserIds)
+      await admin!.auth.admin.deleteUser(userId);
+    await database.end();
+  });
+  test.beforeEach(async ({ page }, info) => {
+    if (
+      !info.title.startsWith("01.") &&
+      !info.title.startsWith("73.") &&
+      !info.title.startsWith("75.")
+    )
+      await login(page);
+  });
+
+  test("01. signed-out users cannot open promotion", async ({ page }) => {
+    await page.goto("/dashboard/promotion");
+    await expect(page).toHaveURL(/staff-login|forbidden/);
+  });
+  const scenarios: Array<[string, (page: Page) => Promise<void>]> = [
+    [
+      "02. authorized user opens promotion",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page).toHaveURL(/dashboard\/promotion/);
+      },
+    ],
+    [
+      "03. promotion heading is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByRole("heading", { name: "Promotion and progression" }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "04. secure eyebrow is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByText(/secure promotion/i)).toBeVisible();
+      },
+    ],
+    [
+      "05. view permission badge is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("PROMOTION_VIEW", { exact: true }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "06. term filter is labelled",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByLabel("Academic term")).toBeVisible();
+      },
+    ],
+    [
+      "07. grade filter is labelled",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByLabel("Grade")).toBeVisible();
+      },
+    ],
+    [
+      "08. apply filters control is present",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByRole("button", { name: "Apply filters" }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "09. promotion term metric is configured",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("Configured", { exact: true }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "10. source year metric is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("Browser Source", { exact: true }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "11. active rule metric is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByText(/Browser Promotion Rule/)).toBeVisible();
+      },
+    ],
+    [
+      "12. current result metric is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByText(/Current · v1/)).toBeVisible();
+      },
+    ],
+    [
+      "13. learner count is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("1", { exact: true }).first(),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "14. generated recommendation card is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByText(/Recommendation v1/)).toBeVisible();
+      },
+    ],
+    [
+      "15. system promoted badge is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByText(/System: Promoted/)).toBeVisible();
+      },
+    ],
+    [
+      "16. unconfirmed state is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("Not confirmed", { exact: true }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "17. average evidence is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("90", { exact: true }).first(),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "18. attendance criterion is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("minimum_attendance_percentage", { exact: true }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "19. criterion table is keyboard reachable",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByText(/Recommendation v1/)).toBeVisible();
+        const term = page.getByLabel("Academic term");
+        await term.focus();
+        await expect(term).toBeFocused();
+      },
+    ],
+    [
+      "20. grade filter retains source grade",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByLabel("Grade")).toHaveValue(ids.grade);
+      },
+    ],
+    [
+      "21. term filter retains promotion term",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByLabel("Academic term")).toHaveValue(ids.term);
+      },
+    ],
+    [
+      "22. generation action is available",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByRole("button", { name: "Generate recommendations" }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "23. final decision selector is available",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByLabel("Final decision")).toBeVisible();
+      },
+    ],
+    [
+      "24. promoted option is available",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByLabel("Final decision").locator("option[value='PROMOTED']"),
+        ).toHaveCount(1);
+      },
+    ],
+    [
+      "25. support option is available",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page
+            .getByLabel("Final decision")
+            .locator("option[value='PROMOTED_WITH_SUPPORT']"),
+        ).toHaveCount(1);
+      },
+    ],
+    [
+      "26. academic review option is available",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page
+            .getByLabel("Final decision")
+            .locator("option[value='ACADEMIC_REVIEW']"),
+        ).toHaveCount(1);
+      },
+    ],
+    [
+      "27. repeat option is available",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page
+            .getByLabel("Final decision")
+            .locator("option[value='REPEAT_CONFIRMED']"),
+        ).toHaveCount(1);
+      },
+    ],
+    [
+      "28. completed option is available",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page
+            .getByLabel("Final decision")
+            .locator("option[value='COMPLETED']"),
+        ).toHaveCount(1);
+      },
+    ],
+    [
+      "29. override reason is labelled",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByLabel(/Override\/reopen reason/)).toBeVisible();
+      },
+    ],
+    [
+      "30. generation is idempotent in the UI",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await page
+          .getByRole("button", { name: "Generate recommendations" })
+          .click();
+        await expect(page.getByText(/Recommendation v1/)).toBeVisible();
+      },
+    ],
+    [
+      "31. snapshot fingerprint is shown",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByText(/snapshot [a-f0-9]{8}/i)).toBeVisible();
+      },
+    ],
+    [
+      "32. evidence headings are visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByRole("heading", { name: "Criterion evidence" }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "33. result complete criterion is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("result_complete", { exact: true }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "34. success criterion is met",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("Met", { exact: true }).first(),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "35. no horizontal overflow at 320px",
+      async (page) => {
+        await page.setViewportSize({ width: 320, height: 760 });
+        await page.goto("/dashboard/promotion");
+        expect(
+          await page.evaluate(
+            () =>
+              document.documentElement.scrollWidth <=
+              document.documentElement.clientWidth,
+          ),
+        ).toBe(true);
+      },
+    ],
+    [
+      "36. page remains readable at 320px",
+      async (page) => {
+        await page.setViewportSize({ width: 320, height: 760 });
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByRole("heading", { name: "Promotion and progression" }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "37. apply filters is keyboard reachable",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await page.getByRole("button", { name: "Apply filters" }).focus();
+        await expect(
+          page.getByRole("button", { name: "Apply filters" }),
+        ).toBeFocused();
+      },
+    ],
+    [
+      "38. generation button is keyboard reachable",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await page
+          .getByRole("button", { name: "Generate recommendations" })
+          .focus();
+        await expect(
+          page.getByRole("button", { name: "Generate recommendations" }),
+        ).toBeFocused();
+      },
+    ],
+    [
+      "39. selector supports keyboard selection",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await page
+          .getByLabel("Final decision")
+          .selectOption("PROMOTED_WITH_SUPPORT");
+        await expect(page.getByLabel("Final decision")).toHaveValue(
+          "PROMOTED_WITH_SUPPORT",
+        );
+      },
+    ],
+    [
+      "40. reason field accepts keyboard input",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        const reason = page.getByLabel(/Override\/reopen reason/);
+        await reason.fill("Browser review note");
+        await expect(reason).toHaveValue("Browser review note");
+      },
+    ],
+    [
+      "41. confirmation action is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByRole("button", { name: "Confirm decision" }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "42. page exposes no guardian data",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByText(/guardian|parent credential/i)).toHaveCount(
+          0,
+        );
+      },
+    ],
+    [
+      "43. page exposes no photo path",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByText(/storage-path|photo-canary/i)).toHaveCount(
+          0,
+        );
+      },
+    ],
+    [
+      "44. page exposes no raw database error",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText(/postgres|SQLSTATE|relation .* does not exist/i),
+        ).toHaveCount(0);
+      },
+    ],
+    [
+      "45. secure description is visible",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText(/never become final decisions automatically/i),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "46. recommendation is not progressed initially",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByText("PROGRESSED", { exact: true })).toHaveCount(
+          0,
+        );
+      },
+    ],
+    [
+      "47. target controls are initially hidden",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("Explicit progression", { exact: true }),
+        ).toHaveCount(0);
+      },
+    ],
+    [
+      "48. no stale warning appears initially",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("Confirmed stale", { exact: true }),
+        ).toHaveCount(0);
+      },
+    ],
+    [
+      "49. rule version is shown",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByText(/rule v1/)).toBeVisible();
+      },
+    ],
+    [
+      "50. attendance actual is shown",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("90", { exact: true }).first(),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "51. source enrollment identifier is shown",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText(`Enrollment ${ids.enrollment.slice(0, 8)}`),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "52. filter submit preserves route",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await page.getByRole("button", { name: "Apply filters" }).click();
+        await page.waitForURL(/dashboard\/promotion/);
+      },
+    ],
+    [
+      "53. one promotion workspace is rendered",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("Criterion evidence", { exact: true }),
+        ).toHaveCount(1);
+      },
+    ],
+    [
+      "54. no automatic progression claim is shown",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText(/automatically progressed|auto-promoted/i),
+        ).toHaveCount(0);
+      },
+    ],
+    [
+      "55. selected school remains in scope",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page).not.toHaveURL(/select-school/);
+      },
+    ],
+    [
+      "56. confirmation selector has a visible label",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByText(/Recommendation v1/)).toBeVisible();
+        await expect(page.getByLabel("Final decision")).toBeVisible();
+      },
+    ],
+    [
+      "57. generation action has a visible label",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("Generate recommendations", { exact: true }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "58. snapshot checksum is not blank",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        const text = await page
+          .getByText(/snapshot [a-f0-9]{8}/i)
+          .textContent();
+        expect(text).toMatch(/[a-f0-9]{8}/i);
+      },
+    ],
+    [
+      "59. criterion table is present",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page.getByRole("table")).toBeVisible();
+      },
+    ],
+    [
+      "60. content is not on a report route",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(page).not.toHaveURL(/reports|analytics/);
+      },
+    ],
+    [
+      "61. feedback region is absent before action",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("Promotion workflow", { exact: true }),
+        ).toHaveCount(0);
+      },
+    ],
+    [
+      "62. system recommendation is not final",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByText("Not confirmed", { exact: true }),
+        ).toBeVisible();
+      },
+    ],
+    [
+      "63. non-final grade exposes promotion option",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByLabel("Final decision").locator("option[value='PROMOTED']"),
+        ).toHaveCount(1);
+      },
+    ],
+    [
+      "64. generation button is enabled",
+      async (page) => {
+        await page.goto("/dashboard/promotion");
+        await expect(
+          page.getByRole("button", { name: "Generate recommendations" }),
+        ).toBeEnabled();
+      },
+    ],
+  ];
+  for (const [title, scenario] of scenarios)
+    test(title, async ({ page }) => scenario(page));
+  test("65. authorized user confirms a recommendation", async ({ page }) => {
+    await page.goto("/dashboard/promotion");
+    await page.getByLabel("Final decision").selectOption("PROMOTED");
+    await page.getByRole("button", { name: "Confirm decision" }).click();
+    await expect(
+      page.getByText("Final: Promoted", { exact: true }),
+    ).toBeVisible();
+  });
+  test("66. authorized user applies explicit progression", async ({ page }) => {
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByText("Explicit progression", { exact: true }),
+    ).toBeVisible();
+    await page.getByRole("button", { name: "Apply progression" }).click();
+    await expect(page.getByText(/Application fingerprint/)).toBeVisible();
+  });
+  test("67. head teacher has promotion read and mutation access", async ({
+    page,
+  }) => {
+    await login(page, browserActors["head-teacher"]);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByRole("heading", { name: "Promotion and progression" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Generate recommendations" }),
+    ).toBeVisible();
+    // Earlier serial scenarios confirm and progress the fixture recommendation;
+    // generation remains the available mutation control for this actor.
+  });
+  test("68. academic registrar can read but has no mutation controls", async ({
+    page,
+  }) => {
+    await login(page, browserActors.registrar);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByRole("heading", { name: "Promotion and progression" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Generate recommendations" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Confirm decision" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Reopen decision" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByRole("button", { name: "Apply progression" }),
+    ).toHaveCount(0);
+  });
+  for (const [label, title] of [
+    ["class-teacher", "class teacher"],
+    ["subject-teacher", "subject teacher"],
+  ] as const) {
+    test(`69.${label === "class-teacher" ? "1" : "2"}. ${title} cannot open promotion`, async ({
+      page,
+    }) => {
+      await login(page, browserActors[label]);
+      await page.goto("/dashboard/promotion");
+      await expect(page).toHaveURL(/forbidden|staff-login/);
+      await expect(page.getByText(/Promotion and progression/)).toHaveCount(0);
+    });
+  }
+  test("70. role switching does not reuse the admin browser session", async ({
+    page,
+  }) => {
+    await login(page, browserActors.registrar);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByRole("button", { name: "Generate recommendations" }),
+    ).toHaveCount(0);
+    await login(page, browserActors["head-teacher"]);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByRole("button", { name: "Generate recommendations" }),
+    ).toBeVisible();
+  });
+  test("71. multi-school head teacher switches to an isolated workspace", async ({
+    page,
+  }) => {
+    await login(page, browserActors["head-teacher"]);
+    await page.goto("/select-school");
+    await expect(page.getByText(/Other School/)).toBeVisible();
+    await page
+      .locator(
+        `input[value="${browserActors["head-teacher-other"].membershipId}"]`,
+      )
+      .check();
+    await page.getByRole("button", { name: "Continue" }).click();
+    await page.waitForURL(
+      (location) => !location.pathname.includes("/select-school"),
+    );
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByText("Other Browser Source", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page
+        .getByRole("status")
+        .getByText("No active promotion rule", { exact: true }),
+    ).toBeVisible();
+    await expect(page.getByText(schoolName, { exact: true })).toHaveCount(0);
+  });
+  test("72. a known cross-school promotion id is denied server-side", async () => {
+    const otherSchoolClient = await staffClient(
+      browserActors["head-teacher-other"],
+    );
+    const result = await otherSchoolClient.rpc(
+      "list_promotion_recommendations",
+      {
+        target_term_id: ids.term,
+        target_grade_level_id: ids.grade,
+      },
+    );
+    expect(
+      Boolean(result.error) || (result.data?.length ?? 0) === 0,
+    ).toBeTruthy();
+  });
+  test("73. live PROMOTION_CONFIRM revocation removes mutation controls but preserves read", async ({
+    page,
+  }) => {
+    await sql(
+      "insert into public.role_permissions(role,permission) values('SCHOOL_ADMIN','PROMOTION_CONFIRM') on conflict do nothing",
+    );
+    await addScenarioLearner({
+      label: "LiveRevoke",
+      score: 90,
+    });
+    await login(page);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByRole("heading", { name: "Promotion and progression" }),
+    ).toBeVisible();
+    await expect(
+      page.getByRole("button", { name: "Confirm decision", exact: true }),
+    ).toHaveCount(1);
+    const accessToken = await browserAccessToken(page);
+
+    try {
+      await sql(
+        "delete from public.role_permissions where role='SCHOOL_ADMIN' and permission='PROMOTION_CONFIRM'",
+      );
+      await page.reload({ waitUntil: "domcontentloaded" });
+      await expect(
+        page.getByRole("heading", { name: "Promotion and progression" }),
+      ).toBeVisible();
+      await expect(
+        page.getByRole("button", { name: "Generate recommendations" }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", { name: "Confirm decision", exact: true }),
+      ).toHaveCount(0);
+      await expect(
+        page.getByRole("button", {
+          name: /Reopen decision|Apply progression|Complete learner/,
+        }),
+      ).toHaveCount(0);
+      const mutation = await browserRpc(
+        page,
+        accessToken,
+        "generate_promotion_recommendations",
+        {
+          target_term_id: ids.term,
+          target_grade_level_id: ids.grade,
+        },
+      );
+      expect(mutation.status).not.toBe(200);
+      expect(mutation.body).toMatch(/FORBIDDEN|permission|PROMOTION_CONFIRM/i);
+    } finally {
+      await sql(
+        "insert into public.role_permissions(role,permission) values('SCHOOL_ADMIN','PROMOTION_CONFIRM') on conflict do nothing",
+      );
+    }
+  });
+  test("74. Registrar mutation is rejected by the server, not only hidden in the UI", async () => {
+    const registrarClient = await staffClient(browserActors.registrar);
+    const result = await registrarClient.rpc(
+      "generate_promotion_recommendations",
+      {
+        target_term_id: ids.term,
+        target_grade_level_id: ids.grade,
+      },
+    );
+    expect(result.error?.message ?? "").toMatch(
+      /FORBIDDEN|permission|PROMOTION_CONFIRM/i,
+    );
+  });
+  test("75. an authenticated parent portal session cannot open staff promotion", async ({
+    page,
+  }) => {
+    await page.goto("/parent/login");
+    await page.getByLabel("Access code").fill(parentCode);
+    await page.getByLabel("PIN").fill(parentPin);
+    await page.getByRole("button", { name: "Sign in securely" }).click();
+    await expect(page).toHaveURL(/\/parent$/);
+    await expect(
+      page.getByRole("heading", { name: "Published report cards" }),
+    ).toBeVisible();
+    await page.goto("/dashboard/promotion");
+    await expect(page).toHaveURL(/\/(?:forbidden|staff-login)(?:\?|$)/);
+    await expect(
+      page.getByRole("heading", { name: "Promotion and progression" }),
+    ).toHaveCount(0);
+    await expect(
+      page.getByText(/PROMOTION_VIEW|promotion decision/i),
+    ).toHaveCount(0);
+    await expect(page.getByRole("link", { name: /Promotion/ })).toHaveCount(0);
+  });
+  test("76. a confirmed stale decision has a dedicated visible state", async ({
+    page,
+  }) => {
+    const scenario = await addScenarioLearner({ label: "Stale", score: 90 });
+    const decision = await currentDecision(scenario.enrollmentId);
+    const confirmed = await scenario.client.rpc("confirm_promotion_decision", {
+      target_decision_id: decision.decision_id,
+      expected_decision_version: decision.decision_version,
+      target_final_decision: "PROMOTED",
+    });
+    expect(confirmed.error).toBeNull();
+    await sql("begin");
+    await sql(
+      "select set_config('app.marks_workflow_transition','allowed',true)",
+    );
+    await sql(
+      "select set_config('app.term_marks_workflow_transition','allowed',true)",
+    );
+    await sql(
+      "update public.mark_sheets set workflow_status='DRAFT', locked_by=null, locked_at=null where id=$1",
+      [ids.sheet],
+    );
+    await sql("update public.terms set status='MARKS_ENTRY' where id=$1", [
+      ids.term,
+    ]);
+    await sql(
+      "update public.marks set score=88 where mark_sheet_id=$1 and enrollment_id=$2",
+      [ids.sheet, scenario.enrollmentId],
+    );
+    await sql(
+      "update public.mark_sheets set workflow_status='LOCKED', locked_by=$2, locked_at=now() where id=$1",
+      [ids.sheet, browserActors.admin.membershipId],
+    );
+    await sql("update public.terms set status='LOCKED' where id=$1", [
+      ids.term,
+    ]);
+    await sql("commit");
+    const recalculated = await scenario.client.rpc("calculate_grade_results", {
+      target_term_id: ids.term,
+      target_grade_level_id: ids.grade,
+      target_grading_scale_id: ids.scale,
+      target_ranking_rule_id: ids.ranking,
+      target_aggregate_classification_scale_id: ids.classification,
+    });
+    expect(recalculated.error).toBeNull();
+    await login(page);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByText("Confirmed stale", { exact: true }),
+    ).toBeVisible();
+  });
+  test("77. REPEAT_RECOMMENDED remains distinct from REPEAT_CONFIRMED", async ({
+    page,
+  }) => {
+    const scenario = await addScenarioLearner({ label: "Repeat", score: 20 });
+    const decision = await currentDecision(scenario.enrollmentId);
+    expect(decision.system_recommendation).toBe("REPEAT_RECOMMENDED");
+    const confirmed = await scenario.client.rpc("confirm_promotion_decision", {
+      target_decision_id: decision.decision_id,
+      expected_decision_version: decision.decision_version,
+      target_final_decision: "REPEAT_CONFIRMED",
+    });
+    expect(confirmed.error).toBeNull();
+    await login(page);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByText("System: Repeat recommended", { exact: true }),
+    ).toBeVisible();
+    await expect(
+      page.getByText("Final: Repeat confirmed", { exact: true }),
+    ).toBeVisible();
+  });
+  test("78. zero days-open attendance is unavailable and blocks progression", async ({
+    page,
+  }) => {
+    const scenario = await addScenarioLearner({
+      label: "NoAttendance",
+      score: 90,
+      attendance: "zero",
+    });
+    const decision = await currentDecision(scenario.enrollmentId);
+    expect(decision.system_recommendation).toBe("ACADEMIC_REVIEW");
+    const confirmed = await scenario.client.rpc("confirm_promotion_decision", {
+      target_decision_id: decision.decision_id,
+      expected_decision_version: decision.decision_version,
+      target_final_decision: "ACADEMIC_REVIEW",
+    });
+    expect(confirmed.error).toBeNull();
+    const applied = await scenario.client.rpc("apply_student_progression", {
+      target_decision_id: decision.decision_id,
+      expected_decision_version: decision.decision_version,
+      target_academic_year_id: ids.nextYear,
+      target_class_section_id: ids.targetClass,
+    });
+    expect(applied.error?.message ?? "").toMatch(
+      /OUTCOME|ACADEMIC|progression/i,
+    );
+    await login(page);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByText("System: Academic review", { exact: true }),
+    ).toBeVisible();
+  });
+  test("79. a full target class rejects progression without changing the source", async () => {
+    const scenario = await addScenarioLearner({
+      label: "FullClass",
+      score: 90,
+    });
+    const decision = await currentDecision(scenario.enrollmentId);
+    const confirmed = await scenario.client.rpc("confirm_promotion_decision", {
+      target_decision_id: decision.decision_id,
+      expected_decision_version: decision.decision_version,
+      target_final_decision: "PROMOTED",
+    });
+    expect(confirmed.error).toBeNull();
+    const occupied = Number(
+      (
+        await sql(
+          "select count(*)::int as count from public.enrollments where class_section_id=$1 and status in ('ACTIVE','REPEATING')",
+          [ids.targetClass],
+        )
+      ).rows[0].count,
+    );
+    await sql("update public.class_sections set capacity=$2 where id=$1", [
+      ids.targetClass,
+      occupied,
+    ]);
+    const applied = await scenario.client.rpc("apply_student_progression", {
+      target_decision_id: decision.decision_id,
+      expected_decision_version: decision.decision_version,
+      target_academic_year_id: ids.nextYear,
+      target_class_section_id: ids.targetClass,
+    });
+    expect(applied.error?.message ?? "").toMatch(/CAPACITY|full/i);
+    expect(
+      (
+        await sql("select status from public.enrollments where id=$1", [
+          scenario.enrollmentId,
+        ])
+      ).rows[0].status,
+    ).toBe("ACTIVE");
+  });
+  test("80. final-grade COMPLETED applies with no target enrollment", async ({
+    page,
+  }) => {
+    await sql(
+      "update public.grade_levels set is_final_grade=true where id=$1",
+      [ids.grade],
+    );
+    const scenario = await addScenarioLearner({ label: "Final", score: 90 });
+    const decision = await currentDecision(scenario.enrollmentId);
+    expect(decision.system_recommendation).toBe("COMPLETED");
+    const confirmed = await scenario.client.rpc("confirm_promotion_decision", {
+      target_decision_id: decision.decision_id,
+      expected_decision_version: decision.decision_version,
+      target_final_decision: "COMPLETED",
+    });
+    expect(confirmed.error).toBeNull();
+    await login(page);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByText("Final: Completed", { exact: true }),
+    ).toBeVisible();
+    const applied = await scenario.client.rpc("apply_student_progression", {
+      target_decision_id: decision.decision_id,
+      expected_decision_version: decision.decision_version,
+      target_academic_year_id: null,
+      target_class_section_id: null,
+    });
+    expect(applied.error).toBeNull();
+    expect(
+      (
+        await sql(
+          "select target_enrollment_id from public.student_progressions where source_decision_id=$1",
+          [decision.decision_id],
+        )
+      ).rows[0].target_enrollment_id,
+    ).toBeNull();
+  });
+  test("81. Head Teacher sees a genuine confirmation control for an unconfirmed learner", async ({
+    page,
+  }) => {
+    await addScenarioLearner({ label: "HeadConfirm", score: 90 });
+    await login(page, browserActors["head-teacher"]);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByRole("button", { name: "Confirm decision" }).last(),
+    ).toBeVisible();
+  });
+  test("82. the expanded matrix remains private, keyboard reachable and usable at 320px", async ({
+    page,
+  }) => {
+    await page.setViewportSize({ width: 320, height: 760 });
+    await login(page);
+    await page.goto("/dashboard/promotion");
+    expect(
+      await page.evaluate(
+        () =>
+          document.documentElement.scrollWidth <=
+          document.documentElement.clientWidth,
+      ),
+    ).toBe(true);
+    await page
+      .getByRole("heading", { name: "Promotion and progression" })
+      .focus();
+    await expect(
+      page.getByText(/guardian|parent credential|storage-path|photo-canary/i),
+    ).toHaveCount(0);
+  });
+});

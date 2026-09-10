@@ -72,8 +72,10 @@ const rankingConfiguration = {
 };
 const promotionConfiguration = {
   schema_version: 1,
-  require_all_required_subjects: true,
-  allow_manual_review: true,
+  require_complete_result: true,
+  success_outcome: "PROMOTED",
+  failure_outcome: "ACADEMIC_REVIEW",
+  incomplete_outcome: "ACADEMIC_REVIEW",
 };
 
 function entity(data: Entity[] | null) {
@@ -707,9 +709,10 @@ describe.sequential("local academic configuration workflows", () => {
       ).error,
     ).toBeNull();
 
-    const requiredSubjects = [
-      { subject_id: state.subjectOne.entity_id, minimum_score: 50 },
-    ];
+    const requiredSubjects = {
+      schema_version: 1,
+      subjects: [{ subject_id: state.subjectOne.entity_id, require: "PASS" }],
+    };
     const promotion = await registrar.rpc("save_promotion_rule", {
       target_rule_id: null as unknown as string,
       expected_updated_at: null as unknown as string,

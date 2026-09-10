@@ -1619,9 +1619,12 @@ export type Database = {
           id: string;
           promotion_rule_id: string | null;
           reason: string | null;
+          recommendation_snapshot_id: string | null;
+          superseded_by: string | null;
           system_recommendation: Database["public"]["Enums"]["promotion_outcome"];
           term_id: string;
           updated_at: string;
+          version: number;
           was_overridden: boolean;
         };
         Insert: {
@@ -1634,9 +1637,12 @@ export type Database = {
           id?: string;
           promotion_rule_id?: string | null;
           reason?: string | null;
+          recommendation_snapshot_id?: string | null;
+          superseded_by?: string | null;
           system_recommendation: Database["public"]["Enums"]["promotion_outcome"];
           term_id: string;
           updated_at?: string;
+          version?: number;
           was_overridden?: boolean;
         };
         Update: {
@@ -1649,12 +1655,29 @@ export type Database = {
           id?: string;
           promotion_rule_id?: string | null;
           reason?: string | null;
+          recommendation_snapshot_id?: string | null;
+          superseded_by?: string | null;
           system_recommendation?: Database["public"]["Enums"]["promotion_outcome"];
           term_id?: string;
           updated_at?: string;
+          version?: number;
           was_overridden?: boolean;
         };
         Relationships: [
+          {
+            foreignKeyName: "promotion_decision_snapshot_fk";
+            columns: ["recommendation_snapshot_id"];
+            isOneToOne: false;
+            referencedRelation: "promotion_recommendation_snapshots";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "promotion_decision_superseded_by_fk";
+            columns: ["superseded_by"];
+            isOneToOne: false;
+            referencedRelation: "promotion_decisions";
+            referencedColumns: ["id"];
+          },
           {
             foreignKeyName: "promotion_decisions_confirmed_by_fkey";
             columns: ["confirmed_by"];
@@ -1678,6 +1701,91 @@ export type Database = {
           },
           {
             foreignKeyName: "promotion_decisions_term_id_fkey";
+            columns: ["term_id"];
+            isOneToOne: false;
+            referencedRelation: "terms";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
+      promotion_recommendation_snapshots: {
+        Row: {
+          calculation_run_id: string;
+          created_at: string;
+          created_by: string | null;
+          enrollment_id: string;
+          id: string;
+          promotion_rule_id: string;
+          schema_version: number;
+          school_id: string;
+          snapshot_checksum: string;
+          snapshot_data: Json;
+          term_id: string;
+        };
+        Insert: {
+          calculation_run_id: string;
+          created_at?: string;
+          created_by?: string | null;
+          enrollment_id: string;
+          id?: string;
+          promotion_rule_id: string;
+          schema_version?: number;
+          school_id: string;
+          snapshot_checksum: string;
+          snapshot_data: Json;
+          term_id: string;
+        };
+        Update: {
+          calculation_run_id?: string;
+          created_at?: string;
+          created_by?: string | null;
+          enrollment_id?: string;
+          id?: string;
+          promotion_rule_id?: string;
+          schema_version?: number;
+          school_id?: string;
+          snapshot_checksum?: string;
+          snapshot_data?: Json;
+          term_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "promotion_recommendation_snapshots_calculation_run_id_fkey";
+            columns: ["calculation_run_id"];
+            isOneToOne: false;
+            referencedRelation: "result_calculation_runs";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "promotion_recommendation_snapshots_created_by_fkey";
+            columns: ["created_by"];
+            isOneToOne: false;
+            referencedRelation: "school_staff_memberships";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "promotion_recommendation_snapshots_enrollment_id_fkey";
+            columns: ["enrollment_id"];
+            isOneToOne: false;
+            referencedRelation: "enrollments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "promotion_recommendation_snapshots_promotion_rule_id_fkey";
+            columns: ["promotion_rule_id"];
+            isOneToOne: false;
+            referencedRelation: "promotion_rules";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "promotion_recommendation_snapshots_school_id_fkey";
+            columns: ["school_id"];
+            isOneToOne: false;
+            referencedRelation: "schools";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "promotion_recommendation_snapshots_term_id_fkey";
             columns: ["term_id"];
             isOneToOne: false;
             referencedRelation: "terms";
@@ -2842,6 +2950,114 @@ export type Database = {
           },
         ];
       };
+      student_progressions: {
+        Row: {
+          application_checksum: string;
+          application_snapshot: Json | null;
+          applied_at: string;
+          applied_by: string;
+          created_at: string;
+          id: string;
+          outcome: Database["public"]["Enums"]["promotion_outcome"];
+          school_id: string;
+          source_decision_id: string;
+          source_enrollment_id: string;
+          target_academic_year_id: string | null;
+          target_class_section_id: string | null;
+          target_enrollment_id: string | null;
+          target_grade_level_id: string | null;
+        };
+        Insert: {
+          application_checksum: string;
+          application_snapshot?: Json | null;
+          applied_at?: string;
+          applied_by: string;
+          created_at?: string;
+          id?: string;
+          outcome: Database["public"]["Enums"]["promotion_outcome"];
+          school_id: string;
+          source_decision_id: string;
+          source_enrollment_id: string;
+          target_academic_year_id?: string | null;
+          target_class_section_id?: string | null;
+          target_enrollment_id?: string | null;
+          target_grade_level_id?: string | null;
+        };
+        Update: {
+          application_checksum?: string;
+          application_snapshot?: Json | null;
+          applied_at?: string;
+          applied_by?: string;
+          created_at?: string;
+          id?: string;
+          outcome?: Database["public"]["Enums"]["promotion_outcome"];
+          school_id?: string;
+          source_decision_id?: string;
+          source_enrollment_id?: string;
+          target_academic_year_id?: string | null;
+          target_class_section_id?: string | null;
+          target_enrollment_id?: string | null;
+          target_grade_level_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "student_progressions_applied_by_fkey";
+            columns: ["applied_by"];
+            isOneToOne: false;
+            referencedRelation: "school_staff_memberships";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "student_progressions_school_id_fkey";
+            columns: ["school_id"];
+            isOneToOne: false;
+            referencedRelation: "schools";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "student_progressions_source_decision_id_fkey";
+            columns: ["source_decision_id"];
+            isOneToOne: true;
+            referencedRelation: "promotion_decisions";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "student_progressions_source_enrollment_id_fkey";
+            columns: ["source_enrollment_id"];
+            isOneToOne: false;
+            referencedRelation: "enrollments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "student_progressions_target_academic_year_id_fkey";
+            columns: ["target_academic_year_id"];
+            isOneToOne: false;
+            referencedRelation: "academic_years";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "student_progressions_target_class_section_id_fkey";
+            columns: ["target_class_section_id"];
+            isOneToOne: false;
+            referencedRelation: "class_sections";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "student_progressions_target_enrollment_id_fkey";
+            columns: ["target_enrollment_id"];
+            isOneToOne: false;
+            referencedRelation: "enrollments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "student_progressions_target_grade_level_id_fkey";
+            columns: ["target_grade_level_id"];
+            isOneToOne: false;
+            referencedRelation: "grade_levels";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       student_term_comments: {
         Row: {
           class_teacher_comment: string | null;
@@ -3287,6 +3503,21 @@ export type Database = {
           term_updated_at: string;
         }[];
       };
+      apply_student_progression: {
+        Args: {
+          expected_decision_version: number;
+          target_academic_year_id?: string;
+          target_class_section_id?: string;
+          target_decision_id: string;
+        };
+        Returns: {
+          idempotent: boolean;
+          outcome: Database["public"]["Enums"]["promotion_outcome"];
+          progression_id: string;
+          target_enrollment_id: string;
+          target_grade_level_id: string;
+        }[];
+      };
       approve_mark_sheet: {
         Args: { expected_updated_at: string; target_mark_sheet_id: string };
         Returns: {
@@ -3369,6 +3600,21 @@ export type Database = {
           entity_id: string;
           entity_status: string;
           updated_at: string;
+        }[];
+      };
+      confirm_promotion_decision: {
+        Args: {
+          decision_reason?: string;
+          expected_decision_version: number;
+          target_decision_id: string;
+          target_final_decision: Database["public"]["Enums"]["promotion_outcome"];
+        };
+        Returns: {
+          decision_id: string;
+          decision_version: number;
+          final_decision: Database["public"]["Enums"]["promotion_outcome"];
+          snapshot_checksum: string;
+          was_overridden: boolean;
         }[];
       };
       create_academic_year: {
@@ -3682,6 +3928,18 @@ export type Database = {
           failed_count: number;
           generated_count: number;
           reused_count: number;
+        }[];
+      };
+      generate_promotion_recommendations: {
+        Args: { target_grade_level_id: string; target_term_id: string };
+        Returns: {
+          decision_id: string;
+          decision_version: number;
+          enrollment_id: string;
+          snapshot_checksum: string;
+          snapshot_id: string;
+          state: string;
+          system_recommendation: Database["public"]["Enums"]["promotion_outcome"];
         }[];
       };
       generate_student_report_snapshot: {
@@ -4667,6 +4925,74 @@ export type Database = {
           workflow_status: Database["public"]["Enums"]["mark_sheet_status"];
         }[];
       };
+      list_promotion_decision_history: {
+        Args: { target_enrollment_id_arg: string };
+        Returns: {
+          confirmed_at: string;
+          decision_id: string;
+          final_decision: Database["public"]["Enums"]["promotion_outcome"];
+          progression_id: string;
+          reason: string;
+          recommendation_snapshot_id: string;
+          superseded_by: string;
+          system_recommendation: Database["public"]["Enums"]["promotion_outcome"];
+          version: number;
+          was_overridden: boolean;
+        }[];
+      };
+      list_promotion_recommendations: {
+        Args: { target_grade_level_id: string; target_term_id: string };
+        Returns: {
+          decision_id: string;
+          decision_version: number;
+          enrollment_id: string;
+          final_decision: Database["public"]["Enums"]["promotion_outcome"];
+          progression_application_checksum: string;
+          progression_id: string;
+          reason: string;
+          snapshot_checksum: string;
+          snapshot_data: Json;
+          snapshot_id: string;
+          state: string;
+          system_recommendation: Database["public"]["Enums"]["promotion_outcome"];
+          was_overridden: boolean;
+        }[];
+      };
+      list_promotion_scopes: {
+        Args: never;
+        Returns: {
+          academic_year_id: string;
+          academic_year_name: string;
+          calculation_version: number;
+          current_run_id: string;
+          decision_count: number;
+          grade_is_final: boolean;
+          grade_level_id: string;
+          grade_name: string;
+          is_promotion_term: boolean;
+          learner_count: number;
+          readiness_state: string;
+          rule_id: string;
+          rule_name: string;
+          rule_version: number;
+          term_id: string;
+          term_name: string;
+        }[];
+      };
+      list_promotion_target_classes: {
+        Args: { target_decision_id: string };
+        Returns: {
+          academic_year_id: string;
+          academic_year_name: string;
+          capacity: number;
+          class_name: string;
+          class_section_id: string;
+          grade_level_id: string;
+          grade_name: string;
+          is_available: boolean;
+          occupied: number;
+        }[];
+      };
       list_result_calculation_options: {
         Args: { target_grade_level_id: string; target_term_id: string };
         Returns: {
@@ -4924,6 +5250,20 @@ export type Database = {
           term_id: string;
           term_status: Database["public"]["Enums"]["term_status"];
           term_updated_at: string;
+        }[];
+      };
+      reopen_promotion_decision: {
+        Args: {
+          expected_decision_version: number;
+          reopen_reason: string;
+          target_decision_id: string;
+        };
+        Returns: {
+          decision_id: string;
+          decision_version: number;
+          snapshot_checksum: string;
+          snapshot_id: string;
+          system_recommendation: Database["public"]["Enums"]["promotion_outcome"];
         }[];
       };
       reorder_grade_levels: {

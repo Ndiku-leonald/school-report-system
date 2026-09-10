@@ -331,10 +331,12 @@ type PromotionValues = {
   minimumAttendancePercentage: number | "";
   requiredSubjectRules: {
     subjectId: string;
-    minimumScore: number;
+    require: "PASS" | "COMPLETE";
   }[];
-  requireAllRequiredSubjects: boolean;
-  allowManualReview: boolean;
+  requireCompleteResult: boolean;
+  successOutcome: "PROMOTED" | "PROMOTED_WITH_SUPPORT";
+  failureOutcome: "ACADEMIC_REVIEW" | "REPEAT_RECOMMENDED";
+  incompleteOutcome: "ACADEMIC_REVIEW" | "REPEAT_RECOMMENDED";
 };
 
 export function PromotionRuleForm({
@@ -364,8 +366,10 @@ export function PromotionRuleForm({
         minimumSubjectsPassed: "",
         minimumAttendancePercentage: "",
         requiredSubjectRules: [],
-        requireAllRequiredSubjects: true,
-        allowManualReview: true,
+        requireCompleteResult: true,
+        successOutcome: "PROMOTED",
+        failureOutcome: "ACADEMIC_REVIEW",
+        incompleteOutcome: "ACADEMIC_REVIEW",
       } satisfies PromotionValues),
   });
   const requiredSubjects = useFieldArray({
@@ -397,8 +401,10 @@ export function PromotionRuleForm({
           requiredSubjectRules: values.requiredSubjectRules,
           additionalRules: {
             schemaVersion: 1,
-            requireAllRequiredSubjects: values.requireAllRequiredSubjects,
-            allowManualReview: values.allowManualReview,
+            requireCompleteResult: values.requireCompleteResult,
+            successOutcome: values.successOutcome,
+            failureOutcome: values.failureOutcome,
+            incompleteOutcome: values.incompleteOutcome,
           },
           ...identity,
         };
@@ -543,7 +549,7 @@ export function PromotionRuleForm({
 
       <fieldset className="grid gap-3">
         <legend className="text-sm font-semibold">
-          Required-subject thresholds
+          Required-subject rules
         </legend>
         <p className="text-muted-foreground text-sm">
           Subjects must belong to this school and, when a grade is selected, to
@@ -584,19 +590,16 @@ export function PromotionRuleForm({
               <Label
                 htmlFor={`promotion-${initial?.id ?? "new"}-${index}-score`}
               >
-                Minimum score
+                Required outcome
               </Label>
-              <Input
-                id={`promotion-${initial?.id ?? "new"}-${index}-score`}
-                type="number"
-                min={0}
-                max={100}
-                step="0.01"
-                {...form.register(
-                  `requiredSubjectRules.${index}.minimumScore`,
-                  { valueAsNumber: true },
-                )}
-              />
+              <select
+                id={`promotion-${initial?.id ?? "new"}-${index}-require`}
+                className={selectClass}
+                {...form.register(`requiredSubjectRules.${index}.require`)}
+              >
+                <option value="PASS">Must pass</option>
+                <option value="COMPLETE">Must be complete</option>
+              </select>
             </div>
             <Button
               className="self-end"
@@ -615,7 +618,7 @@ export function PromotionRuleForm({
           variant="secondary"
           className="justify-self-start"
           onClick={() =>
-            requiredSubjects.append({ subjectId: "", minimumScore: 50 })
+            requiredSubjects.append({ subjectId: "", require: "PASS" })
           }
         >
           <Plus aria-hidden="true" className="size-4" />
@@ -626,15 +629,32 @@ export function PromotionRuleForm({
       <fieldset className="grid gap-2">
         <legend className="text-sm font-semibold">Decision options</legend>
         <label className="flex items-center gap-2 text-sm font-medium">
-          <input
-            type="checkbox"
-            {...form.register("requireAllRequiredSubjects")}
-          />
-          Require every listed subject threshold
+          <input type="checkbox" {...form.register("requireCompleteResult")} />
+          Require a complete result
         </label>
-        <label className="flex items-center gap-2 text-sm font-medium">
-          <input type="checkbox" {...form.register("allowManualReview")} />
-          Allow later manual review when thresholds are not met
+        <label className="grid gap-1 text-sm font-medium">
+          Successful complete result
+          <select className={selectClass} {...form.register("successOutcome")}>
+            <option value="PROMOTED">Promoted</option>
+            <option value="PROMOTED_WITH_SUPPORT">Promoted with support</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm font-medium">
+          Failed criterion outcome
+          <select className={selectClass} {...form.register("failureOutcome")}>
+            <option value="ACADEMIC_REVIEW">Academic review</option>
+            <option value="REPEAT_RECOMMENDED">Repeat recommended</option>
+          </select>
+        </label>
+        <label className="grid gap-1 text-sm font-medium">
+          Incomplete result outcome
+          <select
+            className={selectClass}
+            {...form.register("incompleteOutcome")}
+          >
+            <option value="ACADEMIC_REVIEW">Academic review</option>
+            <option value="REPEAT_RECOMMENDED">Repeat recommended</option>
+          </select>
         </label>
       </fieldset>
 
