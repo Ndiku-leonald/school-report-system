@@ -292,3 +292,44 @@ and 71 promotion browser scenarios. Migration 39 and Migration 40 remain
 byte-for-byte frozen at their recorded SHA-256 values; Migration 41 is absent.
 No production Stage 17 SQL or application paths were changed by this closure,
 and Stage 18 remains out of scope.
+
+## Stage 17 final micro-closure
+
+Point-in-time verification immediately before this documentation append:
+
+- Local: 2026-09-11T00:30:19.4433003+03:00
+- UTC: 2026-09-10T21:30:19.4433003Z
+
+Branch:
+
+- `feature/stage-17-promotion-progression`
+
+Implementation/test HEAD before this append:
+
+- `b31cf21e1b7d0bc3139c9a66114541a2e4dfdd2c`
+
+Implementation/test tree before this append:
+
+- `3656b51fe39b07d0615781be12faa6f4556b8241`
+
+Remote feature branch SHA before this append:
+
+- `b31cf21e1b7d0bc3139c9a66114541a2e4dfdd2c`
+
+`git status --porcelain=v1` before this append:
+
+```text
+<empty>
+```
+
+`git status --short --branch` before this append:
+
+```text
+## feature/stage-17-promotion-progression...origin/feature/stage-17-promotion-progression
+```
+
+The final browser micro-closure adds only two boundary proofs: live
+`PROMOTION_CONFIRM` revocation using the already-authenticated browser token,
+and authenticated-parent denial of `/dashboard/promotion` in the same browser
+context. Production promotion code, migrations, dependencies, CI workflow,
+and deterministic concurrency coverage remain frozen. Migration 41 is absent.
