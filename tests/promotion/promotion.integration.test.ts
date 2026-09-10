@@ -362,8 +362,8 @@ async function setup() {
     );
   }
   await query(
-    "delete from public.term_attendance where term_id=$1 and enrollment_id=(select id from public.enrollments where academic_year_id=$2 order by id offset 6 limit 1)",
-    [ids.term, ids.year],
+    "delete from public.term_attendance where term_id=$1 and enrollment_id=$2",
+    [ids.term, enrollments[6]],
   );
   await query(
     "insert into public.grading_scales(id,school_id,academic_year_id,grade_level_id,name,version,is_active,effective_from,created_by) values($1,$2,$3,$4,'Promotion Scale',1,false,'2046-01-02',$5)",
