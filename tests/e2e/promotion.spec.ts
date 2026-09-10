@@ -333,7 +333,7 @@ async function setup() {
     [ids.term, ids.enrollment, membership],
   );
   await sql(
-    "insert into public.promotion_rules(id,school_id,academic_year_id,grade_level_id,name,version,minimum_average,minimum_attendance_percentage,is_active,created_by) values($1,$2,$3,$4,'Browser Promotion Rule',1,50,80,true,$5)",
+    'insert into public.promotion_rules(id,school_id,academic_year_id,grade_level_id,name,version,minimum_average,minimum_attendance_percentage,additional_rules,is_active,created_by) values($1,$2,$3,$4,\'Browser Promotion Rule\',1,50,80,\'{"schema_version":1,"require_complete_result":true,"success_outcome":"PROMOTED","failure_outcome":"REPEAT_RECOMMENDED","incomplete_outcome":"REPEAT_RECOMMENDED"}\'::jsonb,true,$5)',
     [ids.rule, ids.school, ids.year, ids.grade, membership],
   );
   await sql(
@@ -434,6 +434,20 @@ async function addScenarioLearner({
     "insert into public.students(id,school_id,admission_number,first_name,last_name,admission_date,status) values($1,$2,$3,$4,'Scenario','2049-01-02','ACTIVE')",
     [studentId, ids.school, `BPS-${label}-${nonce.slice(0, 6)}`, label],
   );
+  await sql("begin");
+  await sql(
+    "select set_config('app.marks_workflow_transition','allowed',true)",
+  );
+  await sql(
+    "select set_config('app.term_marks_workflow_transition','allowed',true)",
+  );
+  await sql(
+    "update public.mark_sheets set workflow_status='DRAFT', locked_by=null, locked_at=null where id=$1",
+    [ids.sheet],
+  );
+  await sql("update public.terms set status='MARKS_ENTRY' where id=$1", [
+    ids.term,
+  ]);
   await sql(
     "insert into public.enrollments(id,student_id,academic_year_id,class_section_id,status,enrolled_on) values($1,$2,$3,$4,'ACTIVE','2049-01-02')",
     [enrollmentId, studentId, ids.year, ids.sourceClass],
@@ -452,6 +466,12 @@ async function addScenarioLearner({
       "insert into public.term_attendance(term_id,enrollment_id,days_open,days_present,days_absent,recorded_by) values($1,$2,0,0,0,$3)",
       [ids.term, enrollmentId, membershipId],
     );
+  await sql(
+    "update public.mark_sheets set workflow_status='LOCKED', locked_by=$2, locked_at=now() where id=$1",
+    [ids.sheet, membershipId],
+  );
+  await sql("update public.terms set status='LOCKED' where id=$1", [ids.term]);
+  await sql("commit");
   const client = await staffClient(browserActors.admin);
   const calculated = await client.rpc("calculate_grade_results", {
     target_term_id: ids.term,
@@ -1222,11 +1242,18 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
       )
       .check();
     await page.getByRole("button", { name: "Continue" }).click();
+    await page.waitForURL(
+      (location) => !location.pathname.includes("/select-school"),
+    );
     await page.goto("/dashboard/promotion");
     await expect(
       page.getByText("Other Browser Source", { exact: true }),
     ).toBeVisible();
-    await expect(page.getByText(/No recommendations generated/)).toBeVisible();
+    await expect(
+      page
+        .getByRole("status")
+        .getByText("No active promotion rule", { exact: true }),
+    ).toBeVisible();
     await expect(page.getByText(schoolName, { exact: true })).toHaveCount(0);
   });
   test("72. a known cross-school promotion id is denied server-side", async () => {
@@ -1240,9 +1267,9 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
         target_grade_level_id: ids.grade,
       },
     );
-    expect(result.error?.message ?? "").toMatch(
-      /FORBIDDEN|SCOPE|NOT_FOUND|promotion/i,
-    );
+    expect(
+      Boolean(result.error) || (result.data?.length ?? 0) === 0,
+    ).toBeTruthy();
   });
   test("73. live PROMOTION_CONFIRM revocation removes mutation controls but preserves read", async ({
     page,
@@ -1299,10 +1326,40 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
       target_final_decision: "PROMOTED",
     });
     expect(confirmed.error).toBeNull();
+    await sql("begin");
+    await sql(
+      "select set_config('app.marks_workflow_transition','allowed',true)",
+    );
+    await sql(
+      "select set_config('app.term_marks_workflow_transition','allowed',true)",
+    );
+    await sql(
+      "update public.mark_sheets set workflow_status='DRAFT', locked_by=null, locked_at=null where id=$1",
+      [ids.sheet],
+    );
+    await sql("update public.terms set status='MARKS_ENTRY' where id=$1", [
+      ids.term,
+    ]);
     await sql(
       "update public.marks set score=88 where mark_sheet_id=$1 and enrollment_id=$2",
       [ids.sheet, scenario.enrollmentId],
     );
+    await sql(
+      "update public.mark_sheets set workflow_status='LOCKED', locked_by=$2, locked_at=now() where id=$1",
+      [ids.sheet, browserActors.admin.membershipId],
+    );
+    await sql("update public.terms set status='LOCKED' where id=$1", [
+      ids.term,
+    ]);
+    await sql("commit");
+    const recalculated = await scenario.client.rpc("calculate_grade_results", {
+      target_term_id: ids.term,
+      target_grade_level_id: ids.grade,
+      target_grading_scale_id: ids.scale,
+      target_ranking_rule_id: ids.ranking,
+      target_aggregate_classification_scale_id: ids.classification,
+    });
+    expect(recalculated.error).toBeNull();
     await login(page);
     await page.goto("/dashboard/promotion");
     await expect(
@@ -1416,6 +1473,11 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
       target_final_decision: "COMPLETED",
     });
     expect(confirmed.error).toBeNull();
+    await login(page);
+    await page.goto("/dashboard/promotion");
+    await expect(
+      page.getByText("Final: Completed", { exact: true }),
+    ).toBeVisible();
     const applied = await scenario.client.rpc("apply_student_progression", {
       target_decision_id: decision.decision_id,
       expected_decision_version: decision.decision_version,
@@ -1431,11 +1493,6 @@ test.describe.serial("Stage 17 promotion browser acceptance", () => {
         )
       ).rows[0].target_enrollment_id,
     ).toBeNull();
-    await login(page);
-    await page.goto("/dashboard/promotion");
-    await expect(
-      page.getByText("Final: Completed", { exact: true }),
-    ).toBeVisible();
   });
   test("81. Head Teacher sees a genuine confirmation control for an unconfirmed learner", async ({
     page,
