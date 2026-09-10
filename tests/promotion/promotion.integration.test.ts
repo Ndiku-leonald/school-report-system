@@ -1156,9 +1156,13 @@ describe.sequential("Stage 17 promotion acceptance integration", () => {
         decisions[1].enrollment_id,
       ])
     ).rows[0];
-    expect(new Date(row.exited_on).toISOString().slice(0, 10)).toBe(
-      "2046-12-31",
-    );
+    const exitedOn = new Date(row.exited_on);
+    const exitedOnDate = [
+      exitedOn.getFullYear(),
+      String(exitedOn.getMonth() + 1).padStart(2, "0"),
+      String(exitedOn.getDate()).padStart(2, "0"),
+    ].join("-");
+    expect(exitedOnDate).toBe("2046-12-31");
   });
   it("46. creates an active target enrollment", async () => {
     const source = (

@@ -86,10 +86,19 @@ async function setup() {
        join public.terms term on term.id = report.term_id
        join public.academic_years year on year.id = term.academic_year_id
        join public.enrollments enrollment on enrollment.id = report.enrollment_id
+       join public.result_calculation_runs calculation_run
+         on calculation_run.id = report.calculation_run_id
       where report.status = 'GENERATED'
         and report.calculation_run_id is not null
         and report.superseded_by is null
         and report.pdf_storage_path is null
+        and current_date between term.starts_on and term.ends_on
+        and calculation_run.version = (
+          select max(current_run.version)
+          from public.result_calculation_runs current_run
+          where current_run.term_id = calculation_run.term_id
+            and current_run.grade_level_id = calculation_run.grade_level_id
+        )
       order by report.created_at desc
       limit 1`,
   );
