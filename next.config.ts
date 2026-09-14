@@ -1,6 +1,22 @@
 import type { NextConfig } from "next";
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+import {
+  assertNoPrivilegedPublicEnvironmentVariables,
+  parsePublicEnvironment,
+} from "./src/lib/env/schema";
+
+const isProductionBuild = process.env.NODE_ENV === "production";
+
+if (isProductionBuild) {
+  assertNoPrivilegedPublicEnvironmentVariables(process.env);
+}
+
+const publicEnvironment = isProductionBuild
+  ? parsePublicEnvironment(process.env, { mode: "production" })
+  : undefined;
+const supabaseUrl =
+  publicEnvironment?.NEXT_PUBLIC_SUPABASE_URL ??
+  process.env.NEXT_PUBLIC_SUPABASE_URL;
 const storageOrigin = supabaseUrl ? new URL(supabaseUrl) : null;
 
 const nextConfig: NextConfig = {
