@@ -174,6 +174,15 @@ jobs:
       - name: Run analytics integration tests
         run: npm run test:analytics
 
+      - name: Run promotion behavioral pgTAP
+        run: npx supabase test db supabase/tests/database/promotion_behavior.test.sql --local
+
+      - name: Run promotion integration tests
+        run: npm run test:promotion
+
+      - name: Run promotion concurrency tests
+        run: npm run test:promotion:concurrency
+
       - name: Verify generated database types
         run: |
           npm run db:types
@@ -233,6 +242,9 @@ jobs:
 
       - name: Run analytics browser acceptance
         run: npm run test:e2e:analytics
+
+      - name: Run promotion browser acceptance
+        run: npm run test:e2e:promotion
 
       - name: Stop local Supabase
         if: always()

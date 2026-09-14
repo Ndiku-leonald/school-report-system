@@ -11,13 +11,26 @@ function record(value: unknown): Record<string, unknown> {
     : {};
 }
 
-function requiredSubjectRules(value: unknown) {
-  if (!Array.isArray(value)) return [];
-  return value.flatMap((item) => {
+function requiredSubjectRules(value: unknown): {
+  subjectId: string;
+  require: "PASS" | "COMPLETE";
+}[] {
+  const container = record(value);
+  const entries = Array.isArray(value)
+    ? value
+    : container.schema_version === 1 && Array.isArray(container.subjects)
+      ? container.subjects
+      : [];
+  return entries.flatMap((item) => {
     const rule = record(item);
     return typeof rule.subject_id === "string" &&
-      typeof rule.minimum_score === "number"
-      ? [{ subjectId: rule.subject_id, minimumScore: rule.minimum_score }]
+      (rule.require === "PASS" || rule.require === "COMPLETE")
+      ? [
+          {
+            subjectId: rule.subject_id,
+            require: rule.require as "PASS" | "COMPLETE",
+          },
+        ]
       : [];
   });
 }
@@ -105,9 +118,20 @@ export default async function PromotionPage() {
                     requiredSubjectRules: requiredSubjectRules(
                       rule.required_subject_rules,
                     ),
-                    requireAllRequiredSubjects:
-                      additional.require_all_required_subjects !== false,
-                    allowManualReview: additional.allow_manual_review !== false,
+                    requireCompleteResult:
+                      additional.require_complete_result !== false,
+                    successOutcome:
+                      additional.success_outcome === "PROMOTED_WITH_SUPPORT"
+                        ? "PROMOTED_WITH_SUPPORT"
+                        : "PROMOTED",
+                    failureOutcome:
+                      additional.failure_outcome === "REPEAT_RECOMMENDED"
+                        ? "REPEAT_RECOMMENDED"
+                        : "ACADEMIC_REVIEW",
+                    incompleteOutcome:
+                      additional.incomplete_outcome === "REPEAT_RECOMMENDED"
+                        ? "REPEAT_RECOMMENDED"
+                        : "ACADEMIC_REVIEW",
                   }}
                 />
               ) : undefined,

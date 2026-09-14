@@ -86,10 +86,19 @@ async function setup() {
        join public.terms term on term.id = report.term_id
        join public.academic_years year on year.id = term.academic_year_id
        join public.enrollments enrollment on enrollment.id = report.enrollment_id
+       join public.result_calculation_runs calculation_run
+         on calculation_run.id = report.calculation_run_id
       where report.status = 'GENERATED'
         and report.calculation_run_id is not null
         and report.superseded_by is null
         and report.pdf_storage_path is null
+        and current_date between term.starts_on and term.ends_on
+        and calculation_run.version = (
+          select max(current_run.version)
+          from public.result_calculation_runs current_run
+          where current_run.term_id = calculation_run.term_id
+            and current_run.grade_level_id = calculation_run.grade_level_id
+        )
       order by report.created_at desc
       limit 1`,
   );
@@ -537,10 +546,14 @@ test.describe.serial("Stage 14 signed-in publication acceptance", () => {
       page.getByRole("link", { name: /parent|guardian/i }),
     ).toHaveCount(0);
   });
-  test("16. promotion controls are absent", async ({ page }) => {
+  test("16. promotion navigation is available without report controls", async ({
+    page,
+  }) => {
     await openReport(page);
     await expect(page.getByRole("button", { name: /promot/i })).toHaveCount(0);
-    await expect(page.getByRole("link", { name: /promot/i })).toHaveCount(0);
+    const promotionLink = page.getByRole("link", { name: /promot/i });
+    await expect(promotionLink).toHaveCount(1);
+    await expect(promotionLink).toHaveAttribute("href", "/dashboard/promotion");
   });
   test("17. view-only registrar cannot materialize", async ({ page }) => {
     await openReport(page, viewOnlyEmail, viewOnlyMembershipId);

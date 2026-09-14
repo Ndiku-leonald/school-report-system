@@ -239,23 +239,32 @@ function rankingConfiguration(configuration: {
 }
 
 function requiredSubjectRules(
-  rules: { subjectId: string; minimumScore: number }[],
+  rules: { subjectId: string; require: "PASS" | "COMPLETE" }[],
 ): Json {
-  return rules.map((rule) => ({
-    subject_id: rule.subjectId,
-    minimum_score: rule.minimumScore,
-  }));
+  return rules.length
+    ? {
+        schema_version: 1,
+        subjects: rules.map((rule) => ({
+          subject_id: rule.subjectId,
+          require: rule.require,
+        })),
+      }
+    : {};
 }
 
 function promotionAdditionalRules(configuration: {
   schemaVersion: 1;
-  requireAllRequiredSubjects: boolean;
-  allowManualReview: boolean;
+  requireCompleteResult: boolean;
+  successOutcome: "PROMOTED" | "PROMOTED_WITH_SUPPORT";
+  failureOutcome: "ACADEMIC_REVIEW" | "REPEAT_RECOMMENDED";
+  incompleteOutcome: "ACADEMIC_REVIEW" | "REPEAT_RECOMMENDED";
 }): Json {
   return {
     schema_version: configuration.schemaVersion,
-    require_all_required_subjects: configuration.requireAllRequiredSubjects,
-    allow_manual_review: configuration.allowManualReview,
+    require_complete_result: configuration.requireCompleteResult,
+    success_outcome: configuration.successOutcome,
+    failure_outcome: configuration.failureOutcome,
+    incomplete_outcome: configuration.incompleteOutcome,
   };
 }
 

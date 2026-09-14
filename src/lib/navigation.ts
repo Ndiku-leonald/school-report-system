@@ -73,8 +73,8 @@ export const dashboardNavigation: NavigationItem[] = [
   {
     label: "Promotion",
     icon: SlidersHorizontal,
+    href: "/dashboard/promotion",
     permissions: ["PROMOTION_VIEW"],
-    unavailable: true,
   },
   {
     label: "Settings",
