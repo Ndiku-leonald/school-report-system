@@ -164,6 +164,11 @@ values (
 -- The production predicates intentionally require the current date to be inside
 -- both the term and assignment windows; fixed seed dates made this test expire.
 update public.terms
+set starts_on = current_date + 31,
+    ends_on = current_date + 80
+where id = '21000000-0000-4000-8000-000000000003';
+
+update public.terms
 set starts_on = current_date - 30,
     ends_on = current_date + 30
 where id = '21000000-0000-4000-8000-000000000002';
