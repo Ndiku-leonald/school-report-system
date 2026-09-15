@@ -71,10 +71,10 @@ made active.
 
 Repository expectations are:
 
-| Bucket | Public | Limit | MIME policy | Access design |
-| --- | --- | --- | --- | --- |
-| `student-photos` | No | 5 MiB | JPEG/PNG/WebP | Scoped Storage policies and server-managed writes |
-| `report-artifacts` | No | 10 MiB | PDF | Private application/database-authorized access |
+| Bucket             | Public | Limit  | MIME policy   | Access design                                     |
+| ------------------ | ------ | ------ | ------------- | ------------------------------------------------- |
+| `student-photos`   | No     | 5 MiB  | JPEG/PNG/WebP | Scoped Storage policies and server-managed writes |
+| `report-artifacts` | No     | 10 MiB | PDF           | Private application/database-authorized access    |
 
 Do not make either bucket public, delete objects, or modify production artifact data. Confirm
 the hosted bucket list, limits, MIME restrictions, and object policies manually after access is
