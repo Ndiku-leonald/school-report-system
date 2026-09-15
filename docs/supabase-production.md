@@ -41,6 +41,29 @@ The database therefore appears fresh and contains no unrelated school-system dat
 student/staff records. The default branch control-plane status remains `MIGRATIONS_FAILED` and
 must be understood before future deployment activity.
 
+### `MIGRATIONS_FAILED` diagnosis
+
+Classification: `E. Unknown` — the available read-only MCP surface exposes branch metadata but not
+the deployment log or failed step.
+
+Evidence currently available:
+
+- The only hosted branch is the default `main` branch, linked by metadata to Git branch `main`.
+- Its status is `MIGRATIONS_FAILED`; its creation and last-update timestamps are both
+  `2026-06-21T21:45:36.515619+00:00`.
+- No preview or additional Supabase branches exist.
+- The project is independently `ACTIVE_HEALTHY`, has no application migration history, and has
+  no application schema, data, users, Storage objects, or application functions.
+- Repository inspection found no repository-owned Supabase deployment workflow. Whether the
+  Supabase GitHub integration is enabled, which repository/working directory it uses, and the
+  exact failed deployment step remain unverified.
+
+This is not evidence that the healthy fresh database is corrupted, nor does it identify whether
+the condition is historical, a current migration/configuration failure, or an integration issue.
+Recommended action: `E. Cannot safely determine` remotely; do not repair, reset, rebase, merge,
+disable, or otherwise modify the branch. An authenticated owner should inspect Manage Branches →
+`main` → View logs and Project Settings → Integrations before Stage 18E deployment planning.
+
 ### REQUIRED
 
 - Resolve or explain the `MIGRATIONS_FAILED` branch status before Stage 18E deployment planning.
@@ -180,6 +203,18 @@ The read-only Supabase MCP advisor calls completed successfully after reactivati
 These results do not replace the dashboard-only Auth, Data API, SSL/network, backup, or
 account-security checks.
 
+## Hosted Quality
+
+The final-head Hosted Quality run completed successfully for commit
+`eea6b940f720cc54fd0fc80d0959a4f39ed8ec15`:
+
+- Validate job: `SUCCESS`.
+- Database job: `SUCCESS`.
+- All required downstream database and browser suites completed successfully.
+- No required suite was skipped.
+
+Run: <https://github.com/Ndiku-leonard/school-report-system/actions/runs/34956558436>.
+
 ## Migration boundary
 
 The repository contains exactly migrations 01-40. Migrations 39 and 40 are unchanged and
@@ -206,3 +241,27 @@ destructive SQL, or any remote schema deployment in Stage 18C.
 - Stage 18F owns Storage backup, restore drills, and disaster-recovery evidence.
 
 Preview/Vercel hardening belongs to Stage 18D.
+
+## Stage ownership matrix
+
+| Control                                            | Verified state                             | Launch requirement                            | Stage     |
+| -------------------------------------------------- | ------------------------------------------ | --------------------------------------------- | --------- |
+| Supabase project identity/health/freshness         | Confirmed; active and empty                | Ready for controlled planning                 | 18C       |
+| Supabase branching status                          | `MIGRATIONS_FAILED`; cause unknown         | Required before migration deployment planning | 18C → 18E |
+| Site URL and redirect URLs                         | Unverified; production domain absent       | Required before application deployment        | 18D       |
+| Public signup and anonymous Auth                   | Unverified                                 | Must be disabled before launch                | 18I       |
+| Email confirmation, password policy, OTP, recovery | Unverified                                 | Harden and verify before launch               | 18I       |
+| Auth rate limits                                   | Unverified                                 | Verify before application deployment          | 18I       |
+| SMTP                                               | Default/custom state unverified            | Custom SMTP required before production launch | 18I       |
+| Data API exposed schemas                           | Unverified; no application objects exist   | Verify before migrations are deployed         | 18E       |
+| SSL enforcement                                    | Unverified                                 | Required before production database use       | 18E       |
+| Network restrictions                               | Unverified                                 | Finalize with tested admin access model       | 18E       |
+| Free-plan pause risk                               | Free plan                                  | Policy/budget decision for production uptime  | 18C       |
+| Backups and retention                              | Free-plan behavior unverified              | Define recovery expectations                  | 18F       |
+| PITR                                               | State unverified; not enabled by this task | Requires budget/policy approval               | 18F       |
+| Storage backup/recovery                            | No buckets or objects; drill not run       | Define separate object recovery               | 18F       |
+| Operator MFA and organization MFA                  | Unverified                                 | Manual hardening required                     | 18I / 18K |
+
+Stage 18D remains deferred. Stage 18E owns controlled migration deployment. Stage 18F owns
+backup/restore and Storage recovery evidence. Stage 18I owns final Auth/MFA hardening, Stage 18K
+owns final security acceptance, and Stage 18M owns production rollout.
