@@ -170,7 +170,7 @@ where id = '21000000-0000-4000-8000-000000000002';
 
 update public.terms
 set starts_on = current_date - 60,
-    ends_on = current_date - 30
+    ends_on = current_date - 31
 where id = '21000000-0000-4000-8000-000000000001';
 
 update public.teaching_assignments
