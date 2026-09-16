@@ -160,12 +160,47 @@ values (
   '2026-05-25'
 );
 
+-- Keep assignment-scoped authorization deterministic as the calendar advances.
+-- The production predicates intentionally require the current date to be inside
+-- both the term and assignment windows; fixed seed dates made this test expire.
+update public.academic_years
+set ends_on = current_date + 80
+where id = '20000000-0000-4000-8000-000000000001';
+
+update public.terms
+set starts_on = current_date + 31,
+    ends_on = current_date + 80
+where id = '21000000-0000-4000-8000-000000000003';
+
+update public.terms
+set starts_on = current_date - 30,
+    ends_on = current_date + 30
+where id = '21000000-0000-4000-8000-000000000002';
+
+update public.terms
+set starts_on = current_date - 60,
+    ends_on = current_date - 31
+where id = '21000000-0000-4000-8000-000000000001';
+
+update public.teaching_assignments
+set starts_on = current_date - 30
+where id in (
+  'a6200000-0000-4000-8000-000000000001',
+  'a6200000-0000-4000-8000-000000000002',
+  'a6200000-0000-4000-8000-000000000003',
+  'a6300000-0000-4000-8000-000000000001'
+);
+
+update public.teaching_assignments
+set starts_on = current_date - 60
+where id = 'a6200000-0000-4000-8000-000000000004';
+
 insert into public.assessment_schemes (
   id, term_id, grade_level_id, subject_id, name, status, effective_from
 )
 values
-  ('a6400000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001', 'Authorization English', 'DRAFT', '2026-05-25'),
-  ('a6400000-0000-4000-8000-000000000002', '21000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000002', 'Authorization Mathematics', 'DRAFT', '2026-05-25');
+  ('a6400000-0000-4000-8000-000000000001', '21000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000001', 'Authorization English', 'DRAFT', current_date - 30),
+  ('a6400000-0000-4000-8000-000000000002', '21000000-0000-4000-8000-000000000002', '30000000-0000-4000-8000-000000000001', '40000000-0000-4000-8000-000000000002', 'Authorization Mathematics', 'DRAFT', current_date - 30);
 
 insert into public.assessment_components (
   id, assessment_scheme_id, name, component_code, maximum_score,
