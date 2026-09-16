@@ -163,6 +163,10 @@ values (
 -- Keep assignment-scoped authorization deterministic as the calendar advances.
 -- The production predicates intentionally require the current date to be inside
 -- both the term and assignment windows; fixed seed dates made this test expire.
+update public.academic_years
+set ends_on = current_date + 80
+where id = '20000000-0000-4000-8000-000000000001';
+
 update public.terms
 set starts_on = current_date + 31,
     ends_on = current_date + 80
