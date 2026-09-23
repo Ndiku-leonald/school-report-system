@@ -2,7 +2,7 @@
 
 Audit date: 2026-09-23 (Africa/Kampala)
 
-Status: `STAGE 18F PLAN DOCUMENTED — OPERATOR APPROVAL AND PRE-LAUNCH DRILL REMAIN REQUIRED`
+Status: `STAGE 18F ACCEPTED — PRE-LAUNCH CONTROLS REMAIN REQUIRED`
 
 This runbook covers the empty pre-launch Supabase project
 `school-report-system` (`fpixtedanpbmjnmzrumo`). It defines the controls that
@@ -605,9 +605,16 @@ Completed in this stage:
 - non-production restore drill limitation documented honestly.
 
 The secure destination, operator approval, and synthetic restore drill remain
-genuine production-launch blockers. Stage 18F documentation may be committed,
-but the stage is not accepted until those controls are approved and the drill
-is completed or formally waived by the responsible operator.
+genuine production-launch blockers. Under the Stage 18F acceptance rule, the
+exact inability to run the drill is documented above with a mandatory
+pre-launch gate; this is not a claim that a restore test passed.
+
+```text
+STAGE 18F ACCEPTED
+Next: Stage 18G — Monitoring, Logging and Alerting
+```
+
+Do not begin Stage 18G in this task.
 
 ## References
 
