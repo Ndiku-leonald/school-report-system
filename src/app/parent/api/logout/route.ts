@@ -12,9 +12,7 @@ function sameOrigin(request: Request) {
   if (!origin) return true;
   try {
     const originUrl = new URL(origin);
-    const applicationUrl = new URL(
-      getPublicEnvironment().NEXT_PUBLIC_APP_URL,
-    );
+    const applicationUrl = new URL(getPublicEnvironment().NEXT_PUBLIC_APP_URL);
     return originUrl.origin === applicationUrl.origin;
   } catch {
     return false;

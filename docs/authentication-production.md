@@ -35,13 +35,13 @@ request.
 
 The intended production policy is:
 
-| Setting | Policy | Evidence |
-| --- | --- | --- |
-| Public signup | Disabled | **VERIFIED locally; hosted value UNVERIFIED** |
-| Anonymous sign-in | Disabled | **VERIFIED locally; hosted value UNVERIFIED** |
-| Phone sign-up | Disabled unless separately approved | **VERIFIED locally; hosted value UNVERIFIED** |
-| Unused social providers | Disabled | Hosted value **UNVERIFIED** |
-| Email/password sign-in | Enabled for provisioned staff | Application uses `signInWithPassword`; hosted provider value **UNVERIFIED** |
+| Setting                 | Policy                              | Evidence                                                                    |
+| ----------------------- | ----------------------------------- | --------------------------------------------------------------------------- |
+| Public signup           | Disabled                            | **VERIFIED locally; hosted value UNVERIFIED**                               |
+| Anonymous sign-in       | Disabled                            | **VERIFIED locally; hosted value UNVERIFIED**                               |
+| Phone sign-up           | Disabled unless separately approved | **VERIFIED locally; hosted value UNVERIFIED**                               |
+| Unused social providers | Disabled                            | Hosted value **UNVERIFIED**                                                 |
+| Email/password sign-in  | Enabled for provisioned staff       | Application uses `signInWithPassword`; hosted provider value **UNVERIFIED** |
 
 The repository's local policy is in `supabase/config.toml`; it must not be
 treated as proof of hosted configuration. No production user was created.
@@ -173,14 +173,14 @@ and session persistence.
 
 Justified uses are narrowly scoped:
 
-| Location | Use |
-| --- | --- |
-| `scripts/invite-staff.ts` | Trusted staff invitation provisioning and compensating cleanup |
-| `src/lib/auth/actions.ts` | Activation of the caller's own invited memberships after application checks |
-| `src/lib/auth/audit.ts` | Server-side staff audit persistence |
-| `src/lib/parent-portal/server.ts` | Server-side parent RPC boundary |
-| `src/lib/report-publication/storage-admin.ts` | Private report-artifact Storage operations |
-| `scripts/run-local-*` | Synthetic local test configuration only |
+| Location                                      | Use                                                                         |
+| --------------------------------------------- | --------------------------------------------------------------------------- |
+| `scripts/invite-staff.ts`                     | Trusted staff invitation provisioning and compensating cleanup              |
+| `src/lib/auth/actions.ts`                     | Activation of the caller's own invited memberships after application checks |
+| `src/lib/auth/audit.ts`                       | Server-side staff audit persistence                                         |
+| `src/lib/parent-portal/server.ts`             | Server-side parent RPC boundary                                             |
+| `src/lib/report-publication/storage-admin.ts` | Private report-artifact Storage operations                                  |
+| `scripts/run-local-*`                         | Synthetic local test configuration only                                     |
 
 No browser module imports the administrative client. Ordinary staff CRUD uses
 the authenticated client and database authorization rather than bypassing RLS
@@ -202,15 +202,15 @@ tied to the intended student and active eligible guardian relationship.
 
 The accepted parent controls are:
 
-| Control | Value |
-| --- | --- |
-| Absolute lifetime | 2 hours |
-| Idle timeout | 30 minutes |
-| HttpOnly cookie | Yes |
-| Secure in production | Yes |
-| SameSite | Lax |
-| Cookie path | `/parent` |
-| Server-side revocation | Yes |
+| Control                | Value      |
+| ---------------------- | ---------- |
+| Absolute lifetime      | 2 hours    |
+| Idle timeout           | 30 minutes |
+| HttpOnly cookie        | Yes        |
+| Secure in production   | Yes        |
+| SameSite               | Lax        |
+| Cookie path            | `/parent`  |
+| Server-side revocation | Yes        |
 
 Every parent request validates the hashed session token, `revoked_at`, absolute
 expiry, idle timeout, credential activity/expiry, and current guardian report
@@ -253,11 +253,11 @@ Reference: [Supabase custom SMTP](https://supabase.com/docs/guides/auth/auth-smt
 
 No CAPTCHA dependency or key was added.
 
-| Flow | Policy |
-| --- | --- |
-| Staff sign-in | Recommended before launch |
+| Flow              | Policy                    |
+| ----------------- | ------------------------- |
+| Staff sign-in     | Recommended before launch |
 | Password recovery | Recommended before launch |
-| Parent portal | Not required initially |
+| Parent portal     | Not required initially    |
 
 Supabase supports hCaptcha and Cloudflare Turnstile for supported Auth flows.
 The custom parent portal is not covered automatically by Supabase Auth CAPTCHA;
