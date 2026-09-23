@@ -10,20 +10,20 @@ Production load testing was not performed. The production Supabase project and V
 
 ## Abuse-sensitive surface inventory
 
-| Surface | Trust class | Cost / sensitivity | Existing control |
-| --- | --- | --- | --- |
-| `/parent` and `/parent/api/session` | Public before login | Moderate / security-sensitive | Schema and body bounds; persistent client throttle and credential lockout |
-| `/parent/api/logout` | Parent session | Cheap / security-sensitive | POST-only, same-origin check when an Origin is supplied, session revocation, cookie clearing |
-| Parent report pages and report APIs | Parent session | Moderate / security-sensitive | Session expiry/idle checks, student-scoped report authorization, published-report checks |
-| Parent artifact download | Parent session | Moderate to expensive / security-sensitive | Private storage, student/report scope, checksum and PDF checks, access audit, `no-store` |
-| Staff sign-in, refresh, verification and recovery | Public Auth endpoints | Moderate / security-sensitive | Supabase Auth controls; application responses are generic where applicable |
-| Auth callbacks and confirmation routes | Public callback surface | Cheap to moderate / security-sensitive | Signed state/OTP validation and allowlisted callback behavior |
-| Report PDF generation and artifact materialization | Authenticated staff | Expensive / security-sensitive | Permission checks, bounded inputs, deterministic artifacts, database concurrency/idempotency handling |
-| Results calculation, publication, promotion and progression | Authenticated staff | Expensive / security-sensitive | Permission checks and transactional/concurrency protections |
-| Analytics export | Authenticated staff | Moderate / security-sensitive | Permission checks, UUID/type validation, bounded export inputs, private response |
-| Student photo upload | Authenticated staff | Moderate / security-sensitive | Permission and scoped-path checks, 5 MB limit, MIME/signature checks, private bucket, random path, no overwrite |
-| Report artifact upload | Authenticated staff/service workflow | Moderate / security-sensitive | 10 MB limit, PDF content type and signature checks, private bucket, deterministic path, no overwrite |
-| `GET /api/health` | Public | Cheap / liveness-only | No database query, secret, personal data or expensive computation |
+| Surface                                                     | Trust class                          | Cost / sensitivity                         | Existing control                                                                                                |
+| ----------------------------------------------------------- | ------------------------------------ | ------------------------------------------ | --------------------------------------------------------------------------------------------------------------- |
+| `/parent` and `/parent/api/session`                         | Public before login                  | Moderate / security-sensitive              | Schema and body bounds; persistent client throttle and credential lockout                                       |
+| `/parent/api/logout`                                        | Parent session                       | Cheap / security-sensitive                 | POST-only, same-origin check when an Origin is supplied, session revocation, cookie clearing                    |
+| Parent report pages and report APIs                         | Parent session                       | Moderate / security-sensitive              | Session expiry/idle checks, student-scoped report authorization, published-report checks                        |
+| Parent artifact download                                    | Parent session                       | Moderate to expensive / security-sensitive | Private storage, student/report scope, checksum and PDF checks, access audit, `no-store`                        |
+| Staff sign-in, refresh, verification and recovery           | Public Auth endpoints                | Moderate / security-sensitive              | Supabase Auth controls; application responses are generic where applicable                                      |
+| Auth callbacks and confirmation routes                      | Public callback surface              | Cheap to moderate / security-sensitive     | Signed state/OTP validation and allowlisted callback behavior                                                   |
+| Report PDF generation and artifact materialization          | Authenticated staff                  | Expensive / security-sensitive             | Permission checks, bounded inputs, deterministic artifacts, database concurrency/idempotency handling           |
+| Results calculation, publication, promotion and progression | Authenticated staff                  | Expensive / security-sensitive             | Permission checks and transactional/concurrency protections                                                     |
+| Analytics export                                            | Authenticated staff                  | Moderate / security-sensitive              | Permission checks, UUID/type validation, bounded export inputs, private response                                |
+| Student photo upload                                        | Authenticated staff                  | Moderate / security-sensitive              | Permission and scoped-path checks, 5 MB limit, MIME/signature checks, private bucket, random path, no overwrite |
+| Report artifact upload                                      | Authenticated staff/service workflow | Moderate / security-sensitive              | 10 MB limit, PDF content type and signature checks, private bucket, deterministic path, no overwrite            |
+| `GET /api/health`                                           | Public                               | Cheap / liveness-only                      | No database query, secret, personal data or expensive computation                                               |
 
 No additional route handlers were found that expose a new public mutation surface. Sensitive methods are restricted; unexpected methods do not invoke expensive work.
 
