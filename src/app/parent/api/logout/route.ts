@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 
+import { getPublicEnvironment } from "@/lib/env/public";
 import { revokeParentSession } from "@/lib/parent-portal/server";
 import { PARENT_SESSION_COOKIE } from "@/lib/parent-portal/types";
 
@@ -11,15 +12,8 @@ function sameOrigin(request: Request) {
   if (!origin) return true;
   try {
     const originUrl = new URL(origin);
-    const requestUrl = new URL(request.url);
-    const host =
-      request.headers.get("x-forwarded-host") ??
-      request.headers.get("host") ??
-      requestUrl.host;
-    const protocol =
-      request.headers.get("x-forwarded-proto") ??
-      requestUrl.protocol.slice(0, -1);
-    return originUrl.host === host && originUrl.protocol === `${protocol}:`;
+    const applicationUrl = new URL(getPublicEnvironment().NEXT_PUBLIC_APP_URL);
+    return originUrl.origin === applicationUrl.origin;
   } catch {
     return false;
   }
@@ -31,7 +25,7 @@ export async function POST(request: Request) {
   }
   await revokeParentSession();
   const response = NextResponse.redirect(
-    new URL("/parent/login", request.url),
+    new URL("/parent/login", getPublicEnvironment().NEXT_PUBLIC_APP_URL),
     303,
   );
   response.cookies.set(PARENT_SESSION_COOKIE, "", {

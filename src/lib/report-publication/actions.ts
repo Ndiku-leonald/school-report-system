@@ -32,11 +32,10 @@ export async function storeReportArtifactAction(input: unknown) {
     revalidatePath(`/dashboard/reports/${parsed.data.reportId}`);
     return { ok: true, message: "Private PDF artifact stored.", descriptor };
   } catch (error) {
-    return invalid(
-      error instanceof Error
-        ? error.message
-        : "The PDF artifact could not be stored.",
-    );
+    console.error("Report artifact action failed.", {
+      errorType: error instanceof Error ? error.name : "unknown",
+    });
+    return invalid("The PDF artifact could not be stored.");
   }
 }
 

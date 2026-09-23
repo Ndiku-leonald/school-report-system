@@ -84,6 +84,10 @@ jobs:
         run: npm run test:visual:report-pdf
 
       - name: Build production application
+        env:
+          NEXT_PUBLIC_APP_URL: https://ci.example.invalid
+          NEXT_PUBLIC_SUPABASE_URL: https://ci.supabase.example.invalid
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-synthetic-public-anon-key
         run: npm run build
 
       - name: Verify traced report-card font assets

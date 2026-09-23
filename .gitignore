@@ -22,6 +22,13 @@ playwright/.auth/
 # Logs
 *.log
 
+# Disaster-recovery artifacts (never commit backups or manifests containing data)
+backups/
+*.dump
+*.backup
+*.sql.gz
+*.tar.gz
+
 # Tooling and operating-system files
 .DS_Store
 .vercel/
