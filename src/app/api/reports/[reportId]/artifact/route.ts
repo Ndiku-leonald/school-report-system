@@ -5,6 +5,7 @@ import {
   contentDisposition,
   safeReportFilename,
 } from "@/lib/report-pdf/format";
+import { exceedsContentLength } from "@/lib/http/request-size";
 import { materializeReportArtifact } from "@/lib/report-publication/service";
 import { downloadReportArtifact } from "@/lib/report-publication/service";
 import { getGeneratedReport } from "@/lib/report-snapshots/data";
@@ -28,6 +29,11 @@ export async function POST(
     return NextResponse.json(
       { message: "The report artifact is unavailable." },
       { status: 404 },
+    );
+  if (exceedsContentLength(request.headers.get("content-length")))
+    return NextResponse.json(
+      { message: "The report artifact request is invalid." },
+      { status: 400 },
     );
   let input: unknown = {};
   try {

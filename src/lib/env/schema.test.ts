@@ -160,6 +160,18 @@ describe("environment validation", () => {
     ).toThrow(/AUTH_FLOW_SIGNING_SECRET/);
   });
 
+  it("rejects reusing the authentication flow secret for parent throttling", () => {
+    const secret =
+      "synthetic-shared-secret-that-must-not-be-used-for-two-controls";
+
+    expect(() =>
+      parseAuthenticationFlowEnvironment({
+        AUTH_FLOW_SIGNING_SECRET: secret,
+        PARENT_ACCESS_RATE_LIMIT_SECRET: secret,
+      }),
+    ).toThrow(/AUTH_FLOW_SIGNING_SECRET, PARENT_ACCESS_RATE_LIMIT_SECRET/);
+  });
+
   it("does not include secret values in configuration errors", () => {
     const secret = "synthetic-auth-secret-that-must-not-be-printed";
 

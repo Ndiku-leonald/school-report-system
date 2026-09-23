@@ -230,6 +230,18 @@ function validateSecretSeparation(
     invalidNames.push("PARENT_ACCESS_RATE_LIMIT_SECRET");
   }
 
+  if (
+    environment.AUTH_FLOW_SIGNING_SECRET &&
+    environment.PARENT_ACCESS_RATE_LIMIT_SECRET &&
+    environment.AUTH_FLOW_SIGNING_SECRET ===
+      environment.PARENT_ACCESS_RATE_LIMIT_SECRET
+  ) {
+    invalidNames.push(
+      "AUTH_FLOW_SIGNING_SECRET",
+      "PARENT_ACCESS_RATE_LIMIT_SECRET",
+    );
+  }
+
   if (invalidNames.length > 0) {
     throw new EnvironmentConfigurationError([...new Set(invalidNames)]);
   }
