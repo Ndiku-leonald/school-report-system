@@ -8,13 +8,13 @@ Vercel, or start Stage 18F/18M.
 
 ## Current decision
 
-`STAGE 18E NOT YET ACCEPTED`
+`STAGE 18E ACCEPTED`
 
-The repository audit is complete, but the final remote migration list, remote
-freshness read, and `supabase db push --dry-run` could not be executed because
-the local Supabase CLI has no access token. Local Docker is installed but its
-daemon is not running, so a local replay is not claimed. These are the only
-outstanding Stage 18E evidence gaps identified in this pass.
+Authenticated read-only evidence is now complete. The linked production target
+reported zero remote application migrations, the read-only freshness query
+reported zero public tables, Auth users, Storage buckets, and Storage objects,
+and `supabase db push --dry-run` exited successfully with exactly migrations
+01–40 pending. Local Docker is unavailable, so a local replay is not claimed.
 
 ## 1. Target and starting evidence
 
@@ -51,7 +51,7 @@ deterministically ordered files:
 31, 32, 33, 34, 35, 36, 37, 38, 39, 40
 ```
 
-Expected remote result, pending remote verification:
+Verified remote result:
 
 ```text
 Local migrations: 01–40
@@ -59,8 +59,8 @@ Remote migrations: none
 Pending migrations: 01–40
 ```
 
-The exact remote result must be captured with `supabase migration list` before
-any future deploy. No migration repair is permitted.
+The exact remote result was captured with `supabase migration list` on
+2026-09-23. No migration repair is permitted.
 
 ## 3. Ordered migration inventory
 
@@ -202,24 +202,24 @@ npx.cmd supabase db push --help
 npx.cmd supabase db dump --help
 ```
 
-The safe link attempt used the exact ref and `--skip-pooler`:
+The authenticated read-only verification used the exact ref:
 
 ```powershell
-npx.cmd supabase link --project-ref fpixtedanpbmjnmzrumo --skip-pooler
+npx.cmd supabase link --project-ref fpixtedanpbmjnmzrumo
 ```
 
-Result: refused before linking because CLI login or `SUPABASE_ACCESS_TOKEN` was
-missing. No password, token, service-role key, or database secret was printed or
-stored. These commands remain pending and must be run only by an authenticated
-operator:
+Result: link completed. No password, token, service-role key, or database
+secret was printed in the evidence. The following read-only checks completed:
 
 ```powershell
-npx.cmd supabase migration list --linked
-npx.cmd supabase db push --linked --dry-run
+npx.cmd supabase migration list --output-format text
+npx.cmd supabase db push --dry-run --output-format text
 ```
 
-The dry-run must exit 0, show exactly migrations 01–40, and not mention seed
-data. A normal `db push` was not run.
+The dry-run exited 0, showed exactly migrations 01–40, and did not include
+seed data. A normal `db push` was not run. The read-only Management API query
+also returned zero public tables, Auth users, Storage buckets, and Storage
+objects after the dry-run.
 
 ## 9. Fresh replay evidence
 
