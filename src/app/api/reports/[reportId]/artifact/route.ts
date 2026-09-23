@@ -57,10 +57,9 @@ export async function POST(
       storedAt: descriptor.stored_at,
     });
   } catch (error) {
-    console.error(
-      "Report artifact materialization failed.",
-      error instanceof Error ? error.message : "unknown error",
-    );
+    console.error("Report artifact materialization failed.", {
+      errorType: error instanceof Error ? error.name : "unknown",
+    });
     return NextResponse.json(
       { message: "The report artifact could not be stored." },
       { status: 500 },

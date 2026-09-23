@@ -29,7 +29,13 @@ function rows<T>(data: unknown) {
 
 async function read<T>(name: string, args?: Record<string, unknown>) {
   const result = await (await client()).rpc(name, args);
-  if (result.error) throw new Error(result.error.message);
+  if (result.error) {
+    console.error("Promotion query failed.", {
+      code: result.error.code,
+      operation: name,
+    });
+    throw new Error("Promotion data could not be loaded.");
+  }
   return rows<T>(result.data);
 }
 
